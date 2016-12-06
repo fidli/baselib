@@ -1,9 +1,16 @@
+#ifndef WINDOWS_FILESYSTEM
+#define WINDOWS_FILESYSTEM
+
 #include <Windows.h>
 #include "windows_types.h"
 
 #include "common.h"
-#include "util_filesystem.cpp"
+#include "util_filesystem.h"
 #include "util_string.cpp"
+
+struct FileHandle{
+    HANDLE handle;
+};
 
 void readFile(const char * path, FileContents * target){
     HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
@@ -15,10 +22,16 @@ void readFile(const char * path, FileContents * target){
    CloseHandle(file);
 }
 
+ bool writeFile(FileHandle * target, const FileContents * source){
+    return WriteFile(target->handle, source->contents, source->size, 0, 0) > 0;    
+}
+
 void saveFile(const char * path, const FileContents * source){
     HANDLE file = CreateFile(path, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     ASSERT(SUCCEEDED(file));
-    WriteFile(file, source->contents, source->size, 0, 0);    
+    FileHandle handle;
+    handle.handle = file;
+    writeFile(&handle, source);
     CloseHandle(file);
 }
 
@@ -41,3 +54,5 @@ void readDirectory(const char * path, DirectoryContents * target){
   
     
 }
+
+#endif

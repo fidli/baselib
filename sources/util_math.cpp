@@ -5,17 +5,186 @@
 #include "common.h"
 
 #define PI 3.14159265
+#define E 2.71828182
+
+//-----------------------------------------------------------------------NUMBERS
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define ABS(a) (((a) < 0) ? -(a) : (a))
+
+bool32 isOdd(const uint64 a){
+    return (a & (uint64) 1);
+}
+
+bool aseq(float32 a, float32 b, float32 delta = 0.000001){
+    return ABS(a-b) <= delta;
+}
+
+bool aseql(float32 test, float32 fixedpoint, float32 delta = 0.000005){
+    float32 eps = fixedpoint - test;
+    return eps < delta;
+}
+
+bool aseqr(float32 test, float32 fixedpoint, float32 delta = 0.000005){
+    float32 eps = test - fixedpoint;
+    return eps < delta;
+}
+
+
+float32 ceil(float32 value){
+    float32 result = (float32)(uint64) ABS(value);
+    if(!aseq(result, value)){
+        result++;
+    }
+    return (value < 0) ? -result : result;
+}
+
+float32 floor(float32 value){
+    return (float32)(int32) value;
+    
+}
+
+float32 dpow(float32 base, int8 power = 2){
+    //todo square mult
+    float32 result = ABS(base);
+    for(uint8 i = 1; i < power; i++){
+        result *= base;
+    }
+    return (result < 0) ? (1.0f / result) : result;
+}
+
+static float32 subSqrt(float32 value, float32 guess){
+    if(aseq(value / guess, guess, 0.0000001)){
+        return guess;
+    }
+    return subSqrt(value, (guess + value/guess) / 2);
+}
+
+float32 sqrt(float32 value){
+    return subSqrt(value, value / 2);
+}
+
+/* e N
+float32 sqrt(float32 value){
+    ASSERT(value > 0);
+    float32 result = 65536;
+    while(true){
+        float32 candidate = floor((result + floor(value/result))/2);
+        if(candidate >= result){
+            return candidate;
+        }
+        result = candidate;
+    }
+    
+    return result;
+}
+*/
+
+
+float32 atan2(float32, float32){
+    ASSERT(!"fuck");
+    return 0;
+}
+
+float32 sin(float32){
+    ASSERT(!"fuck");
+    return 0;
+}
+
+float32 cos(float32){
+    ASSERT(!"fuck");
+    return 0;
+}
+
+
+
+
+
+
+
+static float32 agMean(float32 a, float32 b){
+    if(aseq(a, b, 0.0000001)) return (b + a) / 2.0;
+    return agMean((a+b)/2, sqrt(a*b));
+}
+
+float32 ln(float32 number, uint8 precisionBits = 32){
+    //Arithmetic-geometric mean approximation
+    ASSERT(precisionBits > 0);
+    const float32 ln2 = 0.6931471;
+    const uint8 m = precisionBits/2;
+    ASSERT(number * (1 << m) > (1 << (precisionBits / 2)));
+    float32 meanB;
+    if(m > 2 ){
+        meanB = (1.0f / (1 << ABS(2-m))) / number;
+    }else{
+        meanB = (1 << (2-m)) / number;
+        
+    }
+    return (PI / (2*agMean(1, meanB))) - m * ln2;
+}
+
+ float32 epow(float32 power){
+     //taylor
+     float32 abspow = ABS(power) - (uint32) ABS(power);
+     float32 result = 1 + abspow + dpow(abspow, 2)/2.0f + dpow(abspow, 3)/6.0f + dpow(abspow, 4)/24.0f + dpow(abspow, 5)/120.0f  + dpow(abspow, 6)/720.0f + dpow(abspow, 7)/5040.0f + dpow(abspow, 8)/40320.0f + dpow(abspow, 9)/362880.0f + dpow(abspow, 10)/3628800.0f + dpow(abspow, 11)/39916800.0f + dpow(abspow, 12)/479001600.0f +dpow(abspow, 13)/6881080200.0f + dpow(abspow, 14)/87178291200.0f;
+     result *= dpow(E, (uint32) ABS(power));
+     return (power < 0) ? (1.0 / result) : result;
+}
+
+float32 pow(float32 base, float32 power){
+    return epow(power * ln(base));
+}
+
+
+float32 log(float32 number, float32 base = 10){
+    ASSERT(number != 0);
+    float32 temp = ABS(number);
+    float32 result = ln(number) / ln(base);
+     return (number < 0) ? -result : result;
+    
+}
+
+uint8 numlen(int64 number){
+    ASSERT(number >= 0);
+    int result = 1;
+    while(number > 9){
+        number /= 10;
+        result++;
+    }
+    return result;
+}
+
+
+float32 clamp(float32 originalValue, float32 min, float32 max){
+    if(originalValue < min){
+        return min;
+    }else if(originalValue > max){
+        return max;
+    }
+    return originalValue;
+}
+
+
+float32 normalize(float32 value, float32 min, float32 max){
+    return (value - min) / (max - min);
+}
+
+
 
 //-----------------------------------------------------------------------VERTICES
 
+struct vN{
+    float32 * v;
+    uint8 size;
+};
+
 union dv4{
     struct{
-        Uint32 x;
-        Uint32 y;
-        Uint32 z;
-        Uint32 w;
+        uint32 x;
+        uint32 y;
+        uint32 z;
+        uint32 w;
     };
-    Uint32 v[4];
+    uint32 v[4];
 };
 
 union v2{
@@ -84,7 +253,7 @@ v4 V4(float32 x, float32 y, float32 z, float32 w){
 
 v3 operator+(const v3 & a, const v3 & b){
     v3 result;
-    for(int i = 0; i < arraySize(result.v); i++){
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
     return result;
@@ -92,7 +261,7 @@ v3 operator+(const v3 & a, const v3 & b){
 
 v2 operator+(const v2 & a, const v2 & b){
     v2 result;
-    for(int i = 0; i < arraySize(result.v); i++){
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
     return result;
@@ -100,14 +269,14 @@ v2 operator+(const v2 & a, const v2 & b){
 
 v2 operator-(const v2 & a, const v2 & b){
     v2 result;
-    for(int i = 0; i < arraySize(result.v); i++){
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
     return result;
 }
 
 v2 & operator+=(v2 & a, const v2 & b){
-    for(int i = 0; i < arraySize(b.v); i++){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
     }
     return a;
@@ -115,21 +284,21 @@ v2 & operator+=(v2 & a, const v2 & b){
 
 v3 operator-(const v3 & a, const v3 & b){
     v3 result;
-    for(int i = 0; i < arraySize(result.v); i++){
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
     return result;
 }
 
 v3 & operator+=(v3 & a, const v3 & b){
-    for(int i = 0; i < arraySize(b.v); i++){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
     }
     return a;
 }
 
 v3 & operator-=(v3 & a, const v3 & b){
-    for(int i = 0; i < arraySize(b.v); i++){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] -= b.v[i];
     }
     return a;
@@ -141,7 +310,7 @@ bool operator==(const v3 & a, const v3 & b){
 
 v2 operator*(const v2 & b, const float32 a){
     v2 result;
-    for(int i = 0; i < arraySize(result.v); i++){
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a*b.v[i];
     }
     return result;
@@ -153,13 +322,25 @@ v2 operator*(const float32 a, const v2 & b){
 
 v3 operator*(const v3 & b, const float32 a){
     v3 result;
-    for(int i = 0; i < arraySize(result.v); i++){
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a*b.v[i];
     }
     return result;
 }
 
 v3 operator*(const float32 a, const v3 & b){
+    return b * a;
+}
+
+vN operator*(const vN & b, const float32 a){
+    vN result = b;
+    for(int i = 0; i < b.size; i++){
+        result.v[i] = a*b.v[i];
+    }
+    return result;
+}
+
+vN operator*(const float32 a, const vN & b){
     return b * a;
 }
 
@@ -186,11 +367,25 @@ float32 dot(v2 a, v2 b){
     return a.x*b.x + a.y * b.y;
 }
 
+float32 dot(vN a, vN b){
+    ASSERT(a.size == b.size);
+    float32 result = 0;
+    for(int i = 0; i < a.size; i++){
+        result += a.v[i] * b.v[i];
+    }
+    return result;
+}
+
+
 float32 det(v2 a, v2 b){
     return a.x*b.y - b.x*a.y;
 }
 
 float32 length(v3 a){
+    return sqrt(dot(a,a));
+}
+
+float32 length(vN a){
     return sqrt(dot(a,a));
 }
 
@@ -210,7 +405,7 @@ float32 radAngle(v2 a, v2 b){
 v4 normalize(v4 source){
     v4 result = {};
     float32 len = length(source);
-    for(int i = 0; i < arraySize(source.v); i++){
+    for(int i = 0; i < ARRAYSIZE(source.v); i++){
         result.v[i] = source.v[i] / len;
     }
     return result;
@@ -219,7 +414,7 @@ v4 normalize(v4 source){
 v2 normalize(v2 source){
     v2 result = {};
     float32 len = length(source);
-    for(int i = 0; i < arraySize(source.v); i++){
+    for(int i = 0; i < ARRAYSIZE(source.v); i++){
         result.v[i] = source.v[i] / len;
     }
     return result;
@@ -228,7 +423,16 @@ v2 normalize(v2 source){
 v3 normalize(v3 source){
     v3 result = {};
     float32 len = length(source);
-    for(int i = 0; i < arraySize(source.v); i++){
+    for(int i = 0; i < ARRAYSIZE(source.v); i++){
+        result.v[i] = source.v[i] / len;
+    }
+    return result;
+}
+
+vN normalize(vN source){
+    vN result = source;
+    float32 len = length(source);
+    for(int i = 0; i < source.size; i++){
         result.v[i] = source.v[i] / len;
     }
     return result;
@@ -240,7 +444,22 @@ v3 hadamard(const v3 & A, const v3 & B){
     return V3(A.x * B.x, A.y * B.y, A.z * B.z);
 }
 
+float32 sum(const vN & A){
+    float32 result = 0;
+    for(int i = 0; i < A.size; i++){
+        result += A.v[i];
+    }
+    return result;
+}
+
 //-----------------------------------------------------------------------MATRICES
+
+ struct matNM{
+     float32 * c;
+     uint16 width;
+    uint16 height;
+};
+
 
 union mat4{
     float32 cells[4][4];
@@ -265,6 +484,20 @@ v3 operator*(const mat4 & matrix, const v3 & vector){
     return V3(resultVector.x, resultVector.y, resultVector.z);
 }
 
+void mul(const vN & vector, const matNM & matrix, vN * result){
+    
+    ASSERT((uint16)result->size == matrix.width);
+    ASSERT((uint16)vector.size == matrix.height);
+    
+    for(int matrixCol = 0; matrixCol < matrix.width; matrixCol++){
+        result->v[matrixCol] = 0;
+        for(int vectorMember = 0; vectorMember < vector.size; vectorMember++){
+            result->v[matrixCol] += matrix.c[matrixCol*matrix.height +vectorMember] * vector.v[vectorMember];
+        }
+    }
+    
+}
+
 v3 operator*(const mat4 & matrix, const v4 & originalVector){
     v4 resultVector = {};
     
@@ -278,7 +511,7 @@ v3 operator*(const mat4 & matrix, const v4 & originalVector){
 
 mat4 operator*(const mat4 & matrix, const float32 alfa){
     mat4 result;
-    for(int cellIndex = 0; cellIndex < arraySize(matrix.c); cellIndex++){
+    for(int cellIndex = 0; cellIndex < ARRAYSIZE(matrix.c); cellIndex++){
         result.c[cellIndex] = alfa * matrix.c[cellIndex];
     }
     return result;
@@ -286,6 +519,71 @@ mat4 operator*(const mat4 & matrix, const float32 alfa){
 
 mat4 operator*(const float32 alfa, const mat4 & matrix){
     return matrix * alfa;
+}
+
+
+
+float32 determinant(const mat3 * matrix){
+    return matrix->cells[0][0] * matrix->cells[1][1] * matrix->cells[2][2]
+        + matrix->cells[0][1] * matrix->cells[1][2] * matrix->cells[2][0]
+        + matrix->cells[1][0] * matrix->cells[2][1] * matrix->cells[0][2]
+    
+        - matrix->cells[0][2] * matrix->cells[1][1] * matrix->cells[2][0]
+        - matrix->cells[0][1] * matrix->cells[1][0] * matrix->cells[2][2]
+        - matrix->cells[0][0] * matrix->cells[2][1] * matrix->cells[1][2];
+}
+
+mat3 transpose(const mat3 * originalMatrix){
+    mat3 result = {};
+    for(int originalMatrixRow = 0; originalMatrixRow < ARRAYSIZE(originalMatrix->cells); originalMatrixRow++){
+        for(int originalMatrixCol = 0; originalMatrixCol < ARRAYSIZE(originalMatrix->cells); originalMatrixCol++){
+            result.cells[originalMatrixCol][originalMatrixRow] = originalMatrix->cells[originalMatrixRow][originalMatrixCol];
+        }
+    }
+    return result;
+}
+
+mat4 transpose(const mat4 * originalMatrix){
+    mat4 result = {};
+    for(int originalMatrixRow = 0; originalMatrixRow < ARRAYSIZE(originalMatrix->cells); originalMatrixRow++){
+        for(int originalMatrixCol = 0; originalMatrixCol < ARRAYSIZE(originalMatrix->cells); originalMatrixCol++){
+            result.cells[originalMatrixCol][originalMatrixRow] = originalMatrix->cells[originalMatrixRow][originalMatrixCol];
+        }
+    }
+    return result;
+}
+
+mat4 inverseMatrix(const mat4 * originalMatrix){
+    
+    
+    mat4 minors = {};
+    
+    float32 originalDeterminant = 0;
+    for(int minorRow = 0; minorRow < ARRAYSIZE(minors.cells); minorRow++){
+        for(int minorCol = 0; minorCol < ARRAYSIZE(minors.cells); minorCol++){
+            mat3 tempMatrix = {};
+            uint8 tempIndex = 0;
+            for(int originalMatrixRow = 0; originalMatrixRow < ARRAYSIZE(originalMatrix->cells); originalMatrixRow++){
+                for(int originalMatrixCol = 0; originalMatrixCol < ARRAYSIZE(originalMatrix->cells); originalMatrixCol++){
+                    if(originalMatrixRow != minorRow && originalMatrixCol != minorCol){
+                        tempMatrix.c[tempIndex++] = originalMatrix->cells[originalMatrixRow][originalMatrixCol];
+                    }
+                }
+            }
+            float32 minorSign = pow(-1.0f, minorRow + minorCol + 2);
+            minors.cells[minorRow][minorCol] = minorSign * determinant(&tempMatrix);
+            if(minorRow == 0){
+                originalDeterminant += minors.cells[minorRow][minorCol];
+            }
+            
+            
+        }
+    }
+    
+    mat4 adjugate = transpose(&minors);
+    ASSERT(originalDeterminant != 0);
+    return (1.0f/ originalDeterminant) * adjugate;
+    
 }
 
 
@@ -364,119 +662,5 @@ mat4 rotationXMatrix(float32 radAngle){
 }
 
 
-float32 determinant(const mat3 * matrix){
-    return matrix->cells[0][0] * matrix->cells[1][1] * matrix->cells[2][2]
-        + matrix->cells[0][1] * matrix->cells[1][2] * matrix->cells[2][0]
-        + matrix->cells[1][0] * matrix->cells[2][1] * matrix->cells[0][2]
-    
-        - matrix->cells[0][2] * matrix->cells[1][1] * matrix->cells[2][0]
-        - matrix->cells[0][1] * matrix->cells[1][0] * matrix->cells[2][2]
-        - matrix->cells[0][0] * matrix->cells[2][1] * matrix->cells[1][2];
-}
-
-mat3 transpose(const mat3 * originalMatrix){
-    mat3 result = {};
-    for(int originalMatrixRow = 0; originalMatrixRow < arraySize(originalMatrix->cells); originalMatrixRow++){
-        for(int originalMatrixCol = 0; originalMatrixCol < arraySize(originalMatrix->cells); originalMatrixCol++){
-            result.cells[originalMatrixCol][originalMatrixRow] = originalMatrix->cells[originalMatrixRow][originalMatrixCol];
-        }
-    }
-    return result;
-}
-
-mat4 transpose(const mat4 * originalMatrix){
-    mat4 result = {};
-    for(int originalMatrixRow = 0; originalMatrixRow < arraySize(originalMatrix->cells); originalMatrixRow++){
-        for(int originalMatrixCol = 0; originalMatrixCol < arraySize(originalMatrix->cells); originalMatrixCol++){
-            result.cells[originalMatrixCol][originalMatrixRow] = originalMatrix->cells[originalMatrixRow][originalMatrixCol];
-        }
-    }
-    return result;
-}
-
-mat4 inverseMatrix(const mat4 * originalMatrix){
-    
-    
-    mat4 minors = {};
-    
-    float32 originalDeterminant = 0;
-    for(int minorRow = 0; minorRow < arraySize(minors.cells); minorRow++){
-        for(int minorCol = 0; minorCol < arraySize(minors.cells); minorCol++){
-            mat3 tempMatrix = {};
-            Uint8 tempIndex = 0;
-            for(int originalMatrixRow = 0; originalMatrixRow < arraySize(originalMatrix->cells); originalMatrixRow++){
-                for(int originalMatrixCol = 0; originalMatrixCol < arraySize(originalMatrix->cells); originalMatrixCol++){
-                    if(originalMatrixRow != minorRow && originalMatrixCol != minorCol){
-                        tempMatrix.c[tempIndex++] = originalMatrix->cells[originalMatrixRow][originalMatrixCol];
-                    }
-                }
-            }
-            float32 minorSign = pow(-1.0f, minorRow + minorCol + 2);
-            minors.cells[minorRow][minorCol] = minorSign * determinant(&tempMatrix);
-            if(minorRow == 0){
-                originalDeterminant += minors.cells[minorRow][minorCol];
-            }
-            
-            
-        }
-    }
-    
-    mat4 adjugate = transpose(&minors);
-    assert(originalDeterminant != 0);
-    return (1.0f/ originalDeterminant) * adjugate;
-    
-}
-
-
-//-----------------------------------------------------------------------NUMBERS
-
-int64 pow(int64 base, uint8 power){
-    //todo square mult
-    
-    int64 result = base;
-    for(uint8 i = 1; i < power; i++){
-        result *= base;
-    }
-    return result;
-}
-
-
-float64 log(float64 number, uint64 base = 10){
-//more robust and faster?
-    float64 temp = number;
-    float64 result = 0;
-    while(temp > 1.0f){
-        result++;
-        temp /= base;
-    }
-    //todo the ity bity part
-    ASSERT(number > base);
-    return result;
-    
-}
-
-uint8 numlen(int64 number){
-    ASSERT(number >= 0);
-    int result = 1;
-    while(number > 9){
-        number /= 10;
-        result++;
-    }
-    return result;
-}
-
-
-float32 clamp(float32 originalValue, float32 min, float32 max){
-    if(originalValue < min){
-        return min;
-    }else if(originalValue > max){
-        return max;
-    }
-    return originalValue;
-}
-
-
-
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 #endif
