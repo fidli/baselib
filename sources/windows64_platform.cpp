@@ -1,5 +1,3 @@
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <Windows.h>
 extern "C"{
     int _fltused;
@@ -7,29 +5,24 @@ extern "C"{
 #include "windows_types.h"
 
 
-#define PERSISTENT_MEM MEGABYTE(0)
-#define TEMP_MEM MEGABYTE(2)
+#define PERSISTENT_MEM MEGABYTE(1)
+#define TEMP_MEM MEGABYTE(500)
 #define STACK_MEM MEGABYTE(1)
 
 #include "common.h"
-#include "windows_time.cpp"
+#include "util_mem.h"
 
-#include "domaincode_setclock.cpp"
-
-static inline bool luideq(LUID * a, LUID * b){
-    return (a->LowPart == b->LowPart && a->HighPart == b->HighPart);
-}
+#include "domaincode.cpp"
 
 static inline DWORD jettisonAllPrivileges() {
     DWORD result = ERROR_SUCCESS;
-     HANDLE processToken  = NULL;
+    HANDLE processToken  = NULL;
     if(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &processToken)){
         TOKEN_PRIVILEGES * priv = (TOKEN_PRIVILEGES *) mem.temp;
         DWORD privsize;
-        if(GetTokenInformation(processToken, TokenPrivileges, priv , TEMP_MEM - MEGABYTE(1), &privsize) > 0){
+        if(GetTokenInformation(processToken, TokenPrivileges, priv , EFFECTIVE_TEMP_MEM_SIZE, &privsize) > 0){
             for(DWORD i = 0; i < priv->PrivilegeCount; ++i ){
-                priv->Privileges[i].Attributes = SE_PRIVILEGE_ENABLED;
-                
+                priv->Privileges[i].Attributes = SE_PRIVILEGE_REMOVED;
             }
             if(AdjustTokenPrivileges(processToken, TRUE, priv, NULL, NULL, NULL) == 0){
                 result = GetLastError();
@@ -37,29 +30,28 @@ static inline DWORD jettisonAllPrivileges() {
         }else{
             result = GetLastError();
         }
-        
-        CloseHandle(processToken);
     }else{
-             result = GetLastError();
+        result = GetLastError();
     }
+    CloseHandle(processToken);
     return result;
 }
 
 
-int main(LPWSTR * argvW, int argc) {
+static inline int main(LPWSTR * argvW, int argc) {
     
     
     
     LPVOID memoryStart = VirtualAlloc(NULL, TEMP_MEM + PERSISTENT_MEM + STACK_MEM, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
-
+    
+    
     if (memoryStart) {
         initMemory(memoryStart);
         
         ASSERT(jettisonAllPrivileges() == ERROR_SUCCESS);
         
-        
-        
+        ASSERT(initTime());
+        ASSERT(initRng());
         
         char ** argv = &PUSHA(char *, argc);
         
@@ -69,20 +61,21 @@ int main(LPWSTR * argvW, int argc) {
             argv[i] = &PUSHA(char, toAlloc);
             ASSERT(WideCharToMultiByte(CP_UTF8, 0, argvW[i], -1, argv[i], toAlloc, NULL, NULL) != 0);
         }
-  
+        
         
         run();
-
-
-	   				if (!VirtualFree(memoryStart, 0, MEM_RELEASE)) {
-                           ASSERT(!"Failed to free memory");
-		    			}
-
-						
-						}
-						return 0;
-
-
+        
+        
+        
+        if (!VirtualFree(memoryStart, 0, MEM_RELEASE)) {
+            ASSERT(!"Failed to free memory");
+        }
+        
+        
+    }
+    return 0;
+    
+    
 }
 
 

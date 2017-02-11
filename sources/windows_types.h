@@ -13,5 +13,5 @@
 #define uint16 unsigned short
 #define uint64 unsigned long long
 #define bool32 int32
-
+#define byte uint8
 #endif

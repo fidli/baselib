@@ -9,7 +9,9 @@
 
 //-----------------------------------------------------------------------NUMBERS
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) < (b)) ? (b) : (a))
 #define ABS(a) (((a) < 0) ? -(a) : (a))
+#define KRONECKER(a, b) ((a) == (b) ? 1 : 0)
 
 bool32 isOdd(const uint64 a){
     return (a & (uint64) 1);
@@ -43,17 +45,20 @@ float32 floor(float32 value){
     
 }
 
-float32 dpow(float32 base, int8 power = 2){
+float64 powd(float32 base, int16 power = 2){
     //todo square mult
-    float32 result = ABS(base);
-    for(uint8 i = 1; i < power; i++){
+    if(power == 0){
+        return 1;
+    }
+    float64 result = base;
+    for(uint16 i = 1; i < ABS(power); i++){
         result *= base;
     }
-    return (result < 0) ? (1.0f / result) : result;
+    return (power < 0) ? (1.0f / result) : result;
 }
 
 static float32 subSqrt(float32 value, float32 guess){
-    if(aseq(value / guess, guess, 0.0000001)){
+    if(aseq(value / guess, guess, 0.000001)){
         return guess;
     }
     return subSqrt(value, (guess + value/guess) / 2);
@@ -110,24 +115,20 @@ float32 ln(float32 number, uint8 precisionBits = 32){
     //Arithmetic-geometric mean approximation
     ASSERT(precisionBits > 0);
     const float32 ln2 = 0.6931471;
-    const uint8 m = precisionBits/2;
-    ASSERT(number * (1 << m) > (1 << (precisionBits / 2)));
-    float32 meanB;
-    if(m > 2 ){
-        meanB = (1.0f / (1 << ABS(2-m))) / number;
-    }else{
-        meanB = (1 << (2-m)) / number;
-        
-    }
+    const uint8 m = 18;
+    ASSERT(number * powd(2, m) > powd(2, precisionBits / 2));
+    float32 meanB = powd(2, 2-m) / number;
+    
     return (PI / (2*agMean(1, meanB))) - m * ln2;
 }
 
- float32 epow(float32 power){
-     //taylor
-     float32 abspow = ABS(power) - (uint32) ABS(power);
-     float32 result = 1 + abspow + dpow(abspow, 2)/2.0f + dpow(abspow, 3)/6.0f + dpow(abspow, 4)/24.0f + dpow(abspow, 5)/120.0f  + dpow(abspow, 6)/720.0f + dpow(abspow, 7)/5040.0f + dpow(abspow, 8)/40320.0f + dpow(abspow, 9)/362880.0f + dpow(abspow, 10)/3628800.0f + dpow(abspow, 11)/39916800.0f + dpow(abspow, 12)/479001600.0f +dpow(abspow, 13)/6881080200.0f + dpow(abspow, 14)/87178291200.0f;
-     result *= dpow(E, (uint32) ABS(power));
-     return (power < 0) ? (1.0 / result) : result;
+float32 epow(float32 power){
+    if(aseq(power, 0, 0.000000005)) return 1;
+    //taylor
+    float32 abspow = ABS(power) - (uint32) ABS(power);
+    float32 result = 1 + abspow + powd(abspow, 2)/2.0f + powd(abspow, 3)/6.0f + powd(abspow, 4)/24.0f + powd(abspow, 5)/120.0f  + powd(abspow, 6)/720.0f + powd(abspow, 7)/5040.0f + powd(abspow, 8)/40320.0f + powd(abspow, 9)/362880.0f + powd(abspow, 10)/3628800.0f + powd(abspow, 11)/39916800.0f + powd(abspow, 12)/479001600.0f +powd(abspow, 13)/6881080200.0f + powd(abspow, 14)/87178291200.0f;
+    result *= powd(E, (uint32) ABS(power));
+    return (power < 0) ? (1.0 / result) : result;
 }
 
 float32 pow(float32 base, float32 power){
@@ -139,13 +140,16 @@ float32 log(float32 number, float32 base = 10){
     ASSERT(number != 0);
     float32 temp = ABS(number);
     float32 result = ln(number) / ln(base);
-     return (number < 0) ? -result : result;
+    return (number < 0) ? -result : result;
     
 }
 
 uint8 numlen(int64 number){
-    ASSERT(number >= 0);
     int result = 1;
+    if(number < 0){
+        result++;
+    }
+    number = ABS(number);
     while(number > 9){
         number /= 10;
         result++;
@@ -444,19 +448,19 @@ v3 hadamard(const v3 & A, const v3 & B){
     return V3(A.x * B.x, A.y * B.y, A.z * B.z);
 }
 
-float32 sum(const vN & A){
+float32 sum(const vN * A){
     float32 result = 0;
-    for(int i = 0; i < A.size; i++){
-        result += A.v[i];
+    for(int i = 0; i < A->size; i++){
+        result += A->v[i];
     }
     return result;
 }
 
 //-----------------------------------------------------------------------MATRICES
 
- struct matNM{
-     float32 * c;
-     uint16 width;
+struct matNM{
+    float32 * c;
+    uint16 width;
     uint16 height;
 };
 
@@ -484,19 +488,21 @@ v3 operator*(const mat4 & matrix, const v3 & vector){
     return V3(resultVector.x, resultVector.y, resultVector.z);
 }
 
-void mul(const vN & vector, const matNM & matrix, vN * result){
+void mul(const vN * vector, const matNM * matrix, vN * result){
     
-    ASSERT((uint16)result->size == matrix.width);
-    ASSERT((uint16)vector.size == matrix.height);
+    ASSERT((uint16)result->size == matrix->width);
+    ASSERT((uint16)vector->size == matrix->height);
     
-    for(int matrixCol = 0; matrixCol < matrix.width; matrixCol++){
+    for(int matrixCol = 0; matrixCol < matrix->width; matrixCol++){
         result->v[matrixCol] = 0;
-        for(int vectorMember = 0; vectorMember < vector.size; vectorMember++){
-            result->v[matrixCol] += matrix.c[matrixCol*matrix.height +vectorMember] * vector.v[vectorMember];
+        for(int vectorMember = 0; vectorMember < vector->size; vectorMember++){
+            result->v[matrixCol] += matrix->c[matrixCol*matrix->height +vectorMember] * vector->v[vectorMember];
         }
     }
     
 }
+
+
 
 v3 operator*(const mat4 & matrix, const v4 & originalVector){
     v4 resultVector = {};
