@@ -78,6 +78,8 @@ static inline int main(LPWSTR * argvW, int argc) {
 
 
 void __stdcall mainCRTStartup(){
+    //this might fail, consider, whether stop the app, or continue
+    SetProcessDEPPolicy(PROCESS_DEP_ENABLE);
     int argc = 0;
     LPWSTR * argv =  CommandLineToArgvW(GetCommandLineW(), &argc);
     int result = main(argv,argc);
