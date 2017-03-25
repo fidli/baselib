@@ -1,9 +1,9 @@
 #ifndef UTIL_RNG_C
 #define UTIL_RNG_C
 
-#include "util_time.h";
+#include "util_time.h"
 
-static struct Lcg{
+struct Lcg{
     uint32 state;
 };
 
@@ -11,7 +11,7 @@ static Lcg lcgen;
 
 bool initRng(){
     LocalTime now = getLocalTime();
-    lcgen.state = - (now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
+    lcgen.state = (uint32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
     return true;
 }
 

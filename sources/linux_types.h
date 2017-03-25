@@ -1,5 +1,5 @@
-#ifndef WINDOWS_TYPES_H
-#define WINDOWS_TYPES_H
+#ifndef LINUX_TYPES_H
+#define LINUX_TYPES_H
 
 #define float32 float
 #define float64 double

@@ -3,7 +3,7 @@
 #ifndef UTIL_FILESYSTEM
 #define UTIL_FILESYSTEM
 
-extern struct FileHandle;
+struct FileHandle;
 
 struct FileContents{
     uint32 size;

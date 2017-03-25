@@ -78,10 +78,9 @@ mem.temp2Offsets[0] = 0; \
 mem.temp2StackIndex = 0; \
 
 #define POP \
+ASSERT(mem.tempStackIndex != 0); \
 mem.tempStackIndex--; \
-if(mem.tempStackIndex < 0) { \
-    FLUSH; \
-} \
+
 
 #define PPUSH(strct)  \
 *((strct *)(((byte *) mem.stack) + mem.stackOffset)); \

@@ -30,8 +30,8 @@ char * strcpy(char * target, const char * source){
     return target;
 }
 
-uint64 strlen(const char * source){
-    uint64 length = 0;
+uint32 strlen(const char * source){
+    uint32 length = 0;
     while(source[length] != '\0'){
         length++;
     }
@@ -172,12 +172,12 @@ static uint8 printDigits(char * target, int64 number){
     return i;
 }
 
-static enum FormatTypeSize{
+enum FormatTypeSize{
     FormatTypeSize_Default,
     FormatTypeSize_h
 };
 
-static enum FormatType{
+enum FormatType{
     FormatType_Invalid,
     FormatType_d,
     FormatType_u,
@@ -185,7 +185,7 @@ static enum FormatType{
     FormatType_charlist
 };
 
-static struct FormatInfo{
+struct FormatInfo{
     bool dryRun;
     uint32 maxlen;
     FormatType type;
@@ -248,7 +248,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                     targetIndex += printDigits(target + targetIndex, wholePart);
                     target[targetIndex] = delim;
                     targetIndex++;
-                    uint64 decimalPart = (source - wholePart) * powd(10, precision);
+                    uint64 decimalPart = (uint64)(source - wholePart) * (uint64)powd(10, precision);
                     uint8 prependLen = precision - numlen(decimalPart);
                     for(int i = 0; i < prependLen; i++){
                         target[targetIndex] = '0';
@@ -265,6 +265,14 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                 formatIndex++;
                 char source = va_arg(ap, char);
                 target[targetIndex++] = source;
+                successfullyPrinted++;
+            }else if(format[formatIndex] == 's'){
+                formatIndex++;
+                char * source = va_arg(ap, char *);
+                while(*source != 0){
+                    target[targetIndex++] = *source;
+                    source++;
+                }
                 successfullyPrinted++;
             }
             else{

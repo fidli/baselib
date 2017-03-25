@@ -2,17 +2,20 @@
 #define COMMON_H
 
 #ifdef RELEASE
-#define ASSERT
+#define ASSERT 
 #else
 #define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
 #endif
 
 #define INV ASSERT(!"FUCK");
 
+#ifdef ARRAYSIZE
+#undef ARRAYSIZE
+#endif
 #define ARRAYSIZE(array) sizeof(array) /sizeof(*(array))
 
-#define KILOBYTE(n) 1024*n
-#define MEGABYTE(n) 1024*KILOBYTE(n)
-#define GIGABYTE(n) 1024*MEGABYTE(n)
+#define KILOBYTE(n) ((size_t)1024)*n
+#define MEGABYTE(n) ((size_t)1024)*((size_t)KILOBYTE(n))
+#define GIGABYTE(n) ((size_t)1024)*((size_t)MEGABYTE(n))
 
 #endif

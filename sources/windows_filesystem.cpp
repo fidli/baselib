@@ -1,13 +1,10 @@
 #ifndef WINDOWS_FILESYSTEM
 #define WINDOWS_FILESYSTEM
 
-#include <Windows.h>
-#include "windows_types.h"
 
-#include "common.h"
-#include "util_mem.h"
+
 #include "util_filesystem.h"
-#include "util_string.cpp"
+
 
 struct FileHandle{
     HANDLE handle;
@@ -47,15 +44,42 @@ void appendFile(const char * path, const FileContents * source){
 
 void readDirectory(const char * path, DirectoryContents * target){
     WIN32_FIND_DATA result;
-    HANDLE file = FindFirstFile(strcat(path, "\\*"), &result);
+    
+    //pathlen
+    uint32 pathlen = 0;
+    for(;path[pathlen] != 0; pathlen++){
+    }
+    //strcat
+    char append[] = "\\*";
+    //pathlen and array size both include terminating symbol
+    char * fullpath = &PUSHA(char, pathlen + ARRAYSIZE(append) - 1);
+    uint32 index = 0;
+    while(path[index] != '\0'){
+        fullpath[index] = path[index];
+        index++;
+    }
+    uint32 index2 = 0;
+    while(append[index2] != '\0'){
+        fullpath[index + index2] = append[index2];
+        index2++;
+    }
+    fullpath[index + index2] = '\0';
+    POP;
+    
+    HANDLE file = FindFirstFile(fullpath, &result);
     ASSERT(file != INVALID_HANDLE_VALUE);
     target->count = 0;
     target->files = &PUSHA(char*, 255);
     do{
-        
-        if(strcmp(".", result.cFileName) && strcmp("..", result.cFileName)){
+        //strcmp & copy
+        if((result.cFileName[0] != '.' && result.cFileName[1] != 0) && (result.cFileName[0] != '.' && result.cFileName[1] != '.' && result.cFileName[2] != 0)){
             target->files[target->count] = &PUSHS(char, 255);
-            strcpy(target->files[target->count], result.cFileName);
+            uint16 i = 0;
+            for(; result.cFileName[i] != 0; i++){
+                ASSERT(i < 255);
+                target->files[target->count][i] = result.cFileName[i];
+            }
+            target->files[target->count][i] = 0;
             target->count++;
         }
     }

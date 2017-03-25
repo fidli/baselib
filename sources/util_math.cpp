@@ -4,8 +4,8 @@
 
 #include "common.h"
 
-#define PI 3.14159265
-#define E 2.71828182
+#define PI 3.14159265f
+#define E 2.71828182f
 
 //-----------------------------------------------------------------------NUMBERS
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -17,16 +17,16 @@ bool32 isOdd(const uint64 a){
     return (a & (uint64) 1);
 }
 
-bool aseq(float32 a, float32 b, float32 delta = 0.000001){
+bool aseq(float32 a, float32 b, float32 delta = 0.000001f){
     return ABS(a-b) <= delta;
 }
 
-bool aseql(float32 test, float32 fixedpoint, float32 delta = 0.000005){
+bool aseql(float32 test, float32 fixedpoint, float32 delta = 0.000005f){
     float32 eps = fixedpoint - test;
     return eps < delta;
 }
 
-bool aseqr(float32 test, float32 fixedpoint, float32 delta = 0.000005){
+bool aseqr(float32 test, float32 fixedpoint, float32 delta = 0.000005f){
     float32 eps = test - fixedpoint;
     return eps < delta;
 }
@@ -58,7 +58,7 @@ float64 powd(float32 base, int16 power = 2){
 }
 
 static float32 subSqrt(float32 value, float32 guess){
-    if(aseq(value / guess, guess, 0.000001)){
+    if(aseq(value / guess, guess, 0.000001f)){
         return guess;
     }
     return subSqrt(value, (guess + value/guess) / 2);
@@ -107,14 +107,14 @@ float32 cos(float32){
 
 
 static float32 agMean(float32 a, float32 b){
-    if(aseq(a, b, 0.0000001)) return (b + a) / 2.0;
+    if(aseq(a, b, 0.0000001f)) return (b + a) / 2.0f;
     return agMean((a+b)/2, sqrt(a*b));
 }
 
 float32 ln(float32 number, uint8 precisionBits = 32){
     //Arithmetic-geometric mean approximation
     ASSERT(precisionBits > 0);
-    const float32 ln2 = 0.6931471;
+    const float32 ln2 = 0.6931471f;
     const uint8 m = 18;
     ASSERT(number * powd(2, m) > powd(2, precisionBits / 2));
     float32 meanB = powd(2, 2-m) / number;
@@ -123,7 +123,7 @@ float32 ln(float32 number, uint8 precisionBits = 32){
 }
 
 float32 epow(float32 power){
-    if(aseq(power, 0, 0.000000005)) return 1;
+    if(aseq(power, 0, 0.000000005f)) return 1;
     //taylor
     float32 abspow = ABS(power) - (uint32) ABS(power);
     float32 result = 1 + abspow + powd(abspow, 2)/2.0f + powd(abspow, 3)/6.0f + powd(abspow, 4)/24.0f + powd(abspow, 5)/120.0f  + powd(abspow, 6)/720.0f + powd(abspow, 7)/5040.0f + powd(abspow, 8)/40320.0f + powd(abspow, 9)/362880.0f + powd(abspow, 10)/3628800.0f + powd(abspow, 11)/39916800.0f + powd(abspow, 12)/479001600.0f +powd(abspow, 13)/6881080200.0f + powd(abspow, 14)/87178291200.0f;
@@ -576,7 +576,7 @@ mat4 inverseMatrix(const mat4 * originalMatrix){
                     }
                 }
             }
-            float32 minorSign = pow(-1.0f, minorRow + minorCol + 2);
+            float32 minorSign = pow(-1.0f, (float32)(minorRow + minorCol + 2));
             minors.cells[minorRow][minorCol] = minorSign * determinant(&tempMatrix);
             if(minorRow == 0){
                 originalDeterminant += minors.cells[minorRow][minorCol];
