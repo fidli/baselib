@@ -1,10 +1,26 @@
 #ifndef UTIL_IMAGE_H
 #define UTIL_IMAGE_H
 
+enum BitmapInterpretationType{
+    BitmapInterpretationType_Invalid,
+    BitmapInterpretationType_GrayscaleBW01
+};
+
+enum BitmapOriginType{
+    BitmapOriginType_Invalid,
+    BitmapOriginType_TopLeftNormal
+};
+
 struct Image{
-    uint32 width;
-    uint32 height;
-    uint32 * pixeldata;
+    struct{
+        uint32 width;
+        uint32 height;
+        uint8 bitsPerSample;
+        uint8 samplesPerPixel;
+        BitmapInterpretationType interpretation;
+        BitmapOriginType origin;
+    } info;
+    byte * data;
     
 };
 
@@ -15,7 +31,7 @@ struct NearestNeighbourColor{
 
 
 
-
+/* chechk and redo properly 
 void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32 targetHeight){
     float32 scaleX = (float32)source->width/(float32)targetWidth;
     float32 scaleY = (float32)source->height/(float32)targetHeight;
@@ -83,6 +99,6 @@ void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
 }
 
 
-
+*/
 
 #endif

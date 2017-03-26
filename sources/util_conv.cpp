@@ -1,6 +1,8 @@
 #ifndef UTIL_CONV
 #define UTIL_CONV
 
+#include "util_compress.cpp"
+
 
 enum ByteOrder{
     ByteOrder_Invalid,
@@ -78,6 +80,7 @@ static inline uint64 scanQword(ReadHead * head){
 
 
 bool convTiffToBitmap(const FileContents * file, Image * target){
+    PUSHI;
     //http://www.fileformat.info/format/tiff/corion.htm
     ReadHead head;
     head.offset = file->contents;
@@ -106,66 +109,113 @@ bool convTiffToBitmap(const FileContents * file, Image * target){
     
     uint16 entries = scanWord(&head);
     
+    uint32 * stripOffsets = NULL;
+    uint32 rowsPerStrip = -1; //infinity (1 strip for all data)
+    uint32 * stripSizes = NULL;
+    uint32 stripAmount = 0;
+    
     for(uint16 ei = 0; ei < entries; ei++){
         uint16 tag = scanWord(&head);
         uint16 type = scanWord(&head);
         uint32 length = scanDword(&head);
         uint32 headerOffset = scanDword(&head);
         
+        ASSERT(type >= 1 && type <= 5);
+        
         switch(tag){
             case 259:{
                 //compression
+                ASSERT(headerOffset == 5);
+                //supporting LZW only now
             }break;
             case 257:{
                 //image height
+                target->info.height = headerOffset;
             }break;
             case 283:{
-                //Yresolution = pixels per height param
+                //Yresolution - real image data ignore for now
             }break;
             case 256:{
                 //image width
+                target->info.width = headerOffset;
             }break;
             case 282:{
-                //Xresolution = pixels per width param
+                //Xresolution - real image data ignore for now
             }break;
             case 254:{
                 //new subfile type
+                ASSERT(headerOffset == 0);
+                //not supporting anything special now, only raw data in data field
             }break;
             case 258:{
                 //bits per sample
+                target->info.bitsPerSample = headerOffset;
             }break;
             case 262:{
                 //photometric interpretation
+                ASSERT(headerOffset == 1);
+                //supporting bw only now
+                target->info.interpretation = BitmapInterpretationType_GrayscaleBW01;
             }break;
             case 273:{
                 //strip offsets (essentialy compressed data lines?);
+                ASSERT(type == 4);
+                //support dwords only now
+                stripOffsets = &PUSHA(uint32, length);
+                ASSERT(stripAmount == 0 || length == stripAmount);
+                stripAmount = length;
+                for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
+                    stripOffsets[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                }
             }break;
             case 278:{
                 //rows per strip
+                rowsPerStrip = headerOffset;
             }break;
             case 279:{
                 //strip byte counts (essentially bytes per strip);
+                ASSERT(type == 4);
+                //support dwords only now
+                stripSizes = &PUSHA(uint32, length);
+                ASSERT(stripAmount == 0 || length == stripAmount);
+                stripAmount = length;
+                for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
+                    stripSizes[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                }
             }break;
             case 284:{
-                //planar configuration (lzw might use)
+                //planar configuration
+                ASSERT(headerOffset == 1);
+                //use continuous data representation for now
+                
             }break;
             case 277:{
                 //samples per pixel
+                ASSERT(headerOffset == 1);
+                //support BW for now only
+                target->info.samplesPerPixel = headerOffset;
             }break;
             case 274:{
-                //orientation
+                //data orientation
+                ASSERT(headerOffset == 1);
+                //supporting TopLeftNormal (rows->rows, cols->cols) so far
+                target->info.origin = BitmapOriginType_TopLeftNormal;
             }break;
             case 306:{
-                //date time
+                //date time we dont give fuck for now
             }break;
             case 315:{
-                //artist
+                //artist we dont give fuck for now
             }break;
             case 296:{
                 //resolution unit
+                //cm/inch we dont give fuck for now
             }break;
             case 266:{
-                //undef fuckery
+                //http://www.awaresystems.be/imaging/tiff/tifftags/fillorder.html
+                //logical bits in bytes order
+                ASSERT(headerOffset == 1);
+                //support MSB first only for now
             }break;
             default:{
                 INV;
@@ -180,9 +230,21 @@ bool convTiffToBitmap(const FileContents * file, Image * target){
         return false;
     }
     
+    //bytes per strip are 4 (asserted)
+    byte * compressedData = &PUSHA(byte, stripAmount * 4);
+    uint32 dataIndex = 0;
+    for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
+        for(uint32 byteIndex = stripOffsets[stripIndex]; byteIndex < stripSizes[stripIndex] * 4; byteIndex++){
+            compressedData[dataIndex] = file->contents[byteIndex];
+            dataIndex++;
+        }
+    }
     
+    target->data = &PPUSHA(byte, target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
     
+    decompressLZW(compressedData, target->data);
     
+    POPI;
     return true;
 }
 
