@@ -230,19 +230,15 @@ bool convTiffToBitmap(const FileContents * file, Image * target){
         return false;
     }
     
-    //bytes per strip are 4 (asserted)
-    byte * compressedData = &PUSHA(byte, stripAmount * 4);
-    uint32 dataIndex = 0;
-    for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
-        for(uint32 byteIndex = stripOffsets[stripIndex]; byteIndex < stripSizes[stripIndex] * 4; byteIndex++){
-            compressedData[dataIndex] = file->contents[byteIndex];
-            dataIndex++;
-        }
-    }
-    
     target->data = &PPUSHA(byte, target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
     
-    decompressLZW(compressedData, target->data);
+    for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
+        decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex] * 4, target->data + stripIndex*rowsPerStrip);//decompressed data has one byte, otherwise rescale
+    }
+    
+    
+    
+    
     
     POPI;
     return true;
