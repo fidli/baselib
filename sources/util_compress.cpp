@@ -3,12 +3,37 @@
 
 struct LZWTable{
     struct {
-        uint8 original[1 << 12];
-        uint16 previous[1 << 12];
+        uint8 carryingSymbol[1 << 12];
+        uint16 previousNode[1 << 12];
     } data;
     uint8 bits;
     uint16 count;
 };
+
+struct LZWStack{
+    uint8 symbols[1 << 12]; //all 12 bit numbers
+    uint16 currentIndex;
+};
+
+static inline void LZWpush(LZWStack * stack, const uint8 symbol){
+    ASSERT(stack->currentIndex < (1 << 11));
+    stack->symbols[stack->currentIndex++] = symbol;
+}
+
+static inline uint8 LZWpop(LZWStack * stack){
+    ASSERT(stack->currentIndex > 0);
+    uint8 ret = stack->symbols[stack->currentIndex-1];
+    stack->currentIndex--;
+    return ret;
+}
+
+static inline uint8 LZWpeek(const LZWStack * stack){
+    return stack->symbols[stack->currentIndex-1];
+}
+
+static inline bool LZWempty(const LZWStack * stack){
+    return stack->currentIndex == 0;
+}
 
 struct ReadHeadBit{
     const byte * source;
@@ -18,10 +43,12 @@ struct ReadHeadBit{
 
 static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
     ASSERT(bits > 0);
+    ASSERT(bits <= 16);
     uint16 result = 0;
     int16 toRead = bits;
     while(toRead > 0){
         uint8 remainingBits = 8 - head->bitOffset;
+        ASSERT(remainingBits <= 8);
         if(remainingBits == 0){
             head->bitOffset = 0;
             head->byteOffset++;
@@ -29,15 +56,22 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
         }
         uint8 reading = (toRead >= remainingBits) ? remainingBits : toRead;
         result <<= reading;
-        result |= head->source[head->byteOffset] >> (8 - reading);
-        
+        result |=(uint8)( (uint8)((uint8)((uint8)head->source[head->byteOffset] << head->bitOffset) >> head->bitOffset) >> (8-head->bitOffset - reading));
+        ASSERT(reading <= toRead);
         toRead -= reading;
         head->bitOffset += reading;
+        ASSERT(head->bitOffset <= 8);
     }
+    
+    if(head->bitOffset == 8){
+        head->bitOffset = 0;
+        head->byteOffset++;
+    }
+    
     return result;
 }
 
-bool decompressLZW(const byte * source, const uint32 soucreSize, byte * target){
+bool decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
     //http://www.fileformat.info/format/tiff/corion-lzw.htm
     //every message begins with clear code and ends with end of information code
     
@@ -45,18 +79,22 @@ bool decompressLZW(const byte * source, const uint32 soucreSize, byte * target){
     compressedDataHead.source = source;
     uint16 endOfInfo = 257;
     uint16 clearCode = 256;
+    PUSHI;
     LZWTable * table = &PUSH(LZWTable);
+    LZWStack * stack = &PUSH(LZWStack);
     table->bits = 9;
-    
+    stack->currentIndex = 0;
     uint16 currentTableIndex;
     uint16 previousTableIndex;
     uint32 targetIndex = 0;
-    do{
+    uint8 previousFirstCharacter;
+    ASSERT(*source == 128 && (~*(source + 1) & 128) == 128)
+        do{
         currentTableIndex = readBits(&compressedDataHead, table->bits);
         if(currentTableIndex == clearCode){
             for(uint16 i = 0; i < 258; i++){
-                table->data.original[i] = i;
-                table->data.previous[i] = 257;
+                table->data.carryingSymbol[i] = i;
+                table->data.previousNode[i] = endOfInfo;
             }
             //256 = clear code = reinitialize code table
             //257 = end of info code
@@ -65,46 +103,49 @@ bool decompressLZW(const byte * source, const uint32 soucreSize, byte * target){
             currentTableIndex = readBits(&compressedDataHead, table->bits);
             ASSERT(currentTableIndex <= 257);
             if(currentTableIndex == endOfInfo) break;
-            target[targetIndex] = table->data.original[currentTableIndex];
+            target[targetIndex] = table->data.carryingSymbol[currentTableIndex];
             targetIndex++;
+        }else if(currentTableIndex == endOfInfo){
+            break;
         }else{
-            //decompress fuckery
-            //redo to top down descend?
-            if(currentTableIndex != endOfInfo){
-                uint16 crawlIndex = currentTableIndex;
-                do{
-                    if(crawlIndex >= table->count){
-                        ASSERT(crawlIndex == table->count);
-                        crawlIndex = previousTableIndex;
-                    }
-                    target[targetIndex] = table->data.original[crawlIndex];
-                    crawlIndex = table->data.previous[crawlIndex];
-                    targetIndex++;
-                    
-                }
-                while(table->data.previous[crawlIndex] != endOfInfo);
-                
-                //add string to table
-                table->data.previous[table->count] = previousTableIndex;
-                table->data.original[table->count] = table->data.original[crawlIndex];
-                table->count++;
-                uint8 highestBit;
-                for(uint8 bi = 0; bi < 16; bi++){
-                    if((table->count >> bi) & 1){
-                        highestBit = bi+1;
-                    } 
-                }
-                if(highestBit > table->bits){
-                    table->bits = highestBit;
-                }
-                
+            ASSERT(currentTableIndex <= table->count);
+            
+            //get the output string
+            ASSERT(LZWempty(stack));
+            uint16 crawlIndex = currentTableIndex;
+            do{
+                LZWpush(stack, table->data.carryingSymbol[crawlIndex]);
+                crawlIndex = table->data.previousNode[crawlIndex];
+            }while(crawlIndex != endOfInfo);
+            
+            //write to output
+            ASSERT(!LZWempty(stack));
+            uint8 firstChar = LZWpeek(stack);
+            while(!LZWempty(stack)){
+                target[targetIndex] = LZWpop(stack);
+                targetIndex++;
             }
+            if(currentTableIndex == table->count){
+                target[targetIndex++] = firstChar;
+            }
+            
+            //add to table
+            table->data.carryingSymbol[table->count] = firstChar;
+            table->data.previousNode[table->count] = previousTableIndex;
+            
+            //table count inc
+            table->count++;
+            if(table->count >= (1 << 8)) table->bits = 9;
+            if(table->count >= (1 << 9)) table->bits = 10;
+            if(table->count >= (1 << 10)) table->bits = 11;
+            if(table->count >= (1 << 11)) table->bits = 12;
+            
             
         }
         previousTableIndex = currentTableIndex;
     }
-    while(currentTableIndex != endOfInfo);
-    POP;
+    while(compressedDataHead.byteOffset < sourceSize);
+    POPI;
     return true;
 }
 

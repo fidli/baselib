@@ -10,15 +10,29 @@ struct Lcg{
 static Lcg lcgen;
 
 bool initRng(){
+    Lcg * gen = &lcgen;
     LocalTime now = getLocalTime();
-    lcgen.state = (uint32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
+    gen->state = (uint32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
     return true;
 }
 
+bool initRng(Lcg * gen){
+    LocalTime now = getLocalTime();
+    gen->state = (uint32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
+    return true;
+}
+
+uint16 randlcg(Lcg * gen){
+    gen->state  = 1103515245 * gen->state + 12345;
+    gen->state &= 0xEFFFFFFF; //modulo 31 bits
+    return (uint16) (gen->state >> 15);
+}
+
 uint16 randlcg(){
-    lcgen.state  = 1103515245 * lcgen.state + 12345;
-    lcgen.state &= 0xEFFFFFFF; //modulo 31 bits
-    return (uint16) (lcgen.state >> 15);
+    Lcg * gen = &lcgen;
+    gen->state  = 1103515245 * gen->state + 12345;
+    gen->state &= 0xEFFFFFFF; //modulo 31 bits
+    return (uint16) (gen->state >> 15);
 }
 
 uint32 randlcgd(){
