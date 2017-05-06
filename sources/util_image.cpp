@@ -8,7 +8,8 @@ enum BitmapInterpretationType{
 
 enum BitmapOriginType{
     BitmapOriginType_Invalid,
-    BitmapOriginType_TopLeftNormal
+    BitmapOriginType_TopLeft,
+    BitmapOriginType_BottomLeft
 };
 
 struct Image{

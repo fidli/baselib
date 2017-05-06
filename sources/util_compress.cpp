@@ -44,6 +44,10 @@ struct ReadHeadBit{
 static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
     ASSERT(bits > 0);
     ASSERT(bits <= 16);
+#ifndef RELEASE
+    static uint16 oldByteOffset;
+    oldByteOffset = head->byteOffset;
+#endif
     uint16 result = 0;
     int16 toRead = bits;
     while(toRead > 0){
@@ -68,6 +72,7 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
         head->byteOffset++;
     }
     
+    ASSERT(head->byteOffset == oldByteOffset + 1 || head->byteOffset == oldByteOffset + 2);
     return result;
 }
 
@@ -88,8 +93,10 @@ bool decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
     uint16 previousTableIndex;
     uint32 targetIndex = 0;
     uint8 previousFirstCharacter;
-    ASSERT(*source == 128 && (~*(source + 1) & 128) == 128)
-        do{
+    ASSERT(*source == 128 && (~*(source + 1) & 128) == 128);
+    
+    do{
+        ReadHeadBit oldHead = compressedDataHead;
         currentTableIndex = readBits(&compressedDataHead, table->bits);
         if(currentTableIndex == clearCode){
             for(uint16 i = 0; i < 258; i++){
@@ -103,6 +110,7 @@ bool decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
             currentTableIndex = readBits(&compressedDataHead, table->bits);
             ASSERT(currentTableIndex <= 257);
             if(currentTableIndex == endOfInfo) break;
+            ASSERT(currentTableIndex != 256);
             target[targetIndex] = table->data.carryingSymbol[currentTableIndex];
             targetIndex++;
         }else if(currentTableIndex == endOfInfo){
@@ -133,13 +141,12 @@ bool decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
             table->data.carryingSymbol[table->count] = firstChar;
             table->data.previousNode[table->count] = previousTableIndex;
             
-            //table count inc
+            //table count inc (not accounting for the two special codes)
+            if(table->count + 2 >= (1 << 8)) table->bits = 9;
+            if(table->count + 2 >= (1 << 9)) table->bits = 10;
+            if(table->count + 2 >= (1 << 10)) table->bits = 11;
+            if(table->count + 2 >= (1 << 11)) table->bits = 12;
             table->count++;
-            if(table->count >= (1 << 8)) table->bits = 9;
-            if(table->count >= (1 << 9)) table->bits = 10;
-            if(table->count >= (1 << 10)) table->bits = 11;
-            if(table->count >= (1 << 11)) table->bits = 12;
-            
             
         }
         previousTableIndex = currentTableIndex;

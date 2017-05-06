@@ -31,6 +31,24 @@ static inline void swapEndians(converter * martyr){
     }
 }
 
+static inline uint32 swapEndians(const uint32 source){
+    uint32 target = 0;
+    for(uint8 b = 0; b < 32; b++){
+        target |= ((source >> b) << (31-b));
+    }
+    return target;
+}
+
+static inline void swapEndians(char * source, uint32 length, char * target){
+    for(uint32 i = 0; i < length; i++){
+        target[i] = 0;
+        for(uint8 b = 0; b < 8; b++){
+            target[i] |= ((source[i] >> b) << (7-b));
+        }
+        
+    }
+}
+
 static converter martyr;
 
 static inline uint8 scanByte(ReadHead * head){
@@ -78,8 +96,119 @@ static inline uint64 scanQword(ReadHead * head){
 
 
 
+struct Bitmapinfoheader{
+    union{
+        struct{
+            uint32 size;
+            uint32 width;
+            uint32 height;
+            uint16 colorPlanes;
+            uint16 bitsPerPixel;
+            uint32 compression;
+            uint32 datasize;
+            int32 pixelPerMeterHorizontal;
+            int32 pixelPerMeterVertical;
+            uint32 colorsInPallette;
+            uint32 importantColorsAmount;
+        };
+        char data[40];
+    };
+};
 
-bool convTiffToBitmap(const FileContents * file, Image * target){
+bool decodeBMP(const FileContents * source, Image * target){
+    INV;
+    //do the implementation correctly
+    ASSERT(source->contents[0] == 'B');
+    ASSERT(source->contents[1] == 'M');
+    uint32 filesize = *((uint32 *)(source->contents + 2));
+    uint32 dataOffset = *((uint32 *)(source->contents + 10));
+    
+    Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(source->contents + 14);
+    target->info.width = infoheader->width;
+    target->info.height = infoheader->height;
+    //target->info.bitsPerSampleinfoheader->bitsPerPixel = swapped->info.bitsPerSample * swapped->info.samplesPerPixel;
+    target->data = &PUSHA(byte, infoheader->datasize);
+    for(uint32 i = 0; i < infoheader->datasize; i++){
+        target->data[i] = (source->contents + dataOffset)[i];
+    }
+    return true;
+}
+
+bool encodeBMP(const Image * source, FileContents * target){
+    bool palette = false;
+    uint32 bitsPerPixel = source->info.bitsPerSample * source->info.samplesPerPixel;
+    uint32 savewidth = source->info.width;
+    //each line must be within 32 bits boundary, filled with zeroes
+    while(((savewidth * bitsPerPixel) / 32) * 32 != savewidth * bitsPerPixel){
+        savewidth++;
+    }
+    if(bitsPerPixel <= 8){
+        palette = true;
+    }
+    if(!palette){
+        target->size = 14 + sizeof(Bitmapinfoheader) + (savewidth * source->info.height * bitsPerPixel/8);
+    }else{
+        target->size = 14 + sizeof(Bitmapinfoheader) + (savewidth * source->info.height * bitsPerPixel/8) + (4 * (1 << bitsPerPixel));
+    }
+    target->contents = &PUSHA(char, target->size);
+    
+    target->contents[0] = 'B';
+    target->contents[1] = 'M';
+    *((uint32 *)(target->contents + 2)) = target->size;
+    *((uint32 *)(target->contents + 6)) = 0;
+    uint32 dataOffset = *((uint32 *)(target->contents + 10)) = 14 + sizeof(Bitmapinfoheader) + (palette ? (4 * (1 << bitsPerPixel)) : 0);
+    
+    Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(target->contents + 14);
+    infoheader->size = sizeof(Bitmapinfoheader);
+    infoheader->width = source->info.width;
+    infoheader->height = source->info.height;
+    infoheader->colorPlanes = 1;
+    infoheader->bitsPerPixel = bitsPerPixel;
+    infoheader->compression = 0;
+    infoheader->datasize = savewidth * source->info.height * bitsPerPixel/8;
+    infoheader->pixelPerMeterVertical = infoheader->pixelPerMeterHorizontal = 0;
+    infoheader->colorsInPallette = 1 << infoheader->bitsPerPixel;
+    infoheader->importantColorsAmount = 1 << infoheader->bitsPerPixel;
+    if(palette){
+        ASSERT((1 << bitsPerPixel) == 256);
+        ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01);
+        for(uint32 i = 0; i < (1 << bitsPerPixel); i++){
+            //R
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4) = (uint8)i;
+            //G
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 1) = (uint8)i;
+            //B
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 2) = (uint8)i;
+            //unused
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 3) = (uint8)0;
+        }
+    }
+    ASSERT(bitsPerPixel == 8);
+    if(source->info.origin == BitmapOriginType_BottomLeft){
+        for(uint32 h = 0; h < infoheader->height; h++){
+            for(uint32 w = 0; w < infoheader->width; w++){(target->contents + dataOffset)[h * savewidth + w] = source->data[h * infoheader->width + w]; 
+            }
+            for(uint32 w = infoheader->width; w < savewidth; w++){
+                (target->contents + dataOffset)[h * savewidth + w] = 0;
+            }
+        }
+    }else if(source->info.origin == BitmapOriginType_TopLeft){
+        for(uint32 h = 0; h < infoheader->height; h++){
+            for(uint32 w = 0; w < infoheader->width; w++){
+                (target->contents + dataOffset)[(infoheader->height - h) * savewidth + w] =  source->data[h * infoheader->width + w];
+            }
+            for(uint32 w = infoheader->width; w < savewidth; w++){
+                (target->contents + dataOffset)[(infoheader->height - h) * savewidth + w] = 0;
+            }
+        }
+    }else{
+        INV;
+    }
+    return true;
+}
+
+
+bool decodeTiff(const FileContents * file, Image * target){
     PUSHI;
     //http://www.fileformat.info/format/tiff/corion.htm
     ReadHead head;
@@ -198,8 +327,8 @@ bool convTiffToBitmap(const FileContents * file, Image * target){
             case 274:{
                 //data orientation
                 ASSERT(headerOffset == 1);
-                //supporting TopLeftNormal (rows->rows, cols->cols) so far
-                target->info.origin = BitmapOriginType_TopLeftNormal;
+                //supporting TopLeft (rows->rows, cols->cols) so far
+                target->info.origin = BitmapOriginType_TopLeft;
             }break;
             case 306:{
                 //date time we dont give fuck for now
@@ -217,6 +346,9 @@ bool convTiffToBitmap(const FileContents * file, Image * target){
                 ASSERT(headerOffset == 1);
                 //support MSB first only for now
             }break;
+            case 269:{
+                //The name of the document from which this image was scanned.
+            }break;
             default:{
                 INV;
             }break;
@@ -233,7 +365,7 @@ bool convTiffToBitmap(const FileContents * file, Image * target){
     target->data = &PPUSHA(byte, target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
     
     for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
-        decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex] * 4, target->data + stripIndex*rowsPerStrip);//decompressed data has one byte, otherwise rescale
+        decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex*rowsPerStrip);//decompressed data has one byte, otherwise rescale
     }
     
     
