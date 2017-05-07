@@ -76,7 +76,7 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
     return result;
 }
 
-bool decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
+uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
     //http://www.fileformat.info/format/tiff/corion-lzw.htm
     //every message begins with clear code and ends with end of information code
     
@@ -121,6 +121,9 @@ bool decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
             //get the output string
             ASSERT(LZWempty(stack));
             uint16 crawlIndex = currentTableIndex;
+            if(currentTableIndex == table->count){
+                crawlIndex = previousTableIndex;
+            }
             do{
                 LZWpush(stack, table->data.carryingSymbol[crawlIndex]);
                 crawlIndex = table->data.previousNode[crawlIndex];
@@ -153,7 +156,9 @@ bool decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
     }
     while(compressedDataHead.byteOffset < sourceSize);
     POPI;
-    return true;
+    ASSERT(currentTableIndex == endOfInfo);
+    ASSERT(sourceSize == compressedDataHead.byteOffset + 1)
+        return targetIndex;
 }
 
 

@@ -195,10 +195,10 @@ bool encodeBMP(const Image * source, FileContents * target){
     }else if(source->info.origin == BitmapOriginType_TopLeft){
         for(uint32 h = 0; h < infoheader->height; h++){
             for(uint32 w = 0; w < infoheader->width; w++){
-                (target->contents + dataOffset)[(infoheader->height - h) * savewidth + w] =  source->data[h * infoheader->width + w];
+                (target->contents + dataOffset)[h * savewidth + w] =  source->data[(infoheader->height - 1 - h) * infoheader->width + w];
             }
             for(uint32 w = infoheader->width; w < savewidth; w++){
-                (target->contents + dataOffset)[(infoheader->height - h) * savewidth + w] = 0;
+                (target->contents + dataOffset)[h * savewidth + w + w] = 0;
             }
         }
     }else{
@@ -277,7 +277,7 @@ bool decodeTiff(const FileContents * file, Image * target){
                 //not supporting anything special now, only raw data in data field
             }break;
             case 258:{
-                //bits per sample
+                //bits per sample //could wary, depends on samples per pixel
                 target->info.bitsPerSample = headerOffset;
             }break;
             case 262:{
@@ -293,12 +293,16 @@ bool decodeTiff(const FileContents * file, Image * target){
                 stripOffsets = &PUSHA(uint32, length);
                 ASSERT(stripAmount == 0 || length == stripAmount);
                 stripAmount = length;
-                for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
-                    stripOffsets[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                if(length == 1){
+                    stripOffsets[0] = headerOffset;
+                }else{
+                    for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
+                        stripOffsets[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                    }
                 }
             }break;
             case 278:{
-                //rows per strip
+                //rows per strip this seems it is not precise, but somewhat close
                 rowsPerStrip = headerOffset;
             }break;
             case 279:{
@@ -308,8 +312,12 @@ bool decodeTiff(const FileContents * file, Image * target){
                 stripSizes = &PUSHA(uint32, length);
                 ASSERT(stripAmount == 0 || length == stripAmount);
                 stripAmount = length;
-                for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
-                    stripSizes[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                if(length == 1){
+                    stripSizes[0] = headerOffset;
+                }else{
+                    for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
+                        stripSizes[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                    }
                 }
             }break;
             case 284:{
@@ -349,6 +357,9 @@ bool decodeTiff(const FileContents * file, Image * target){
             case 269:{
                 //The name of the document from which this image was scanned.
             }break;
+            case 270:{
+                //For example,  a user  may wish  to attach a comment such as "1988 company picnic" to an image.
+            }break;
             default:{
                 INV;
             }break;
@@ -364,12 +375,19 @@ bool decodeTiff(const FileContents * file, Image * target){
     
     target->data = &PPUSHA(byte, target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
     
-    for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
-        decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex*rowsPerStrip);//decompressed data has one byte, otherwise rescale
+    for(uint32 i = 0; i < target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8); i++){
+        target->data[i] = (char)255;
     }
     
+    uint32 total = 0;
+    uint32 last = 0;
     
+    for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
+        last =decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex * rowsPerStrip * target->info.width);
+        total += last;
+    }
     
+    ASSERT(total == target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
     
     
     POPI;
