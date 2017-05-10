@@ -394,7 +394,196 @@ bool decodeTiff(const FileContents * file, Image * target){
     return true;
 }
 
+/*
 
+bool encodeTiff(const Image * source, FileContents * target){
+    PUSHI;
+    target->contents = &PUSHA(byte, source->image
+                              //http://www.fileformat.info/format/tiff/corion.htm
+                              ReadHead head;
+                              head.offset = file->contents;
+                              ByteOrder order = ByteOrder_Invalid;
+                              char end = scanByte(&head);
+                              if(end == 'I'  && scanByte(&head) == 'I'){
+                              order = ByteOrder_LittleEndian;
+                              }else if(end == 'M' && scanByte(&head) == 'M'){
+                              order = ByteOrder_BigEndian;
+                              ASSERT(!"implement");
+                              }else{
+                              INV;
+                              return false;
+                              }
+                              
+                              
+                              uint16 tiffMagicFlag = scanWord(&head);
+                              //tiff const flag
+                              if(tiffMagicFlag != 42){
+                              INV;
+                              return false;
+                              }
+                              
+                              uint32 imageOffset = scanDword(&head);
+                              head.offset = file->contents + imageOffset;
+                              
+                              uint16 entries = scanWord(&head);
+                              
+                              uint32 * stripOffsets = NULL;
+                              uint32 rowsPerStrip = -1; //infinity (1 strip for all data)
+                              uint32 * stripSizes = NULL;
+                              uint32 stripAmount = 0;
+                              
+                              for(uint16 ei = 0; ei < entries; ei++){
+                              uint16 tag = scanWord(&head);
+                              uint16 type = scanWord(&head);
+                              uint32 length = scanDword(&head);
+                              uint32 headerOffset = scanDword(&head);
+                              
+                              ASSERT(type >= 1 && type <= 5);
+                              
+                              switch(tag){
+                              case 259:{
+                              //compression
+                              ASSERT(headerOffset == 5);
+                              //supporting LZW only now
+                              }break;
+                              case 257:{
+                              //image height
+                              target->info.height = headerOffset;
+                              }break;
+                              case 283:{
+                              //Yresolution - real image data ignore for now
+                              }break;
+                              case 256:{
+                              //image width
+                              target->info.width = headerOffset;
+                              }break;
+                              case 282:{
+                              //Xresolution - real image data ignore for now
+                              }break;
+                              case 254:{
+                              //new subfile type
+                              ASSERT(headerOffset == 0);
+                              //not supporting anything special now, only raw data in data field
+                              }break;
+                              case 258:{
+                              //bits per sample //could wary, depends on samples per pixel
+                              target->info.bitsPerSample = headerOffset;
+                              }break;
+                              case 262:{
+                              //photometric interpretation
+                              ASSERT(headerOffset == 1);
+                              //supporting bw only now
+                              target->info.interpretation = BitmapInterpretationType_GrayscaleBW01;
+                              }break;
+                              case 273:{
+                              //strip offsets (essentialy compressed data lines?);
+                              ASSERT(type == 4);
+                              //support dwords only now
+                              stripOffsets = &PUSHA(uint32, length);
+                              ASSERT(stripAmount == 0 || length == stripAmount);
+                              stripAmount = length;
+                              if(length == 1){
+                              stripOffsets[0] = headerOffset;
+                              }else{
+                              for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
+                              stripOffsets[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                              }
+                              }
+                              }break;
+                              case 278:{
+                              //rows per strip this seems it is not precise, but somewhat close
+                              rowsPerStrip = headerOffset;
+                              }break;
+                              case 279:{
+                              //strip byte counts (essentially bytes per strip);
+                              ASSERT(type == 4);
+                              //support dwords only now
+                              stripSizes = &PUSHA(uint32, length);
+                              ASSERT(stripAmount == 0 || length == stripAmount);
+                              stripAmount = length;
+                              if(length == 1){
+                              stripSizes[0] = headerOffset;
+                              }else{
+                              for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
+                              stripSizes[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                              }
+                              }
+                              }break;
+                              case 284:{
+                              //planar configuration
+                              ASSERT(headerOffset == 1);
+                              //use continuous data representation for now
+                              
+                              }break;
+                              case 277:{
+                              //samples per pixel
+                              ASSERT(headerOffset == 1);
+                              //support BW for now only
+                              target->info.samplesPerPixel = headerOffset;
+                              }break;
+                              case 274:{
+                              //data orientation
+                              ASSERT(headerOffset == 1);
+                              //supporting TopLeft (rows->rows, cols->cols) so far
+                              target->info.origin = BitmapOriginType_TopLeft;
+                              }break;
+                              case 306:{
+                              //date time we dont give fuck for now
+                              }break;
+                              case 315:{
+                              //artist we dont give fuck for now
+                              }break;
+                              case 296:{
+                              //resolution unit
+                              //cm/inch we dont give fuck for now
+                              }break;
+                              case 266:{
+                              //http://www.awaresystems.be/imaging/tiff/tifftags/fillorder.html
+                              //logical bits in bytes order
+                              ASSERT(headerOffset == 1);
+                              //support MSB first only for now
+                              }break;
+                              case 269:{
+                              //The name of the document from which this image was scanned.
+                              }break;
+                              case 270:{
+                              //For example,  a user  may wish  to attach a comment such as "1988 company picnic" to an image.
+                              }break;
+                              default:{
+                              INV;
+                              }break;
+                              
+                              }
+                              }
+                              
+                              uint32 nextFile = scanDword(&head);
+                              if(nextFile != 0){
+                              INV;
+                              return false;
+                              }
+                              
+                              target->data = &PPUSHA(byte, target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
+                              
+                              for(uint32 i = 0; i < target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8); i++){
+                              target->data[i] = (char)255;
+                              }
+                              
+                              uint32 total = 0;
+                              uint32 last = 0;
+                              
+                              for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
+                              last =decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex * rowsPerStrip * target->info.width);
+                              total += last;
+                              }
+                              
+                              ASSERT(total == target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
+                              
+                              
+                              POPI;
+                              return true;
+                              }
+                              
+                              */
 //returns number of unmached chars
 uint32 convUTF8toAscii(const byte * source, const uint32 bytesize, char ** target, uint32 * targetSize){
     //inefficient alloc now, fuck that tho

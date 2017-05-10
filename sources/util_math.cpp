@@ -45,12 +45,12 @@ float32 floor(float32 value){
     
 }
 
-float64 powd(float32 base, int16 power = 2){
+float32 powd(float32 base, int16 power = 2){
     //todo square mult
     if(power == 0){
         return 1;
     }
-    float64 result = base;
+    float32 result = base;
     for(uint16 i = 1; i < ABS(power); i++){
         result *= base;
     }
@@ -90,14 +90,12 @@ float32 atan2(float32, float32){
     return 0;
 }
 
-float32 sin(float32){
-    ASSERT(!"fuck");
-    return 0;
+float32 sin(float32 xRad){
+    return xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19;
 }
 
-float32 cos(float32){
-    ASSERT(!"fuck");
-    return 0;
+float32 cos(float32 xRad){
+    return 1 - powd(xRad,2)/2.0 + powd(xRad,4)/24.0 - powd(xRad,6)/720.0 + powd(xRad,8)/40320.0 - powd(xRad,10)/3628800.0 + powd(xRad,12)/479001600.0 - powd(xRad,14)/87178291200.0 + powd(xRad,16)/20922789888000.0 - powd(xRad,18)/6.402373705728e+15 + powd(xRad,20)/2.43290200817664e+18;
 }
 
 
