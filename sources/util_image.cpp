@@ -64,6 +64,25 @@ void rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float3
     POP;
 }
 
+static inline uint8 resultingContrast(const uint8 originalColor, const float32 contrast){
+    float32 factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+    float32 result = factor * (originalColor - 128) + 128;
+    if(result < 0) result = 0;
+    if(result > 255) result = 255;
+    return (uint8) result;
+}
+
+
+void applyContrast(Image * target, const float32 contrast){
+    ASSERT(target->info.interpretation = BitmapInterpretationType_GrayscaleBW01);
+    for(uint32 x = 0; x < target->info.width; x++){
+        for(uint32 y = 0; y < target->info.height; y++){
+            uint8 originalColor = target->data[y * target->info.width + x];
+            
+            target->data[y * target->info.width + x] = resultingContrast(originalColor, contrast);
+        }
+    }
+}
 
 /* chechk and redo properly 
 void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32 targetHeight){

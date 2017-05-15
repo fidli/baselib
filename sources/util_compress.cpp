@@ -144,12 +144,13 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
             table->data.carryingSymbol[table->count] = firstChar;
             table->data.previousNode[table->count] = previousTableIndex;
             
-            //table count inc (not accounting for the two special codes)
-            if(table->count + 2 >= (1 << 8)) table->bits = 9;
-            if(table->count + 2 >= (1 << 9)) table->bits = 10;
-            if(table->count + 2 >= (1 << 10)) table->bits = 11;
-            if(table->count + 2 >= (1 << 11)) table->bits = 12;
             table->count++;
+            //table count inc (as soon as last possible entry is added, use more bits)
+            if(table->count + 1 >= (1 << 8)) table->bits = 9;
+            if(table->count + 1 >= (1 << 9)) table->bits = 10;
+            if(table->count + 1 >= (1 << 10)) table->bits = 11;
+            if(table->count + 1 >= (1 << 11)) table->bits = 12;
+            
             
         }
         previousTableIndex = currentTableIndex;
