@@ -32,9 +32,11 @@ bool aseqr(float32 test, float32 fixedpoint, float32 delta = 0.000005f){
 }
 
 
+
+
 float32 ceil(float32 value){
     float32 result = (float32)(uint64) ABS(value);
-    if(!aseq(result, value)){
+    if(result != value){
         result++;
     }
     return (value < 0) ? -result : result;
@@ -43,6 +45,14 @@ float32 ceil(float32 value){
 float32 floor(float32 value){
     return (float32)(int32) value;
     
+}
+
+float32 round(float32 value){
+    if((uint32)(value * 10) % 10 >= 5){
+        return ceil(value);
+    }else{
+        return floor(value);
+    }
 }
 
 float32 powd(float32 base, int16 power = 2){
@@ -58,7 +68,7 @@ float32 powd(float32 base, int16 power = 2){
 }
 
 static float32 subSqrt(float32 value, float32 guess){
-    if(aseq(value / guess, guess, 0.000001f)){
+    if(aseq(value / guess, guess, 0.0001f)){
         return guess;
     }
     return subSqrt(value, (guess + value/guess) / 2);
@@ -100,6 +110,15 @@ float32 cos(float32 xRad){
 
 
 
+float32 acos(float32 cos){
+    //https://stackoverflow.com/questions/3380628/fast-arc-cos-algorithm/36387954#36387954
+    float32 a = -0.939115566365855f;
+    float32 b =  0.9217841528914573f;
+    float32 c = -1.2845906244690837f;
+    float32 d =  0.295624144969963174f;
+    return PI/2 + (a*cos + b * powd(cos,3)) / (1 + c*powd(cos,2) + d*powd(cos, 4));
+    
+}
 
 
 
@@ -399,9 +418,14 @@ float32 length(v2 a){
     return sqrt(dot(a,a));
 }
 
-float32 radAngle(v2 a, v2 b){
+float32 radAngleFull(v2 a, v2 b){
     float32 result = atan2(det(a,b), dot(a,b));
     return result;
+}
+
+float32 radAngle(v2 a, v2 b){
+    float32 cos = dot(a,b) / (length(a) * length(b));
+    return acos(cos);
 }
 
 v4 normalize(v4 source){

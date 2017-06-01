@@ -31,6 +31,29 @@ struct NearestNeighbourColor{
 };
 
 
+void cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
+    Image temp;
+    temp.info = image->info;
+    temp.info.width = rightCrop-leftCrop;
+    temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
+    
+    for(uint32 h = 0; h < temp.info.height; h++){
+        uint32 i = h*temp.info.width;
+        for(uint32 w = leftCrop; w < rightCrop; w++, i++){
+            temp.data[i] = image->data[h * image->info.width + w];
+        }
+    }
+    
+    image->info.width = temp.info.width;
+    for(uint32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
+        image->data[i] = temp.data[i];
+    }
+    
+    
+    
+    POP;
+}
+
 void rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float32 centerY = 0.5f){
     
     ASSERT(image->info.bitsPerSample == 8 && image->info.samplesPerPixel == 1);
@@ -43,14 +66,16 @@ void rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float3
     angleRad = (angleRad / 180) * PI;
     float32 sinA = sin(angleRad);
     float32 cosA = cos(angleRad);
+    int32 cX = (uint32)(centerX * image->info.width);
+    int32 cY = (uint32)(centerY * image->info.height);
     for(uint32 h = 0; h < temp.info.height; h++){
-        float32 rY = ((float32)(h) / (float32)temp.info.width) - centerY;
+        int32 rY = h - cY;
         for(uint32 w = 0; w < temp.info.width; w++){
-            float32 rX = ((float32)w / (float32)temp.info.width) - centerX;
-            float32 nX = cosA * rX - sinA*rY + centerX;
-            float32 nY = sinA * rX + cosA*rY + centerY;
-            if(nX >= 0 && nX <= 1 && nY >= 0 && nY <= 1){
-                temp.data[temp.info.width * h + w] = image->data[temp.info.width * (uint32)(nY * temp.info.height) + (uint32)(nX * temp.info.width)];
+            int32 rX = w  - cX;
+            int32 nX = (int32)(cosA * rX) - (int32)(sinA*rY) + cX;
+            int32 nY = (int32)(sinA * rX) + (int32)(cosA*rY) + cY;
+            if(nX >= 0 && nX < image->info.width && nY >= 0 && nY < image->info.height){
+                temp.data[temp.info.width * h + w] = image->data[temp.info.width * nY  + nX];
             }else{
                 temp.data[temp.info.width * h + w] = 0;
             }
