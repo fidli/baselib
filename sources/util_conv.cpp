@@ -116,7 +116,6 @@ struct Bitmapinfoheader{
 };
 
 bool decodeBMP(const FileContents * source, Image * target){
-    INV;
     //do the implementation correctly
     ASSERT(source->contents[0] == 'B');
     ASSERT(source->contents[1] == 'M');
@@ -126,7 +125,13 @@ bool decodeBMP(const FileContents * source, Image * target){
     Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(source->contents + 14);
     target->info.width = infoheader->width;
     target->info.height = infoheader->height;
-    //target->info.bitsPerSampleinfoheader->bitsPerPixel = swapped->info.bitsPerSample * swapped->info.samplesPerPixel;
+    ASSERT(infoheader->compression == 0);
+    ASSERT(infoheader->colorPlanes == 1);
+    ASSERT(infoheader->bitsPerPixel == 8);
+    target->info.bitsPerSample = infoheader->bitsPerPixel;
+    target->info.samplesPerPixel = 1;
+    target->info.origin = BitmapOriginType_BottomLeft;
+    target->info.interpretation = BitmapInterpretationType_GrayscaleBW01;
     target->data = &PUSHA(byte, infoheader->datasize);
     for(uint32 i = 0; i < infoheader->datasize; i++){
         target->data[i] = (source->contents + dataOffset)[i];

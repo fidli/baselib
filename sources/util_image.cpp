@@ -35,6 +35,8 @@ void cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
     Image temp;
     temp.info = image->info;
     temp.info.width = rightCrop-leftCrop;
+    ASSERT(image->info.origin == BitmapOriginType_TopLeft);
+    ASSERT(rightCrop > leftCrop);
     temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
     
     for(uint32 h = 0; h < temp.info.height; h++){
@@ -53,6 +55,61 @@ void cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
     
     POP;
 }
+
+void flipY(Image * target){
+    uint32 bytesize = target->info.width * target->info.height * target->info.bitsPerSample * target->info.samplesPerPixel;
+    uint8 * tmp = &PUSHA(uint8, bytesize);
+    ASSERT(target->info.bitsPerSample * target->info.samplesPerPixel == 8);
+    
+    for(uint32 w = 0; w < target->info.width; w++){
+        for(uint32 h = 0; h < target->info.height; h++){
+            tmp[w + (target->info.height - h) * target->info.width] = target->data[w + target->info.height*h];
+        }
+    }
+    
+    memcpy(target->data, tmp, bytesize);
+    
+    switch(target->info.origin){
+        case BitmapOriginType_TopLeft:{
+            target->info.origin = BitmapOriginType_BottomLeft;
+        }break;
+        case BitmapOriginType_BottomLeft:{
+            target->info.origin = BitmapOriginType_TopLeft;
+        }break;
+        default:{
+            INV;
+        }break;
+    }
+    
+    POP;
+}
+
+
+void cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
+    Image temp;
+    temp.info = image->info;
+    ASSERT(image->info.origin == BitmapOriginType_TopLeft);
+    ASSERT(bottomCrop > topCrop);
+    temp.info.height = bottomCrop-topCrop;
+    temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
+    
+    uint32 i = 0;
+    for(uint32 h = topCrop; h < bottomCrop; h++){
+        for(uint32 w = 0; w < temp.info.width; w++, i++){
+            temp.data[i] = image->data[h * image->info.width + w];
+        }
+    }
+    
+    image->info.height = temp.info.height;
+    for(uint32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
+        image->data[i] = temp.data[i];
+    }
+    
+    
+    
+    POP;
+}
+
 
 void rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float32 centerY = 0.5f){
     
@@ -109,74 +166,99 @@ void applyContrast(Image * target, const float32 contrast){
     }
 }
 
-/* chechk and redo properly 
+
 void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32 targetHeight){
-float32 scaleX = (float32)source->width/(float32)targetWidth;
-float32 scaleY = (float32)source->height/(float32)targetHeight;
+    float32 scaleX = (float32)source->info.width/(float32)targetWidth;
+    float32 scaleY = (float32)source->info.height/(float32)targetHeight;
+    
+    NearestNeighbourColor * nn = &PUSH(NearestNeighbourColor);
+    target->info = source->info;
+    target->info.width = targetWidth;
+    target->info.height = targetHeight;
+    
+    ASSERT(source->info.width > targetWidth && source->info.height > targetHeight);
+    //support scaling up later
+    //support different sizes later
+    ASSERT(source->info.bitsPerSample * source->info.samplesPerPixel == 8);
+    
+    //each target pixel
+    for(int tw = 0; tw < target->info.width; tw++){
+        for(int th = 0; th < target->info.height; th++){
+            int i = target->info.width*th  + tw;//final index
+            
+            //clear NN
+            for(int clr = 0; clr < scaleX*scaleY; clr++){
+                nn[clr] = {};
+            }
+            uint8 nncount = 0;
+            
+            //for all neighbours to the original pixel
+            for(int nw = 0; nw < scaleX; nw++){
+                int srcW = (int)(tw*scaleX) + nw;
+                for(int nh = 0; nh < scaleY; nh++){
+                    int srcH = (int)(th*scaleY) + nh;
+                    
+                    uint8 srcColor = source->data[srcH*source->info.width + srcW];                
+                    //look for same color;
+                    bool found = false;
+                    for(int s = 0; s < nncount; s++){
+                        if(nn[s].color == srcColor){
+                            nn[s].times++;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(!found){
+                        nn[nncount++].color = srcColor;
+                    }
+                    //do not overstep image boundaries, last neighbours could be a little bit off
+                    if(srcH > source->info.width){
+                        break;
+                    }
+                }
+                //do not overstep image boundaries, last neighbours could be a little bit off
+                if(srcW > source->info.height){
+                    break;
+                }
+            }
+            
+            uint8 resultColor = 0xFF;
+            //do some blending
+            uint32 sum = 0;
+            //int8  highest = -1;
+            for(int s = 0; s < nncount; s++){
+                sum += nn[s].color;
+                /*if(nn[s].times > highest){
+                    resultColor = nn[s].color;
+                }*/
+            }
+            resultColor = sum / nncount;
+            target->data[i] = resultColor;
+            
+        }
+    }
+    
+}
 
-NearestNeighbourColor * nn = &PUSH(NearestNeighbourColor);
-
-target->width = targetWidth;
-target->height = targetHeight;
-
-ASSERT(source->width > targetWidth && source->height > targetHeight); //support scaling up later
-
-//each target pixel
-for(int tw = 0; tw < target->width; tw++){
-for(int th = 0; th < target->height; th++){
-int i = target->width*th  + tw;//final index
-
-//clear NN
-for(int clr = 0; clr < scaleX*scaleY; clr++){
-nn[clr] = {};
+void scaleCanvas(Image * target, uint32 newWidth, uint32 newHeight, uint32 originalOffsetX = 0, uint32 originalOffsetY = 0){
+    ASSERT(target->info.bitsPerSample * target->info.samplesPerPixel == 8);
+    ASSERT(target->info.origin == BitmapOriginType_TopLeft);
+    byte * tmp = &PUSHA(byte, newWidth * newHeight);
+    for(uint32 th = 0; th < newHeight; th++){
+        for(uint32 tw = 0; tw < newWidth; tw++){
+            if(tw >= originalOffsetX &&
+               th >= originalOffsetY &&
+               th - originalOffsetY < target->info.height &&
+               tw - originalOffsetX < target->info.width){
+                tmp[tw + th*newWidth] = target->data[(tw - originalOffsetX) + (th - originalOffsetY)*target->info.width];
+            }else{
+                tmp[tw + th*newWidth] = 0;
+            }
+        }
+    }
+    target->data = tmp;
+    target->info.width = newWidth;
+    target->info.height = newHeight;
 }
-uint8 nncount = 0;
-
-//for all neighbours to the original pixel
-for(int nw = 0; nw < scaleX; nw++){
-int srcW = (int)(tw*scaleX) + nw;
-for(int nh = 0; nh < scaleY; nh++){
-int srcH = (int)(th*scaleY) + nh;
-
-uint32 srcColor = source->pixeldata[srcH*source->width + srcW];                
-//look for same color;
-bool found = false;
-for(int s = 0; s < nncount; s++){
-if(nn[s].color == srcColor){
-nn[s].times++;
-found = true;
-break;
-}
-}
-if(!found){
-nn[nncount++].color = srcColor;
-}
-//do not overstep image boundaries, last neighbours could be a little bit off
-if(srcH > source->width){
-break;
-}
-}
-//do not overstep image boundaries, last neighbours could be a little bit off
-if(srcW > source->height){
-break;
-}
-}
-
-uint32 resultColor = 0xFFFFFFFF;
-int8  highest = -1;
-for(int s = 0; s < nncount; s++){
-if(nn[s].times > highest){
-resultColor = nn[s].color;
-}
-}
-target->pixeldata[i] = resultColor;
-
-}
-}
-
-}
-
-
-*/
 
 #endif

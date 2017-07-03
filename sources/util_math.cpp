@@ -341,6 +341,12 @@ v2 operator*(const float32 a, const v2 & b){
     return b * a;
 }
 
+v2 operator*=(v2 & v, const float32 a){
+    v.x *= a;
+    v.y *= a;
+    return v;
+}
+
 v3 operator*(const v3 & b, const float32 a){
     v3 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){

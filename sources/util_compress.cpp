@@ -130,7 +130,7 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
             }while(crawlIndex != endOfInfo);
             
             //write to output
-            ASSERT(!LZWempty(stack));
+            ASSERT(!LZWempty(stack));  
             uint8 firstChar = LZWpeek(stack);
             while(!LZWempty(stack)){
                 target[targetIndex] = LZWpop(stack);
@@ -156,10 +156,12 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
         previousTableIndex = currentTableIndex;
     }
     while(compressedDataHead.byteOffset < sourceSize);
-    POPI;
     ASSERT(currentTableIndex == endOfInfo);
-    ASSERT(sourceSize == compressedDataHead.byteOffset + 1)
-        return targetIndex;
+    ASSERT(sourceSize <= compressedDataHead.byteOffset + 1);
+    
+    POPI;
+    
+    return targetIndex;
 }
 
 
