@@ -182,7 +182,8 @@ enum FormatType{
     FormatType_d,
     FormatType_u,
     FormatType_c,
-    FormatType_charlist
+    FormatType_charlist,
+    FormatType_s
 };
 
 struct FormatInfo{
@@ -313,15 +314,21 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
     while(format[formatIndex] != '\0' && sourceIndex < maxread && source[sourceIndex] != '\0'){
         if(format[formatIndex] == '%'){
             formatIndex++;
+            
+            FormatInfo info = {};
+            info.dryRun = false;
+            info.maxlen = 0;
+            info.typeLength = FormatTypeSize_Default;
+            
             if(formatIndex == 1 && isDigit19(format[formatIndex])){
                 formatIndex += scanUnumber(&format[formatIndex], &maxread);
+                
             }
             else{
+                if(isDigit19(format[formatIndex])){
+                    formatIndex += scanUnumber(&format[formatIndex], &info.maxlen);
+                }
                 
-                FormatInfo info = {};
-                info.dryRun = false;
-                info.maxlen = 0;
-                info.typeLength = FormatTypeSize_Default;
                 if(format[formatIndex] == '*'){
                     info.dryRun = true;
                     ASSERT(false); //implement
@@ -343,6 +350,10 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                     formatIndex++;
                 }else if(format[formatIndex] == 'c'){
                     info.type = FormatType_c;
+                    info.maxlen = 1;
+                    formatIndex++;
+                }else if(format[formatIndex] == 's'){
+                    info.type = FormatType_s;
                     formatIndex++;
                 }else if(format[formatIndex] == '['){
                     info.type = FormatType_charlist;
@@ -401,13 +412,33 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                     formatIndex++;//jumping over ']'
                     
                     
+                }else{
+                    INV;
                 }
+                
                 
                 
                 
                 uint32 scannedChars = 0;
                 
                 switch(info.type){
+                    case FormatType_c:
+                    case FormatType_s:{
+                        char * targetVar = va_arg(ap, char *);
+                        //set proper max length to avoid buffer overflow
+                        ASSERT(info.maxlen != 0); 
+                        bool first = true;
+                        uint32 i = 0;
+                        for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
+                            if(first) first = false;
+                            *(targetVar+i) = source[sourceIndex];
+                            
+                        }
+                        if(!first)
+                            successfullyScanned++;
+                        if(info.type == FormatType_s)
+                            targetVar[i-1] = '\0';
+                    }break;
                     case FormatType_d:
                     case FormatType_u:{
                         if(info.type == FormatType_u){
@@ -524,8 +555,8 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                     }break;
                 }
                 
-                
             }
+            
         }else if(format[formatIndex] == source[sourceIndex]){
             //todo: whitespaces eating
             formatIndex++;
