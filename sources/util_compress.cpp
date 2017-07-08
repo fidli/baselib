@@ -1,10 +1,16 @@
 #ifndef UTIL_COMPRESS
 #define UTIL_COMPRESS
 
+struct LZWCompressNode{
+    uint16 index;
+    LZWCompressNode * next;
+};
+
 struct LZWTable{
     struct {
         uint8 carryingSymbol[1 << 12];
         uint16 previousNode[1 << 12];
+        LZWCompressNode * children[1 << 12];
     } data;
     uint8 bits;
     uint16 count;
@@ -157,12 +163,128 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
     }
     while(compressedDataHead.byteOffset < sourceSize);
     ASSERT(currentTableIndex == endOfInfo);
-    ASSERT(sourceSize <= compressedDataHead.byteOffset + 1);
+    ASSERT(sourceSize == compressedDataHead.byteOffset + 1 || sourceSize == compressedDataHead.byteOffset);
     
     POPI;
     
     return targetIndex;
 }
+
+
+struct WriteHeadBit{
+    byte * source;
+    uint32 byteOffset;
+    uint8 bitOffset;
+};
+
+static inline void writeBits(WriteHeadBit * head, uint16 data, const uint8 bits){
+    ASSERT(bits > 0);
+    ASSERT(bits <= 16);
+    uint8 toWrite = bits;
+    data = data << (16 - bits);
+    while(toWrite != 0){
+        uint8 currentWriting = MIN(8 - head->bitOffset, toWrite);
+        
+        //clear with zeros
+        head->source[head->byteOffset] &=
+            (uint8)((uint8)(0xFF >> (8 - head->bitOffset)) << (8 - head->bitOffset)) |
+            (uint8)(0xFF >>  (head->bitOffset + currentWriting));
+        
+        uint8 write = ((uint8)(((uint8)(((data >> 8) >> head->bitOffset)) >> (8 - head->bitOffset - currentWriting)))) << (8 - head->bitOffset - currentWriting);
+        
+        //write
+        head->source[head->byteOffset] |= write;
+        head->bitOffset += currentWriting;
+        if(head->bitOffset == 8){
+            head->bitOffset = 0;
+            head->byteOffset++;
+        }
+        toWrite -= currentWriting;
+        //modify data
+        data <<= currentWriting;
+    }
+}
+
+
+uint32 compressLZW(const byte * source, const uint32 sourceSize, byte * target){
+    //http://www.fileformat.info/format/tiff/corion-lzw.htm
+    //every message begins with clear code and ends with end of information code
+    WriteHeadBit compressedDataHead = {};
+    compressedDataHead.source = target;
+    uint16 endOfInfo = 257;
+    uint16 clearCode = 256;
+    PUSHI;
+    LZWTable * table = &PUSH(LZWTable);
+    LZWCompressNode * pool = &PUSHA(LZWCompressNode, 1 << 12);
+    uint16 poolCount = 0;
+    table->count = 4096;
+    
+    uint16 currentCrawl = endOfInfo;
+    
+    for(uint32 i = 0; i < sourceSize; i++){
+        if(table->count == 4096){
+            for(uint16 i = 0; i < 258; i++){
+                table->data.carryingSymbol[i] = i;
+                table->data.children[i] = NULL;
+            }
+            //256 = clear code = reinitialize code table
+            //257 = end of info code
+            table->bits = 9;
+            table->count = 258;
+            writeBits(&compressedDataHead, clearCode, table->bits);
+        }
+        
+        if(currentCrawl == endOfInfo){
+            currentCrawl = source[i];
+            
+        }else{
+            bool found = false;
+            LZWCompressNode * current = table->data.children[currentCrawl];
+            LZWCompressNode * previous = NULL;
+            while(current != NULL){
+                if(table->data.carryingSymbol[current->index] == source[i]){
+                    found = true;
+                    break;
+                }
+                previous = current;
+                current = current->next;
+            } 
+            if(!found){
+                writeBits(&compressedDataHead, currentCrawl, table->bits);
+                uint16 newIndex = table->count;
+                table->data.carryingSymbol[newIndex] = source[i];
+                table->data.children[newIndex] = NULL;
+                if(previous == NULL){
+                    table->data.children[currentCrawl] = &pool[poolCount++];
+                    table->data.children[currentCrawl]->next = NULL;
+                    table->data.children[currentCrawl]->index = newIndex;
+                    
+                }else{
+                    previous->next = &pool[poolCount++];
+                    previous->next->next = NULL;
+                    previous->next->index = newIndex;
+                    ASSERT(poolCount <= 1 << 12);
+                    
+                }
+                currentCrawl = source[i];
+                
+                table->count++;
+                if(table->count >= (1 << 8)) table->bits = 9;
+                if(table->count >= (1 << 9)) table->bits = 10;
+                if(table->count >= (1 << 10)) table->bits = 11;
+                if(table->count >= (1 << 11)) table->bits = 12;
+                
+            }else{
+                currentCrawl = current->index;
+            }
+        }
+    }
+    writeBits(&compressedDataHead, currentCrawl, table->bits);
+    writeBits(&compressedDataHead, endOfInfo, table->bits);
+    POPI;
+    return compressedDataHead.byteOffset + (compressedDataHead.bitOffset != 0 ? 1 : 0);
+}
+
 
 
 #endif
