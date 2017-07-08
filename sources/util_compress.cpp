@@ -231,6 +231,7 @@ uint32 compressLZW(const byte * source, const uint32 sourceSize, byte * target){
             //257 = end of info code
             table->bits = 9;
             table->count = 258;
+            poolCount = 0;
             writeBits(&compressedDataHead, clearCode, table->bits);
         }
         

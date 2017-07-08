@@ -480,14 +480,22 @@ bool encodeTiff(const Image * source, FileContents * target){
     //this should be calculated dynamically later
     uint32 entries  = 9;
     
-    
+    uint32 bytesize = source->info.width * source->info.height * (source->info.bitsPerSample/8) * source->info.samplesPerPixel;
+    uint32 rowBytesize = bytesize / source->info.height;
     
     uint32 stripRecommendedSize = KILOBYTE(8);
-    uint32 stripAmount = source->info.width * source->info.height * (source->info.bitsPerSample/8) * source->info.samplesPerPixel / stripRecommendedSize;
-    if(stripAmount > source->info.height){
-        stripAmount = source->info.height;
+    uint32 rowsPerStrip = stripRecommendedSize / rowBytesize;
+    
+    if(rowsPerStrip == 0) rowsPerStrip++;
+    if(rowsPerStrip > source->info.height) rowsPerStrip = source->info.height;
+    
+    uint32 stripAmount = source->info.height / rowsPerStrip;
+    if(source->info.height % rowsPerStrip != 0){
+        stripAmount++;
     }
-    uint32 rowsPerStrip = source->info.height  / stripAmount;
+    uint32 stripSize = rowBytesize * rowsPerStrip;
+    ASSERT(stripAmount >= 1);
+    ASSERT(rowsPerStrip >= 1);
     
     //compress - wild quess now, later compress first, then work with exact numbers
     uint32 compressedSize = MEGABYTE(50);
@@ -499,7 +507,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     //http://www.fileformat.info/format/tiff/corion.htm
     WriteHead head;
     head.offset = target->contents;
-    ByteOrder order = ByteOrder_Invalid;
+    
     //endianity
     writeByte(&head, (uint8) 'I');
     writeByte(&head, (uint8) 'I');
@@ -675,9 +683,9 @@ bool encodeTiff(const Image * source, FileContents * target){
     
     
     for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
-        uint32 sourceSize = stripRecommendedSize;
+        uint32 sourceSize = stripSize;
         if(stripIndex == stripAmount - 1){
-            sourceSize = source->info.width * source->info.height * source->info.bitsPerSample * source->info.samplesPerPixel - (stripIndex * sourceSize);
+            sourceSize = bytesize - (stripIndex * sourceSize);
         }
         uint32 size = compressLZW((byte *) (source->data + stripIndex * rowsPerStrip * source->info.width), sourceSize, (byte *) dataHead.offset); 
         stripSizes[stripIndex] = size;
