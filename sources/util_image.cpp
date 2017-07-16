@@ -25,8 +25,20 @@ struct Image{
     
 };
 
+union Color{
+    struct{
+        uint8 r;
+        uint8 g;
+        uint8 b;
+        uint8 a;
+    };
+    uint8 channel[4];
+    uint32 full;
+    uint8 intensity;
+};
+
 struct NearestNeighbourColor{
-    uint32 color;
+    Color color;
     uint8 times;
 };
 
@@ -172,19 +184,16 @@ void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     float32 scaleY = (float32)source->info.height/(float32)targetHeight;
     
     NearestNeighbourColor * nn = &PUSH(NearestNeighbourColor);
-    target->info = source->info;
-    target->info.width = targetWidth;
-    target->info.height = targetHeight;
     
-    ASSERT(source->info.width > targetWidth && source->info.height > targetHeight);
-    //support scaling up later
-    //support different sizes later
-    ASSERT(source->info.bitsPerSample * source->info.samplesPerPixel == 8);
+    
+    //support lesser bits per pixel later
+    ASSERT(source->info.bitsPerSample * source->info.samplesPerPixel >= 8 && source->info.bitsPerSample * source->info.samplesPerPixel % 8 == 0);
+    uint8 channelCount = (source->info.bitsPerSample * source->info.samplesPerPixel) / 8;
     
     //each target pixel
-    for(int tw = 0; tw < target->info.width; tw++){
-        for(int th = 0; th < target->info.height; th++){
-            int i = target->info.width*th  + tw;//final index
+    for(int tw = 0; tw < targetWidth; tw++){
+        for(int th = 0; th < targetHeight; th++){
+            int i = targetWidth*th  + tw;//final index
             
             //clear NN
             for(int clr = 0; clr < scaleX*scaleY; clr++){
@@ -198,18 +207,22 @@ void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
                 for(int nh = 0; nh < scaleY; nh++){
                     int srcH = (int)(th*scaleY) + nh;
                     
-                    uint8 srcColor = source->data[srcH*source->info.width + srcW];                
+                    Color srcColor = {};
+                    for(uint8 ci = 0; ci < channelCount; ci++){
+                        srcColor.channel[ci] = source->data[(srcH*source->info.width + srcW)*channelCount + ci];
+                    }
+                    
                     //look for same color;
                     bool found = false;
                     for(int s = 0; s < nncount; s++){
-                        if(nn[s].color == srcColor){
+                        if(nn[s].color.full  == srcColor.full){
                             nn[s].times++;
                             found = true;
                             break;
                         }
                     }
                     if(!found){
-                        nn[nncount++].color = srcColor;
+                        nn[nncount++].color.full = srcColor.full;
                     }
                     //do not overstep image boundaries, last neighbours could be a little bit off
                     if(srcH > source->info.width){
@@ -222,22 +235,29 @@ void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
                 }
             }
             
-            uint8 resultColor = 0xFF;
             //do some blending
-            uint32 sum = 0;
+            uint32 sum[4] = {};
             //int8  highest = -1;
             for(int s = 0; s < nncount; s++){
-                sum += nn[s].color;
+                for(uint8 ci = 0; ci < channelCount; ci++){
+                    sum[ci] += nn[s].color.channel[ci];
+                }
+                
                 /*if(nn[s].times > highest){
                     resultColor = nn[s].color;
                 }*/
             }
-            resultColor = sum / nncount;
-            target->data[i] = resultColor;
+            for(uint8 ci = 0; ci < channelCount; ci++){
+                target->data[channelCount * i + ci] = sum[ci]/nncount;
+            }
+            
+            
             
         }
     }
-    
+    target->info = source->info;
+    target->info.width = targetWidth;
+    target->info.height = targetHeight;
 }
 
 void scaleCanvas(Image * target, uint32 newWidth, uint32 newHeight, uint32 originalOffsetX = 0, uint32 originalOffsetY = 0){
