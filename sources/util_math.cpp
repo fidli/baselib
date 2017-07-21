@@ -220,6 +220,18 @@ union v2{
     float32 v[2];
 };
 
+union dv2{
+    struct{
+        int32 x;
+        int32 y;
+    };
+    struct{
+        int32 pitch;
+        int32 yaw;
+    };
+    int32 v[2];
+};
+
 union v3{
     struct{
         float32 x;
