@@ -300,6 +300,26 @@ v2 operator+(const v2 & a, const v2 & b){
     return result;
 }
 
+dv2 operator+(const dv2 & a, const dv2 & b){
+    dv2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] + b.v[i];
+    }
+    return result;
+}
+
+v2 operator+(const v2 & a, const dv2 & b){
+    v2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] + b.v[i];
+    }
+    return result;
+}
+
+v2 operator+(const dv2 & a, const v2 & b){
+    return b + a;
+}
+
 v2 operator-(const v2 & a, const v2 & b){
     v2 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
@@ -308,7 +328,22 @@ v2 operator-(const v2 & a, const v2 & b){
     return result;
 }
 
+dv2 operator-(const dv2 & a, const dv2 & b){
+    dv2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] - b.v[i];
+    }
+    return result;
+}
+
 v2 & operator+=(v2 & a, const v2 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] += b.v[i];
+    }
+    return a;
+}
+
+dv2 & operator+=(dv2 & a, const dv2 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
     }
@@ -359,6 +394,21 @@ v2 operator*=(v2 & v, const float32 a){
     return v;
 }
 
+v2 operator*(const dv2 & b, const float32 a){
+    v2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a*(float32)b.v[i];
+    }
+    return result;
+}
+
+v2 operator*(const float32 a, const dv2 & b){
+    return b * a;
+}
+
+
+
+
 v3 operator*(const v3 & b, const float32 a){
     v3 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
@@ -404,6 +454,10 @@ float32 dot(v4 a, v4 b){
 
 float32 dot(v2 a, v2 b){
     return a.x*b.x + a.y * b.y;
+}
+
+float32 dot(dv2 a, dv2 b){
+    return (float32)(a.x*b.x + a.y * b.y);
 }
 
 float32 dot(vN a, vN b){
@@ -460,6 +514,16 @@ v2 normalize(v2 source){
     float32 len = length(source);
     for(int i = 0; i < ARRAYSIZE(source.v); i++){
         result.v[i] = source.v[i] / len;
+    }
+    return result;
+}
+
+v2 normalize(dv2 source){
+    v2 result = {};
+    v2 cast = {(float32)source.x, (float32)source.y};
+    float32 len = length(cast);
+    for(int i = 0; i < ARRAYSIZE(cast.v); i++){
+        result.v[i] = cast.v[i] / len;
     }
     return result;
 }
