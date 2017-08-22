@@ -119,7 +119,7 @@ void mergeSort(byte * target, const uint16 elemsize, int64 chunkSize, int8 (*cmp
     
 }
 
-
+#if 0
 
 
 //merging happens into sourceA whev swapTargetAFirst is set to true
@@ -423,6 +423,6 @@ void mergeSortInPlace4(int32 * target, uint64 arraySize, int8 (*cmp)(void * a, v
     
     
 }
-
+#endif
 
 #endif
