@@ -279,6 +279,11 @@ v2 V2(float32 x, float32 y){
     return res;
 }
 
+dv2 DV2(int32 x, int32 y){
+    dv2 res = {x, y};
+    return res;
+}
+
 v4 V4(float32 x, float32 y, float32 z, float32 w){
     v4 result = {x, y, z, w};
     return result;
