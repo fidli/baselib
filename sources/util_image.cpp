@@ -43,12 +43,19 @@ struct NearestNeighbourColor{
 };
 
 
-void cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
+bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
     Image temp;
     temp.info = image->info;
     temp.info.width = rightCrop-leftCrop;
     ASSERT(image->info.origin == BitmapOriginType_TopLeft);
-    ASSERT(rightCrop > leftCrop);
+    if(image->info.origin == BitmapOriginType_TopLeft){
+        return false;
+    }
+    if(leftCrop > rightCrop){
+        uint32 tmp = leftCrop;
+        leftCrop = rightCrop;
+        rightCrop = tmp;
+    }
     temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
     
     for(uint32 h = 0; h < temp.info.height; h++){
@@ -66,6 +73,7 @@ void cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
     
     
     POP;
+    return true;
 }
 
 void flipY(Image * target){
@@ -97,11 +105,18 @@ void flipY(Image * target){
 }
 
 
-void cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
+bool cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
     Image temp;
     temp.info = image->info;
     ASSERT(image->info.origin == BitmapOriginType_TopLeft);
-    ASSERT(bottomCrop > topCrop);
+    if(image->info.origin == BitmapOriginType_TopLeft){
+        return false;
+    }
+    if(bottomCrop < topCrop){
+        uint32 tmp = bottomCrop;
+        bottomCrop = topCrop;
+        topCrop = topCrop;
+    }
     temp.info.height = bottomCrop-topCrop;
     temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
     
@@ -120,6 +135,7 @@ void cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
     
     
     POP;
+    return true;
 }
 
 
@@ -179,7 +195,7 @@ void applyContrast(Image * target, const float32 contrast){
 }
 
 
-void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32 targetHeight){
+bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32 targetHeight){
     float32 scaleX = (float32)source->info.width/(float32)targetWidth;
     float32 scaleY = (float32)source->info.height/(float32)targetHeight;
     
@@ -188,6 +204,9 @@ void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     
     //support lesser bits per pixel later
     ASSERT(source->info.bitsPerSample * source->info.samplesPerPixel >= 8 && source->info.bitsPerSample * source->info.samplesPerPixel % 8 == 0);
+    if(source->info.bitsPerSample * source->info.samplesPerPixel < 8 && source->info.bitsPerSample * source->info.samplesPerPixel % 8 != 0){
+        return false;
+    }
     uint8 channelCount = (source->info.bitsPerSample * source->info.samplesPerPixel) / 8;
     
     //each target pixel
@@ -258,6 +277,7 @@ void scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     target->info = source->info;
     target->info.width = targetWidth;
     target->info.height = targetHeight;
+    return true;
 }
 
 void scaleCanvas(Image * target, uint32 newWidth, uint32 newHeight, uint32 originalOffsetX = 0, uint32 originalOffsetY = 0){

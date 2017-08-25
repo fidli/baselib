@@ -100,6 +100,10 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
     uint32 targetIndex = 0;
     uint8 previousFirstCharacter;
     ASSERT(*source == 128 && (~*(source + 1) & 128) == 128);
+    if(*source != 128 || (~*(source + 1) & 128) != 128){
+        POPI;
+        return 0;
+    }
     
     do{
         ReadHeadBit oldHead = compressedDataHead;
@@ -115,15 +119,23 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
             table->count = 258;
             currentTableIndex = readBits(&compressedDataHead, table->bits);
             ASSERT(currentTableIndex <= 257);
-            if(currentTableIndex == endOfInfo) break;
             ASSERT(currentTableIndex != 256);
+            if(currentTableIndex > 257 || currentTableIndex == 256){
+                POPI;
+                return 0;
+            }
+            if(currentTableIndex == endOfInfo) break;
+            
             target[targetIndex] = table->data.carryingSymbol[currentTableIndex];
             targetIndex++;
         }else if(currentTableIndex == endOfInfo){
             break;
         }else{
             ASSERT(currentTableIndex <= table->count);
-            
+            if(currentTableIndex > table->count){
+                POPI;
+                return 0;
+            }
             //get the output string
             ASSERT(LZWempty(stack));
             uint16 crawlIndex = currentTableIndex;
@@ -162,9 +174,13 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
         previousTableIndex = currentTableIndex;
     }
     while(compressedDataHead.byteOffset < sourceSize);
+    
     ASSERT(currentTableIndex == endOfInfo);
     ASSERT(sourceSize == compressedDataHead.byteOffset + 1 || sourceSize == compressedDataHead.byteOffset);
-    
+    if(currentTableIndex != endOfInfo){
+        POPI;
+        return 0;
+    }
     POPI;
     
     return targetIndex;

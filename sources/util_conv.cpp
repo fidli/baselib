@@ -255,6 +255,7 @@ bool decodeTiff(const FileContents * file, Image * target){
     }else if(end == 'M' && scanByte(&head) == 'M'){
         order = ByteOrder_BigEndian;
         ASSERT(!"implement");
+        return false;
     }else{
         INV;
         return false;
@@ -290,6 +291,10 @@ bool decodeTiff(const FileContents * file, Image * target){
             case 254:{
                 //new subfile type
                 ASSERT(headerOffset == 0);
+                if(headerOffset != 0){
+                    POPI;
+                    return false;
+                }
                 //not supporting anything special now, only raw data in data field
             }break;
             case 256:{
@@ -307,11 +312,19 @@ bool decodeTiff(const FileContents * file, Image * target){
             case 259:{
                 //compression
                 ASSERT(headerOffset == 5);
+                if(headerOffset != 5){
+                    POPI;
+                    return false;
+                }
                 //supporting LZW only now
             }break;
             case 262:{
                 //photometric interpretation
                 ASSERT(headerOffset == 1);
+                if(headerOffset != 1){
+                    POPI;
+                    return false;
+                }
                 //supporting bw only now
                 target->info.interpretation = BitmapInterpretationType_GrayscaleBW01;
             }break;
@@ -320,6 +333,10 @@ bool decodeTiff(const FileContents * file, Image * target){
                 //http://www.awaresystems.be/imaging/tiff/tifftags/fillorder.html
                 //logical bits in bytes order
                 ASSERT(headerOffset == 1);
+                if(headerOffset != 1){
+                    POPI;
+                    return false;
+                }
                 //support MSB first only for now
             }break;
             case 269:{
@@ -331,9 +348,17 @@ bool decodeTiff(const FileContents * file, Image * target){
             case 273:{
                 //strip offsets (essentialy compressed data lines?);
                 ASSERT(type == 4);
+                if(type != 4){
+                    POPI;
+                    return false;
+                }
                 //support dwords only now
                 stripOffsets = &PUSHA(uint32, length);
                 ASSERT(stripAmount == 0 || length == stripAmount);
+                if(stripAmount != 0 && length != stripAmount){
+                    POPI;
+                    return false;
+                }
                 stripAmount = length;
                 if(length == 1){
                     stripOffsets[0] = headerOffset;
@@ -346,12 +371,20 @@ bool decodeTiff(const FileContents * file, Image * target){
             case 274:{
                 //data orientation
                 ASSERT(headerOffset == 1);
+                if(headerOffset != 1){
+                    POPI;
+                    return false;
+                }
                 //supporting TopLeft (rows->rows, cols->cols) so far
                 target->info.origin = BitmapOriginType_TopLeft;
             }break;
             case 277:{
                 //samples per pixel
                 ASSERT(headerOffset == 1);
+                if(headerOffset != 1){
+                    POPI;
+                    return false;
+                }
                 //support BW for now only
                 target->info.samplesPerPixel = headerOffset;
             }break;
@@ -361,9 +394,17 @@ bool decodeTiff(const FileContents * file, Image * target){
             case 279:{
                 //strip byte counts (essentially bytes per strip);
                 ASSERT(type == 4);
+                if(type != 4){
+                    POPI;
+                    return false;
+                }
                 //support dwords only now
                 stripSizes = &PUSHA(uint32, length);
                 ASSERT(stripAmount == 0 || length == stripAmount);
+                if(stripAmount != 0 && length != stripAmount){
+                    POPI;
+                    return false;
+                }
                 stripAmount = length;
                 if(length == 1){
                     stripSizes[0] = headerOffset;
@@ -382,6 +423,10 @@ bool decodeTiff(const FileContents * file, Image * target){
             case 284:{
                 //planar configuration
                 ASSERT(headerOffset == 1);
+                if(headerOffset != 1){
+                    POPI;
+                    return false;
+                }
                 //use continuous data representation for now
                 
             }break;
@@ -397,6 +442,8 @@ bool decodeTiff(const FileContents * file, Image * target){
             }break;
             default:{
                 INV;
+                POPI;
+                return false;
             }break;
             
         }
@@ -418,12 +465,15 @@ bool decodeTiff(const FileContents * file, Image * target){
     uint32 last = 0;
     
     for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
-        last =decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex * rowsPerStrip * target->info.width);
+        last = decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex * rowsPerStrip * target->info.width);
+        if(last == 0){
+            POPI;
+            return false;
+        }
         total += last;
     }
     
     ASSERT(total == target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
-    
     
     POPI;
     return true;

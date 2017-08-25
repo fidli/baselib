@@ -15,9 +15,9 @@ struct DirectoryContents{
     char ** files;
 };
 
-void readFile(const char * path, FileContents * target);
-void saveFile(const char * path, const FileContents * source);
-void appendFile(const char * path, const FileContents * source);
-void readDirectory(const char * path, DirectoryContents * target);
+bool readFile(const char * path, FileContents * target);
+bool saveFile(const char * path, const FileContents * source);
+bool appendFile(const char * path, const FileContents * source);
+bool readDirectory(const char * path, DirectoryContents * target);
 
 #endif

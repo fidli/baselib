@@ -10,39 +10,48 @@ struct FileHandle{
     HANDLE handle;
 };
 
-void readFile(const char * path, FileContents * target){
+bool readFile(const char * path, FileContents * target){
     HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    ASSERT(SUCCEEDED(file));
+    if(!SUCCEEDED(file)) return false;
     target->size = GetFileSize(file, 0);
     target->contents = &PUSHA(char, target->size);
-    ASSERT(ReadFile(file, (void *) target->contents, target->size, 0, 0));
+    if(!ReadFile(file, (void *) target->contents, target->size, 0, 0)){
+        return false;
+    }
     
     CloseHandle(file);
+    return true;
 }
 
 bool writeFile(FileHandle * target, const FileContents * source){
     return WriteFile(target->handle, source->contents, source->size, 0, 0) > 0;    
 }
 
-void saveFile(const char * path, const FileContents * source){
+bool saveFile(const char * path, const FileContents * source){
     HANDLE file = CreateFile(path, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    ASSERT(SUCCEEDED(file));
+    if(!SUCCEEDED(file)){
+        return false;
+    }
     FileHandle handle;
     handle.handle = file;
-    writeFile(&handle, source);
+    bool result = writeFile(&handle, source);
     CloseHandle(file);
+    return result;
 }
 
-void appendFile(const char * path, const FileContents * source){
+bool appendFile(const char * path, const FileContents * source){
     HANDLE file = CreateFile(path, FILE_APPEND_DATA, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    ASSERT(SUCCEEDED(file));
+    if(!SUCCEEDED(file)){
+        return false;
+    };
     FileHandle handle;
     handle.handle = file;
-    writeFile(&handle, source);
+    bool result = writeFile(&handle, source);
     CloseHandle(file);
+    return result;
 }
 
-void readDirectory(const char * path, DirectoryContents * target){
+bool readDirectory(const char * path, DirectoryContents * target){
     WIN32_FIND_DATA result;
     
     //pathlen
@@ -64,10 +73,14 @@ void readDirectory(const char * path, DirectoryContents * target){
         index2++;
     }
     fullpath[index + index2] = '\0';
-    POP;
+    
     
     HANDLE file = FindFirstFile(fullpath, &result);
-    ASSERT(file != INVALID_HANDLE_VALUE);
+    POP;
+    if(file != INVALID_HANDLE_VALUE){
+        return false;
+    }
+    
     target->count = 0;
     target->files = &PUSHA(char*, 255);
     do{
@@ -76,7 +89,7 @@ void readDirectory(const char * path, DirectoryContents * target){
             target->files[target->count] = &PUSHS(char, 255);
             uint16 i = 0;
             for(; result.cFileName[i] != 0; i++){
-                ASSERT(i < 255);
+                if(i < 255) return false;
                 target->files[target->count][i] = result.cFileName[i];
             }
             target->files[target->count][i] = 0;
@@ -85,7 +98,7 @@ void readDirectory(const char * path, DirectoryContents * target){
     }
     while(FindNextFile(file, &result));
     
-    
+    return true;
     
 }
 
