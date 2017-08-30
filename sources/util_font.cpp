@@ -15,7 +15,7 @@
      } current;
  };
  
- void initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
+ bool initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
      memcpy(&target->original.data, source, sizeof(Image));
      memcpy(&target->current.data, source, sizeof(Image));
      
@@ -27,18 +27,28 @@
      
      target->original.gridSize = gridSize;
      target->current.gridSize = gridSize;
+     return true;
  }
  
- void printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize){
+ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize){
      ASSERT(fontSize <= font->original.gridSize);
+     if(fontSize > font->original.gridSize){
+         return false;
+     }
      if(font->current.gridSize != fontSize){
-         scaleImage(&font->original.data, &font->current.data, fontSize * 16, fontSize * 16);
+         if(!scaleImage(&font->original.data, &font->current.data, fontSize * 16, fontSize * 16)){
+             return false;
+         }
          font->current.gridSize = fontSize;
      }
      
      ASSERT(startY <= (int64)target->info.height - fontSize);
      ASSERT(startX <= (int64)target->info.width - fontSize * strlen(asciiText));
      ASSERT(target->info.samplesPerPixel * target->info.bitsPerSample == 8);
+     
+     if(startY > (int64)target->info.height - fontSize || startX > (int64)target->info.width - fontSize * strlen(asciiText) ||target->info.samplesPerPixel * target->info.bitsPerSample != 8){
+         return false;
+     }
      
      uint32 letterIndex = 0;
      while(asciiText[letterIndex] != '\0'){
@@ -55,7 +65,7 @@
          
          letterIndex++;
      }
-     
+     return true;
  }
  
  #endif

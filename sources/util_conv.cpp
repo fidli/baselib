@@ -149,6 +149,9 @@ struct Bitmapinfoheader{
 bool decodeBMP(const FileContents * source, Image * target){
     ASSERT(source->contents[0] == 'B');
     ASSERT(source->contents[1] == 'M');
+    if(source->contents[0] != 'B' || source->contents[1] != 'M'){
+        return false;
+    }
     uint32 filesize = *((uint32 *)(source->contents + 2));
     uint32 dataOffset = *((uint32 *)(source->contents + 10));
     
@@ -158,6 +161,9 @@ bool decodeBMP(const FileContents * source, Image * target){
     ASSERT(infoheader->compression == 0);
     ASSERT(infoheader->colorPlanes == 1);
     ASSERT(infoheader->bitsPerPixel == 8);
+    if(infoheader->compression != 0 || infoheader->colorPlanes != 1 || infoheader->bitsPerPixel != 8){
+        return false;
+    }
     target->info.bitsPerSample = infoheader->bitsPerPixel;
     target->info.samplesPerPixel = 1;
     target->info.origin = BitmapOriginType_BottomLeft;
@@ -546,6 +552,10 @@ bool encodeTiff(const Image * source, FileContents * target){
     uint32 stripSize = rowBytesize * rowsPerStrip;
     ASSERT(stripAmount >= 1);
     ASSERT(rowsPerStrip >= 1);
+    if(stripAmount < 1 || 
+       rowsPerStrip < 1){
+        return false;
+    }
     
     //compress - wild quess now, later compress first, then work with exact numbers
     uint32 compressedSize = MEGABYTE(50);
@@ -636,6 +646,9 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeDword(&head, 1);
     writeDword(&head, 1); //supporting bw only now
     ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01);
+    if(source->info.interpretation != BitmapInterpretationType_GrayscaleBW01){
+        return false;
+    }
     
     
     //http://www.awaresystems.be/imaging/tiff/tifftags/fillorder.html
@@ -675,6 +688,9 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeDword(&head, 1); //supporting TopLeft (rows->rows, cols->cols)
     */
     ASSERT(source->info.origin == BitmapOriginType_TopLeft);
+    if(source->info.origin != BitmapOriginType_TopLeft){
+        return false;
+    }
     
     //data orientation
     /* default suits us
@@ -684,6 +700,9 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeDword(&head, 1); ////support BW for now only
     */
     ASSERT(source->info.samplesPerPixel == 1);
+    if(source->info.samplesPerPixel != 1){
+        return false;
+    }
     
     //rows per strip
     writeWord(&head, 278);

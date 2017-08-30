@@ -48,7 +48,7 @@ bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
     temp.info = image->info;
     temp.info.width = rightCrop-leftCrop;
     ASSERT(image->info.origin == BitmapOriginType_TopLeft);
-    if(image->info.origin == BitmapOriginType_TopLeft){
+    if(image->info.origin != BitmapOriginType_TopLeft){
         return false;
     }
     if(leftCrop > rightCrop){
@@ -76,10 +76,13 @@ bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
     return true;
 }
 
-void flipY(Image * target){
+bool flipY(Image * target){
     uint32 bytesize = target->info.width * target->info.height * target->info.bitsPerSample * target->info.samplesPerPixel;
     uint8 * tmp = &PUSHA(uint8, bytesize);
     ASSERT(target->info.bitsPerSample * target->info.samplesPerPixel == 8);
+    if(target->info.bitsPerSample * target->info.samplesPerPixel != 8){
+        return false;
+    }
     
     for(uint32 w = 0; w < target->info.width; w++){
         for(uint32 h = 0; h < target->info.height; h++){
@@ -102,6 +105,7 @@ void flipY(Image * target){
     }
     
     POP;
+    return true;
 }
 
 
@@ -109,7 +113,7 @@ bool cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
     Image temp;
     temp.info = image->info;
     ASSERT(image->info.origin == BitmapOriginType_TopLeft);
-    if(image->info.origin == BitmapOriginType_TopLeft){
+    if(image->info.origin != BitmapOriginType_TopLeft){
         return false;
     }
     if(bottomCrop < topCrop){
@@ -139,9 +143,11 @@ bool cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
 }
 
 
-void rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float32 centerY = 0.5f){
-    
+bool rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float32 centerY = 0.5f){
     ASSERT(image->info.bitsPerSample == 8 && image->info.samplesPerPixel == 1);
+    if(image->info.bitsPerSample != 8 || image->info.samplesPerPixel != 1){
+        return false;
+    }
     Image temp;
     temp.info = image->info;
     temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
@@ -172,6 +178,7 @@ void rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float3
     }
     
     POP;
+    return true;
 }
 
 static inline uint8 resultingContrast(const uint8 originalColor, const float32 contrast){
@@ -280,9 +287,12 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     return true;
 }
 
-void scaleCanvas(Image * target, uint32 newWidth, uint32 newHeight, uint32 originalOffsetX = 0, uint32 originalOffsetY = 0){
+bool scaleCanvas(Image * target, uint32 newWidth, uint32 newHeight, uint32 originalOffsetX = 0, uint32 originalOffsetY = 0){
     ASSERT(target->info.bitsPerSample * target->info.samplesPerPixel == 8);
     ASSERT(target->info.origin == BitmapOriginType_TopLeft);
+    if(target->info.bitsPerSample * target->info.samplesPerPixel != 8 || target->info.origin != BitmapOriginType_TopLeft){
+        return false;
+    }
     byte * tmp = &PUSHA(byte, newWidth * newHeight);
     for(uint32 th = 0; th < newHeight; th++){
         for(uint32 tw = 0; tw < newWidth; tw++){
@@ -299,6 +309,9 @@ void scaleCanvas(Image * target, uint32 newWidth, uint32 newHeight, uint32 origi
     target->data = tmp;
     target->info.width = newWidth;
     target->info.height = newHeight;
+    return true;
 }
+
+
 
 #endif

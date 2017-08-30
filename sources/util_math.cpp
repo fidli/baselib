@@ -341,6 +341,14 @@ dv2 operator-(const dv2 & a, const dv2 & b){
     return result;
 }
 
+dv2 operator-(const dv2 & a){
+    dv2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = -a.v[i];
+    }
+    return result;
+}
+
 v2 & operator+=(v2 & a, const v2 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
@@ -562,6 +570,22 @@ float32 sum(const vN * A){
     for(int i = 0; i < A->size; i++){
         result += A->v[i];
     }
+    return result;
+}
+
+dv2 translate(const dv2 & point, const dv2 & translation){
+    dv2 result;
+    result.x = point.x + translation.x;
+    result.y = point.y + translation.y;
+    return result;
+}
+
+v2 rotate(const dv2 & point, const float32 radAngle){
+    v2 result;
+    float32 cosA = cos(radAngle);
+    float32 sinA = sin(radAngle);
+    result.x = cosA * point.x - sinA * point.y;
+    result.y = sinA * point.x + cosA * point.y;
     return result;
 }
 
