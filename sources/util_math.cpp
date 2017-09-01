@@ -185,6 +185,16 @@ float32 clamp(float32 originalValue, float32 min, float32 max){
 }
 
 
+int32 clamp(int32 originalValue, int32 min, int32 max){
+    if(originalValue < min){
+        return min;
+    }else if(originalValue > max){
+        return max;
+    }
+    return originalValue;
+}
+
+
 float32 normalize(float32 value, float32 min, float32 max){
     return (value - min) / (max - min);
 }
@@ -401,6 +411,18 @@ v2 operator*(const float32 a, const v2 & b){
     return b * a;
 }
 
+dv2 operator*(const dv2 & b, const int32 a){
+    dv2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a*b.v[i];
+    }
+    return result;
+}
+
+dv2 operator*(const int32 a, const dv2 & b){
+    return b * a;
+}
+
 v2 operator*=(v2 & v, const float32 a){
     v.x *= a;
     v.y *= a;
@@ -500,6 +522,10 @@ float32 length(v4 a){
 }
 
 float32 length(v2 a){
+    return sqrt(dot(a,a));
+}
+
+float32 length(dv2 a){
     return sqrt(dot(a,a));
 }
 

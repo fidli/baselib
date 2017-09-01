@@ -285,6 +285,10 @@ bool decodeTiff(const FileContents * file, Image * target){
     uint32 * stripSizes = NULL;
     uint32 stripAmount = 0;
     
+    //default values
+    target->info.origin = BitmapOriginType_TopLeft;
+    target->info.samplesPerPixel = 1;
+    
     for(uint16 ei = 0; ei < entries; ei++){
         uint16 tag = scanWord(&head);
         uint16 type = scanWord(&head);
@@ -366,13 +370,14 @@ bool decodeTiff(const FileContents * file, Image * target){
                     return false;
                 }
                 stripAmount = length;
-                if(length == 1){
+                if(stripAmount == 1){
                     stripOffsets[0] = headerOffset;
                 }else{
                     for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
                         stripOffsets[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
                     }
                 }
+                
             }break;
             case 274:{
                 //data orientation
@@ -412,7 +417,7 @@ bool decodeTiff(const FileContents * file, Image * target){
                     return false;
                 }
                 stripAmount = length;
-                if(length == 1){
+                if(stripAmount == 1){
                     stripSizes[0] = headerOffset;
                 }else{
                     for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
@@ -534,7 +539,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     PUSHI;
     
     //this should be calculated dynamically later
-    uint32 entries  = 9;
+    uint32 entries  = 10;
     
     uint32 bytesize = source->info.width * source->info.height * (source->info.bitsPerSample/8) * source->info.samplesPerPixel;
     uint32 rowBytesize = bytesize / source->info.height;
@@ -603,6 +608,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     //dword headerOffset
     
     
+    
     //new subfile type, default is 0, no need to fill it in
     /*writeWord(&head, 254);
     writeWord(&head, 4);
@@ -629,6 +635,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     if(source->info.samplesPerPixel == 1){
         writeDword(&head, source->info.bitsPerSample);
     }else{
+        ASSERT(!"check me");
         writeDword(&head, dataHead.offset - target->contents);
         for(uint16 i = 0; i < source->info.samplesPerPixel; i++){
             writeWord(&dataHead, source->info.bitsPerSample);
@@ -650,6 +657,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     if(source->info.interpretation != BitmapInterpretationType_GrayscaleBW01){
         return false;
     }
+    
     
     
     //http://www.awaresystems.be/imaging/tiff/tifftags/fillorder.html
@@ -676,10 +684,14 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeWord(&head, 273);
     writeWord(&head, 4);
     writeDword(&head, stripAmount);
-    writeDword(&head, dataHead.offset - target->contents);
-    stripOffsets = (uint32 *) dataHead.offset;
-    dataHead.offset += stripAmount * 4; //allocate space for future
-    
+    if(stripAmount == 1){
+        stripOffsets = (uint32 *) head.offset;
+        head.offset += 4;
+    }else{
+        writeDword(&head, dataHead.offset - target->contents);
+        stripOffsets = (uint32 *) dataHead.offset;
+        dataHead.offset += stripAmount * 4; //allocate space for future
+    }
     
     //data orientation
     /* default suits us 
@@ -694,16 +706,16 @@ bool encodeTiff(const Image * source, FileContents * target){
     }
     
     //data orientation
-    /* default suits us
     writeWord(&head, 277);
     writeWord(&head, 3);
     writeDword(&head, 1);
     writeDword(&head, 1); ////support BW for now only
-    */
+    
     ASSERT(source->info.samplesPerPixel == 1);
     if(source->info.samplesPerPixel != 1){
         return false;
     }
+    
     
     //rows per strip
     writeWord(&head, 278);
@@ -712,14 +724,20 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeDword(&head, rowsPerStrip);
     
     
+    
     //strip byte counts (essentially bytes per strip);
     //these will be filled later, when compressing
     writeWord(&head, 279);
     writeWord(&head, 4);
     writeDword(&head, stripAmount);
-    writeDword(&head, dataHead.offset - target->contents);
-    stripSizes = (uint32 *) dataHead.offset;
-    dataHead.offset += stripAmount * 4; //allocate space for future
+    if(stripAmount == 1){
+        stripSizes = (uint32 *) head.offset;
+        head.offset += 4;
+    }else{
+        writeDword(&head, dataHead.offset - target->contents);
+        stripSizes = (uint32 *) dataHead.offset;
+        dataHead.offset += stripAmount * 4; //allocate space for future
+    }
     
     //can be ommited?
     /*
