@@ -3,7 +3,8 @@
 
 enum BitmapInterpretationType{
     BitmapInterpretationType_Invalid,
-    BitmapInterpretationType_GrayscaleBW01
+    BitmapInterpretationType_GrayscaleBW01,
+    BitmapInterpretationType_ARGB
 };
 
 enum BitmapOriginType{

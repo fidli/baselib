@@ -558,7 +558,8 @@ bool encodeTiff(const Image * source, FileContents * target){
     }
     
     //compress - wild quess now, later compress first, then work with exact numbers
-    uint32 compressedSize = MEGABYTE(50);
+    //assuming 4096 2 byte entries
+    uint32 compressedSize = (4096*2) * stripAmount;
     target->size =  (8 + (12 * entries) + 4) + (source->info.samplesPerPixel + 2*stripAmount) * 4 + compressedSize;
     target->contents = &PPUSHA(char, target->size);
     
@@ -762,6 +763,7 @@ bool encodeTiff(const Image * source, FileContents * target){
         dataHead.offset += size;
     }
     
+    ASSERT(target->size >= dataHead.offset - target->contents);
     target->size = dataHead.offset - target->contents;
     
     
