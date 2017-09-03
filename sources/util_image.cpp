@@ -84,10 +84,9 @@ bool flipY(Image * target){
     if(target->info.bitsPerSample * target->info.samplesPerPixel != 8){
         return false;
     }
-    
-    for(uint32 w = 0; w < target->info.width; w++){
-        for(uint32 h = 0; h < target->info.height; h++){
-            tmp[w + (target->info.height - h) * target->info.width] = target->data[w + target->info.height*h];
+    for(uint32 h = 0; h < target->info.height; h++){
+        for(uint32 w = 0; w < target->info.width; w++){
+            tmp[w + (target->info.height - h) * target->info.width] = target->data[w + target->info.width*h];
         }
     }
     

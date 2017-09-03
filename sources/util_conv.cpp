@@ -160,6 +160,7 @@ bool decodeBMP(const FileContents * source, Image * target){
     target->info.height = infoheader->height;
     ASSERT(infoheader->compression == 0);
     ASSERT(infoheader->colorPlanes == 1);
+    //check and correct padding when removing following assert
     ASSERT(infoheader->bitsPerPixel == 8);
     if(infoheader->compression != 0 || infoheader->colorPlanes != 1 || infoheader->bitsPerPixel != 8){
         return false;
@@ -169,8 +170,15 @@ bool decodeBMP(const FileContents * source, Image * target){
     target->info.origin = BitmapOriginType_BottomLeft;
     target->info.interpretation = BitmapInterpretationType_GrayscaleBW01;
     target->data = &PUSHA(byte, infoheader->datasize);
-    for(uint32 i = 0; i < infoheader->datasize; i++){
-        target->data[i] = (source->contents + dataOffset)[i];
+    uint32 rowpitch = (target->info.width % 4 != 0 ? (target->info.width/4 + 1)*4 : target->info.width);
+    for(uint32 h = 0; h < target->info.height; h++){
+        //data are padded with 0 for 32 bit row padding
+        uint32 sourcepitch = h * rowpitch;
+        uint32 targetpitch = h * target->info.width;
+        for(uint32 w = 0; w < target->info.width; w++){
+            target->data[targetpitch + w] = (source->contents + dataOffset)[sourcepitch + w];
+            
+        }
     }
     return true;
 }
@@ -239,7 +247,7 @@ bool encodeBMP(const Image * source, FileContents * target){
                 (target->contents + dataOffset)[h * savewidth + w] =  source->data[(infoheader->height - 1 - h) * infoheader->width + w];
             }
             for(uint32 w = infoheader->width; w < savewidth; w++){
-                (target->contents + dataOffset)[h * savewidth + w + w] = 0;
+                (target->contents + dataOffset)[h * savewidth + w] = 0;
             }
         }
     }else{

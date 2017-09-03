@@ -67,15 +67,19 @@ float32 powd(float32 base, int16 power = 2){
     return (power < 0) ? (1.0f / result) : result;
 }
 
-static float32 subSqrt(float32 value, float32 guess){
-    if(aseq(value / guess, guess, 0.0001f)){
+static float32 subSqrt(float32 value, float32 guess, float32 prec = 0.0001f){
+    if(aseq(value / guess, guess, prec)){
         return guess;
     }
-    return subSqrt(value, (guess + value/guess) / 2);
+    return subSqrt(value, (guess + value/guess) / 2, prec);
 }
 
+
+
 float32 sqrt(float32 value){
-    return subSqrt(value, value / 2);
+    if(aseq(value, 0)) return 0;
+    if(value < 0) INV;
+    return subSqrt(value, value / 2, value < 1 ? 0.000001f : 0.01f);
 }
 
 /* e N
