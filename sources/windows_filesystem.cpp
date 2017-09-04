@@ -23,6 +23,11 @@ bool readFile(const char * path, FileContents * target){
     return true;
 }
 
+bool fileExists(const char * path){
+    DWORD res = GetFileAttributes(path); 
+    return res != INVALID_FILE_ATTRIBUTES && !(res & FILE_ATTRIBUTE_DIRECTORY);
+}
+
 bool writeFile(FileHandle * target, const FileContents * source){
     return WriteFile(target->handle, source->contents, source->size, 0, 0) > 0;    
 }

@@ -19,5 +19,6 @@ bool readFile(const char * path, FileContents * target);
 bool saveFile(const char * path, const FileContents * source);
 bool appendFile(const char * path, const FileContents * source);
 bool readDirectory(const char * path, DirectoryContents * target);
+bool fileExists(const char * path);
 
 #endif
