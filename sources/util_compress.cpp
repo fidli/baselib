@@ -233,16 +233,15 @@ uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
     LZWTable * table = &PUSH(LZWTable);
     LZWCompressNode * pool = &PUSHA(LZWCompressNode, 1 << 12);
     uint16 poolCount = 0;
-    table->count = 4095;
+    table->count = 4094;
+    table->bits = 9;
     
-    uint16 currentCrawl = endOfInfo;
+    uint16 currentCrawl = source[0];
     bool fresh = true;
-    for(uint32 i = 0; i < sourceSize; i++){
-        if(table->count == 4095){
-            if(currentCrawl != endOfInfo){
-                ASSERT(currentCrawl <= 255);
-                writeBits(&compressedDataHead, currentCrawl, table->bits);
-            }
+    for(uint32 i = 1; i < sourceSize; i++){
+        if(table->count == 4094){
+            ASSERT((i == 1 && table->bits == 9) || (i != 1 && table->bits == 12));
+            writeBits(&compressedDataHead, clearCode, table->bits);
             for(uint16 i = 0; i < 258; i++){
                 table->data.carryingSymbol[i] = i;
                 table->data.children[i] = NULL;
@@ -252,51 +251,46 @@ uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
             table->bits = 9;
             table->count = 258;
             poolCount = 0;
-            writeBits(&compressedDataHead, clearCode, table->bits);
-            currentCrawl = endOfInfo;
         }
         
-        if(currentCrawl == endOfInfo){
-            currentCrawl = source[i];
-            
-        }else{
-            bool found = false;
-            LZWCompressNode * current = table->data.children[currentCrawl];
-            LZWCompressNode * previous = NULL;
-            while(current != NULL){
-                if(table->data.carryingSymbol[current->index] == source[i]){
-                    currentCrawl = current->index;
-                    found = true;
-                    break;
-                }
-                previous = current;
-                current = current->next;
-            } 
-            if(!found){
-                writeBits(&compressedDataHead, currentCrawl, table->bits);
-                uint16 newIndex = table->count;
-                table->data.carryingSymbol[newIndex] = source[i];
-                table->data.children[newIndex] = NULL;
-                if(previous == NULL){
-                    table->data.children[currentCrawl] = &pool[poolCount++];
-                    table->data.children[currentCrawl]->next = NULL;
-                    table->data.children[currentCrawl]->index = newIndex;
-                    ASSERT(poolCount <= 1 << 12);
-                }else{
-                    previous->next = &pool[poolCount++];
-                    previous->next->next = NULL;
-                    previous->next->index = newIndex;
-                    ASSERT(poolCount <= 1 << 12);
-                    
-                }
-                currentCrawl = source[i];
-                table->count++;
-                if(table->count >= (1 << 8)) table->bits = 9;
-                if(table->count >= (1 << 9)) table->bits = 10;
-                if(table->count >= (1 << 10)) table->bits = 11;
-                if(table->count >= (1 << 11)) table->bits = 12;
+        
+        bool found = false;
+        LZWCompressNode * current = table->data.children[currentCrawl];
+        LZWCompressNode * previous = NULL;
+        while(current != NULL){
+            if(table->data.carryingSymbol[current->index] == source[i]){
+                currentCrawl = current->index;
+                found = true;
+                break;
+            }
+            previous = current;
+            current = current->next;
+        } 
+        if(!found){
+            writeBits(&compressedDataHead, currentCrawl, table->bits);
+            uint16 newIndex = table->count;
+            table->data.carryingSymbol[newIndex] = source[i];
+            table->data.children[newIndex] = NULL;
+            if(previous == NULL){
+                table->data.children[currentCrawl] = &pool[poolCount++];
+                table->data.children[currentCrawl]->next = NULL;
+                table->data.children[currentCrawl]->index = newIndex;
+                ASSERT(poolCount <= 1 << 12);
+            }else{
+                previous->next = &pool[poolCount++];
+                previous->next->next = NULL;
+                previous->next->index = newIndex;
+                ASSERT(poolCount <= 1 << 12);
                 
             }
+            currentCrawl = source[i];
+            table->count++;
+            if(table->count >= (1 << 8)) table->bits = 9;
+            if(table->count >= (1 << 9)) table->bits = 10;
+            if(table->count >= (1 << 10)) table->bits = 11;
+            if(table->count >= (1 << 11)) table->bits = 12;
+            
+            
         }
     }
     writeBits(&compressedDataHead, currentCrawl, table->bits);
