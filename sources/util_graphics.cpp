@@ -10,7 +10,7 @@ struct Camera{
 };
 
 
-void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color color){
+void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color color, uint8 thickness = 1){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
     
     int32 minY = MIN(from->y, to->y);
@@ -40,9 +40,13 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
             
             for(uint32 w = minX; w <= maxX; w++){
                 uint32 linepoint = (int32)(k*w + q);
-                if(linepoint >= minY && linepoint <= maxY){
-                    uint32 pitch = linepoint*target->info.width;
-                    ((uint32 *)target->data)[pitch + w] = color.full;
+                linepoint -= thickness/2;
+                for(uint8 t = 0; t < thickness; t++){
+                    if(linepoint >= minY && linepoint <= maxY){
+                        uint32 pitch = linepoint*target->info.width;
+                        ((uint32 *)target->data)[pitch + w] = color.full;
+                    }
+                    linepoint++;
                 }
                 
             }
@@ -53,11 +57,14 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
             
             for(uint32 h = minY; h < maxY; h++){
                 uint32 linepoint = (int32)(k*h + q);
-                if(linepoint >= minX && linepoint <= maxX){
-                    uint32 pitch = h*target->info.width;
-                    ((uint32 *)target->data)[pitch + linepoint] = color.full;
+                linepoint -= thickness/2;
+                for(uint8 t = 0; t < thickness; t++){
+                    if(linepoint >= minX && linepoint <= maxX){
+                        uint32 pitch = h*target->info.width;
+                        ((uint32 *)target->data)[pitch + linepoint] = color.full;
+                    }
+                    linepoint++;
                 }
-                
             }
         }
         

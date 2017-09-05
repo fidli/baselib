@@ -86,8 +86,8 @@ static uint8 scanNumber16(const char * source, int16 * target, uint8 maxDigits =
 }
 
 static uint8 scanUnumber16(const char * source, uint16 * target, uint8 maxDigits = 5){
-    ASSERT(maxDigits <= 5)
-        uint8 i = 0;
+    ASSERT(maxDigits <= 5);
+    uint8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
         int8 digit = (int8) source[i];

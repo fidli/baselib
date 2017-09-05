@@ -77,8 +77,9 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
         head->bitOffset = 0;
         head->byteOffset++;
     }
-    
+#ifndef RELEASE
     ASSERT(head->byteOffset == oldByteOffset + 1 || head->byteOffset == oldByteOffset + 2);
+#endif
     return result;
 }
 
