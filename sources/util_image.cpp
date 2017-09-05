@@ -1,10 +1,13 @@
 #ifndef UTIL_IMAGE_H
 #define UTIL_IMAGE_H
 
+#include "util_math.cpp"
+
 enum BitmapInterpretationType{
     BitmapInterpretationType_Invalid,
     BitmapInterpretationType_GrayscaleBW01,
-    BitmapInterpretationType_ARGB
+    BitmapInterpretationType_ARGB,
+    BitmapInterpretationType_ABGR
 };
 
 enum BitmapOriginType{

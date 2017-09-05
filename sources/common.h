@@ -4,7 +4,9 @@
 #ifdef RELEASE
 #define ASSERT 
 #else
+#ifndef ASSERT
 #define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
+#endif
 #endif
 
 #define INV ASSERT(!"FUCK");

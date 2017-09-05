@@ -9,6 +9,9 @@
 
 //-----------------------------------------------------------------------NUMBERS
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#ifdef MAX
+#undef MAX
+#endif
 #define MAX(a, b) (((a) < (b)) ? (b) : (a))
 #define ABS(a) (((a) < 0) ? -(a) : (a))
 #define KRONECKER(a, b) ((a) == (b) ? 1 : 0)

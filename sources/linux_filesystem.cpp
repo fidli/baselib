@@ -19,32 +19,39 @@ static inline int getFileSizeAndGoBackToBeginning(FileHandle * handle){
     return byteSize;
 }
 
-void readFile(const char * path, FileContents * target){
+bool readFile(const char * path, FileContents * target){
     FileHandle file;
     file.handle = fopen(path, "r");
     file.descriptor = fileno(file.handle);
     ASSERT(file.descriptor  != -1);
+    if(file.descriptor == -1){
+        return false;
+    }
     int size = getFileSizeAndGoBackToBeginning(&file);
     target->size = size;
     target->contents = &PUSHA(char, target->size);
     ssize_t res = fread(target->contents, 1, target->size, file.handle);
     ASSERT(res == target->size);
+    if(res != target->size){
+        return false;
+    }
     fclose(file.handle);
+    return true;
 }
 
 bool writeFile(FileHandle * target, const FileContents * source){
     INV;
 }
 
-void saveFile(const char * path, const FileContents * source){
+bool saveFile(const char * path, const FileContents * source){
     INV;
 }
 
-void appendFile(const char * path, const FileContents * source){
+bool appendFile(const char * path, const FileContents * source){
     INV;
 }
 
-void readDirectory(const char * path, DirectoryContents * target){
+bool readDirectory(const char * path, DirectoryContents * target){
     INV;
 }
 
