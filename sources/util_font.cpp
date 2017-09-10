@@ -31,11 +31,10 @@
  }
  
  bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize){
-     ASSERT(fontSize <= font->original.gridSize);
-     if(fontSize > font->original.gridSize){
-         return false;
-     }
+     
+     
      if(font->current.gridSize != fontSize){
+         font->current.data.data = &PUSHA(byte, fontSize*16*fontSize*16);
          if(!scaleImage(&font->original.data, &font->current.data, fontSize * 16, fontSize * 16)){
              return false;
          }
@@ -44,21 +43,31 @@
      
      ASSERT(startY <= (int64)target->info.height - fontSize);
      ASSERT(startX <= (int64)target->info.width - fontSize * strlen(asciiText));
-     ASSERT(target->info.samplesPerPixel * target->info.bitsPerSample == 8);
+     ASSERT(target->info.samplesPerPixel * target->info.bitsPerSample >= 8);
+     ASSERT(target->info.samplesPerPixel * target->info.bitsPerSample % 8 == 0);
      
-     if(startY > (int64)target->info.height - fontSize || startX > (int64)target->info.width - fontSize * strlen(asciiText) ||target->info.samplesPerPixel * target->info.bitsPerSample != 8){
+     if(startY > (int64)target->info.height - fontSize || startX > (int64)target->info.width - fontSize * strlen(asciiText) ||target->info.samplesPerPixel * target->info.bitsPerSample < 8 ||
+        target->info.samplesPerPixel * target->info.bitsPerSample % 8 != 0){
          return false;
      }
      
+     
+     uint8 bytes = (target->info.samplesPerPixel * target->info.bitsPerSample) / 8;
      uint32 letterIndex = 0;
      while(asciiText[letterIndex] != '\0'){
          uint32 sourcePixel = (asciiText[letterIndex] / 16) * fontSize * font->current.data.info.width + (asciiText[letterIndex] % 16) * fontSize;
          uint32 targetPixel = startX + startY * target->info.width + letterIndex * fontSize;
          
-         for(uint32 rW = 0; rW < fontSize; rW++){
-             for(uint32 rH = 0; rH < fontSize; rH++){
-                 if(font->current.data.data[sourcePixel + rW + rH * font->current.data.info.width] > 0){
-                     target->data[targetPixel + rW + rH * target->info.width] = font->current.data.data[sourcePixel + rW + rH * font->current.data.info.width];
+         
+         for(uint32 rH = 0; rH < fontSize; rH++){
+             uint32 pitch = (targetPixel + rH * target->info.width);
+             uint32 fontpitch = sourcePixel + rH * font->current.data.info.width;
+             for(uint32 rW = 0; rW < fontSize; rW++){
+                 if(font->current.data.data[rW + fontpitch] > 0){
+                     uint32 bpitch = (rW + pitch)*bytes;
+                     for(uint8 bi = 0; bi < bytes; bi++){
+                         target->data[bpitch + bi] = 255;
+                     }
                  }
              }
          }

@@ -7,7 +7,9 @@ enum BitmapInterpretationType{
     BitmapInterpretationType_Invalid,
     BitmapInterpretationType_GrayscaleBW01,
     BitmapInterpretationType_ARGB,
-    BitmapInterpretationType_ABGR
+    BitmapInterpretationType_ABGR,
+    //https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/pixfmt-yuyv.html
+    BitmapInterpretationType_YUY2
 };
 
 enum BitmapOriginType{
@@ -22,6 +24,7 @@ struct Image{
         uint32 height;
         uint8 bitsPerSample;
         uint8 samplesPerPixel;
+        uint32 totalSize;
         BitmapInterpretationType interpretation;
         BitmapOriginType origin;
     } info;
