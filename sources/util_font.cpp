@@ -30,7 +30,7 @@
      return true;
  }
  
- bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize){
+ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize, Color color = {0xFF,0xFF,0xFF,0xFF}){
      
      
      if(font->current.gridSize != fontSize){
@@ -66,7 +66,7 @@
                  if(font->current.data.data[rW + fontpitch] > 0){
                      uint32 bpitch = (rW + pitch)*bytes;
                      for(uint8 bi = 0; bi < bytes; bi++){
-                         target->data[bpitch + bi] = 255;
+                         target->data[bpitch + bi] = color.channel[bi];
                      }
                  }
              }

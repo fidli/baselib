@@ -1,6 +1,7 @@
 #ifndef UTIL_MEM_H
 #define UTIL_MEM_H
 
+
 struct memory{
     void * persistent;
     void * stack;
