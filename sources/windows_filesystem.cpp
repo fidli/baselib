@@ -107,4 +107,23 @@ bool readDirectory(const char * path, DirectoryContents * target){
     
 }
 
+LocalTime getFileChangeTime(const char * path){
+    HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    ASSERT(SUCCEEDED(file));
+    
+    FILETIME filetime;
+    BOOL result = GetFileTime(file, NULL, NULL, &filetime);
+    ASSERT(result != 0);
+    
+    SYSTEMTIME systime;
+    result = FileTimeToSystemTime(&filetime, &systime);
+    ASSERT(result != 0);
+    
+    CloseHandle(file);
+    
+    return sysToLocal(&systime);
+    
+}
+
+
 #endif
