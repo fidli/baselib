@@ -1,4 +1,5 @@
 #include "common.h"
+#include "util_time.h"
 
 #ifndef UTIL_FILESYSTEM
 #define UTIL_FILESYSTEM

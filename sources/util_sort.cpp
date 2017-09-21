@@ -2,6 +2,7 @@
 #define UTIL_SORT_C
 
 
+
 void static inline swap(byte * source, byte * destination, const uint16 elemsize){
     byte temp;
     for(uint8 bo = 0; bo < elemsize; bo++){
@@ -58,6 +59,15 @@ void insertSort4(int32 * target, int64 arraySize, int8 (*cmp)(void * a, void * b
     }
 }
 
+//fisher yates - https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
+void shuffle(byte * target, const uint16 elemsize, int64 arraySize){
+    for(int32 i = arraySize-1; i > 0; i--){
+        //terrible rng, but whatever
+        uint16 randomIndex = randlcgRange(i+1);
+        swap(target + i*elemsize, target+randomIndex*elemsize, elemsize);
+    }
+    
+}
 
 //cmp 1 if a > b
 //0 if a == b

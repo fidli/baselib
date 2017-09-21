@@ -1,6 +1,8 @@
 #ifndef UTIL_CONV
 #define UTIL_CONV
 
+#include "util_image.cpp"
+
 //returns number of unmached chars
 uint32 convUTF8toAscii(const byte * source, const uint32 bytesize, char ** target, uint32 * targetSize){
     //inefficient alloc now, fuck that tho

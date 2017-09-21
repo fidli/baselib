@@ -22,6 +22,8 @@ bool initRng(Lcg * gen){
     return true;
 }
 
+
+
 uint16 randlcg(Lcg * gen){
     gen->state  = 1103515245 * gen->state + 12345;
     gen->state &= 0xEFFFFFFF; //modulo 31 bits
@@ -40,6 +42,10 @@ uint32 randlcgd(){
     a = a << 16;
     a = a | randlcg();
     return a;
+}
+
+uint16 randlcgRange(uint16 spanSize){
+    return (uint16)(((float32) randlcg() / (uint16) -1) * spanSize);
 }
 
 #endif
