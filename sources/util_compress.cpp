@@ -306,5 +306,11 @@ uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
 }
 
 
+//deflate/inflate
+//http://www.gzip.org/algorithm.txt
+void decompressDeflate(const char * compressedData, const uint32 compressedSize, char * target){
+    
+}
+
 
 #endif
