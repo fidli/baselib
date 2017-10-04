@@ -1,6 +1,8 @@
 #ifndef UTIL_COMPRESS
 #define UTIL_COMPRESS
 
+#include "util_sort.cpp"
+
 struct LZWCompressNode{
     uint16 index;
     LZWCompressNode * next;
@@ -50,10 +52,6 @@ struct ReadHeadBit{
 static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
     ASSERT(bits > 0);
     ASSERT(bits <= 16);
-#ifndef RELEASE
-    static uint16 oldByteOffset;
-    oldByteOffset = head->byteOffset;
-#endif
     uint16 result = 0;
     int16 toRead = bits;
     while(toRead > 0){
@@ -77,9 +75,7 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
         head->bitOffset = 0;
         head->byteOffset++;
     }
-#ifndef RELEASE
-    ASSERT(head->byteOffset == oldByteOffset + 1 || head->byteOffset == oldByteOffset + 2);
-#endif
+    
     return result;
 }
 
@@ -306,10 +302,163 @@ uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
 }
 
 
+struct CodeWord{
+    uint8 repeatTimes;
+    uint16 code;
+    uint8 bitSize;
+};
+
 //deflate/inflate
-//http://www.gzip.org/algorithm.txt
-void decompressDeflate(const char * compressedData, const uint32 compressedSize, char * target){
+//http://www.gzip.org/algorithm.txt - idea
+
+//more specific - https://en.wikipedia.org/wiki/DEFLATE or RFC
+bool decompressDeflate(const char * compressedData, const uint32 compressedSize, char * target){
+    //dict 32kbytes
+    //maxLen = 256
     
+    //start of block - huffman trees for indices and lenghts
+    ReadHeadBit head = {};
+    head.source = (const unsigned char*)compressedData;
+    
+    //phase1 repeat counts, is this hardcoded defined? or where do these repeat times come from?
+    uint8 repeatTimes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
+    uint8 ascendingIndices[] = {
+        3, 17, 15, 13, 11, 9, 7, 5, 4, 6, 8, 10, 12, 14, 16, 18, 0, 1, 2 
+    };
+    
+    
+    bool processBlock = true;
+    while(processBlock){
+        uint16 header = readBits(&head, 3);
+        processBlock = header & 4;
+        
+        if((header & 3) == 0){
+            //a stored/raw/literal section, between 0 and 65,535 bytes in length.
+            ASSERT(!"implement me");
+        }else if((header & 3) == 1){
+            ASSERT(!"implement me");
+            //a static Huffman compressed block, using a pre-agreed Huffman tree.
+        }else if((header & 3) == 2){
+            
+            // - http://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art001
+            //see Listing 14: Read the GZIP pre-header
+            
+            uint16 litCode = readBits(&head, 5);
+            uint16 distCode = readBits(&head, 5);
+            
+            
+            //huffmann tree for following lenghts
+            uint16 howMany3bitCodes = readBits(&head, 4);
+            howMany3bitCodes += 4;
+            
+            uint16 codeLengthsForRepeat[19];
+            for(uint8 i = 0; i < ARRAYSIZE(codeLengthsForRepeat); i++){
+                codeLengthsForRepeat[i] = 0;
+            }
+            
+            
+            CodeWord codeWords[19];
+            for(uint8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
+                codeWords[ci].bitSize = 0;
+                codeWords[ci].repeatTimes = repeatTimes[ci]; 
+            }
+            
+            
+            //kinda RlE 
+            for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
+                uint16 codeLength = readBits(&head, 3);
+                codeLengthsForRepeat[repeatTimes[bci]] = codeLength;
+            }
+            
+            //code words:
+            //This is one more than the last code of the previous bit length, left-shifted once.
+            //8 for 3 bits
+            uint16 currentCode = 0;
+            for(uint8 codeLength = 1; codeLength < 8; codeLength++){
+                //proccess each code length
+                
+                uint8 currentLengthIndices[19];
+                uint8 currentLengthCount = 0;
+                for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
+                    if(codeLengthsForRepeat[repeatTimes[bci]] == codeLength){
+                        currentLengthIndices[currentLengthCount++] = bci;
+                    }
+                }
+                
+                if(currentLengthCount > 0){
+                    //we now have indices with currennt length
+                    //we need to sort them 
+                    
+                    
+                    struct WeightAndIndex{
+                        uint8 weight;
+                        uint8 index;
+                    };
+                    
+                    WeightAndIndex currentWeights[19];
+                    
+                    
+                    for(uint8 li = 0; li < currentLengthCount; li++){
+                        
+                        for(uint8 weight = 0; weight < ARRAYSIZE(ascendingIndices); weight++){
+                            if(ascendingIndices[weight] == currentLengthIndices[li]){
+                                currentWeights[li].weight = weight;
+                                currentWeights[li].index = currentLengthIndices[li];
+                                break;
+                            }
+                        }
+                        
+                    }
+                    
+                    //sort by weight
+                    insertSort((byte*)currentWeights, sizeof(WeightAndIndex), currentLengthCount, [](void * a, void * b) -> int8 {
+                               WeightAndIndex * A = (WeightAndIndex *) a;
+                               WeightAndIndex * B = (WeightAndIndex *) b;
+                               if(A->weight < B->weight){
+                               return -1;
+                               }
+                               return 1;
+                               });
+                    
+                    //we now have weights, e.g order of code 
+                    
+                    for(uint8 li = 0; li < currentLengthCount; li++){
+                        codeWords[currentWeights[li].index].code = currentCode;
+                        codeWords[currentWeights[li].index].bitSize = codeLength;
+                        currentCode++;
+                    }
+                    
+                    currentCode += 1;
+                    currentCode = currentCode << 1;
+                }
+            }
+            
+            //now we have code book for following lz77
+            //sort it for better matching
+            
+            insertSort((byte*)codeWords, sizeof(CodeWord), 19, [](void * a, void * b) -> int8 {
+                       CodeWord * A = (CodeWord *) a;
+                       CodeWord * B = (CodeWord *) b;
+                       if(A->bitSize == 0) return 1;
+                       if(A->bitSize < B->bitSize){
+                       return -1;
+                       }
+                       return 1;
+                       });
+            
+            
+            
+            
+            
+            
+        }else{
+            ASSERT(false);
+            return false;
+        }
+        
+    }
+    
+    return true;
 }
 
 

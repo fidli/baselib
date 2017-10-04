@@ -1,6 +1,7 @@
 #ifndef UTIL_SORT_C
 #define UTIL_SORT_C
 
+#include "util_rng.cpp"
 
 
 void static inline swap(byte * source, byte * destination, const uint16 elemsize){
