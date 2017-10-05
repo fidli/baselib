@@ -104,8 +104,8 @@
          //deflate
          ASSERT(centralHeader->compressionMethod == 8);
          ZipLocalFileHeader * localHeader = (ZipLocalFileHeader *) (zipArchive->contents + centralHeader->localFileHeaderOffset);
-         ASSERT(localHeader->compressedSize == centralHeader->compressedSize);
-         ASSERT(localHeader->uncompressedSize == centralHeader->uncompressedSize);
+         ASSERT(localHeader->compressedSize == 0 || localHeader->compressedSize == centralHeader->compressedSize);
+         ASSERT(localHeader->uncompressedSize == 0 || localHeader->uncompressedSize == centralHeader->uncompressedSize);
          ASSERT(localHeader->compressionMethod == centralHeader->compressionMethod);
          
          

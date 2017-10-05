@@ -374,6 +374,16 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             //This is one more than the last code of the previous bit length, left-shifted once.
             //8 for 3 bits
             uint16 currentCode = 0;
+            
+#if 0
+            uint16 mockedLengths[] = {6, 7, 7, 3, 3, 2, 3, 3, 4, 4, 5, 4};
+            
+            howMany3bitCodes = 12;
+            for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
+                codeLengthsForRepeat[repeatTimes[bci]] = mockedLengths[bci];
+            }
+            
+#endif
             for(uint8 codeLength = 1; codeLength < 8; codeLength++){
                 //proccess each code length
                 
@@ -428,7 +438,6 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                         currentCode++;
                     }
                     
-                    currentCode += 1;
                     currentCode = currentCode << 1;
                 }
             }
@@ -439,7 +448,6 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             insertSort((byte*)codeWords, sizeof(CodeWord), 19, [](void * a, void * b) -> int8 {
                        CodeWord * A = (CodeWord *) a;
                        CodeWord * B = (CodeWord *) b;
-                       if(A->bitSize == 0) return 1;
                        if(A->bitSize < B->bitSize){
                        return -1;
                        }
@@ -448,6 +456,65 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             
             
             
+            uint8 startingCodeIndex = 0;
+            for(;startingCodeIndex < ARRAYSIZE(codeWords); startingCodeIndex++){
+                if(codeWords[startingCodeIndex].bitSize != 0) break;
+            }
+            
+            //now decoding literals
+            int16 literalCodeLengths[257];
+            uint8 literalIndex = 0;
+            
+            while(literalIndex < 257){
+                
+                uint16 currentStreamCode = 0;
+                uint16 currentBitSize = 0;
+                uint8 ci;
+                for(ci = startingCodeIndex; ci < ARRAYSIZE(codeWords); ci++){
+                    uint8 toRead = codeWords[ci].bitSize - currentBitSize;
+                    if(toRead != 0){
+                        uint16 addition = readBits(&head, toRead);
+                        currentStreamCode= currentStreamCode << toRead;
+                        currentStreamCode |= addition;
+                        currentBitSize = codeWords[ci].bitSize;
+                    }
+                    if(currentStreamCode == codeWords[ci].code){
+                        
+                        
+                        //17 repeat 0 n times n = 3 bits
+                        if(codeWords[ci].repeatTimes == 17){
+                            uint16 times0 = readBits(&head, 3);
+                            times0 += 3;
+                            for(; literalIndex < times0; literalIndex++){
+                                literalCodeLengths[literalIndex] = 0;
+                            }
+                            
+                        }else if(codeWords[ci].repeatTimes == 18){
+                            //18 repeat 0 n times n = 7 bits
+                            uint16 times0 = readBits(&head, 7);
+                            times0 += 10;
+                            for(; literalIndex < times0; literalIndex++){
+                                literalCodeLengths[literalIndex] = 0;
+                            }
+                            ASSERT(false); // check and set this to true
+                        }else if(codeWords[ci].repeatTimes == 16){
+                            ////16 repeat previous n times
+                            uint16 timesRepeat = readBits(&head, 2);
+                            //add some?
+                            
+                            ASSERT(false); // check and set this to true
+                        }else{
+                            literalCodeLengths[literalIndex] = codeWords[ci].repeatTimes;
+                            literalIndex++;
+                        }
+                        
+                        
+                        break;
+                    }
+                    
+                } 
+                ASSERT(ci != ARRAYSIZE(codeWords));
+            }
             
             
             
