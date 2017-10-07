@@ -363,13 +363,16 @@ inline static uint32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * l
         if(currentNode->leaf){
             if(currentNode->value < 256){
                 target[localOffset++] = (char)currentNode->value;
-            }else if(currentNode->value == 256){
+            }
+            if(currentNode->value == 256){
+                
                 break;
-            }else{
+            }
+            if(currentNode->value > 256){
                 //repetition, defined in specification
                 int32 count;
                 if(currentNode->value < 265){
-                    count = 254 - currentNode->value;
+                    count = currentNode->value - 254;
                 }else if(currentNode->value < 285){
                     uint8 bits = (currentNode->value - 261) / 4;
                     count = invertBits(readBits(head, bits), bits) + extraCounts[currentNode->value - 265];
@@ -392,6 +395,7 @@ inline static uint32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * l
                     
                     
                 }else{
+                    //invert?
                     backOffset = readBits(head, 5);
                 }
                 
@@ -639,13 +643,27 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
     bool processBlock = true;
     while(processBlock){
         PUSHI;
-        processBlock = !(readBits(&head, 1) & 1);
+        processBlock = readBits(&head, 1);
         uint16 header = invertBits(readBits(&head, 2), 2);
         
         
         if((header & 3) == 0){
             //a stored/raw/literal section, between 0 and 65,535 bytes in length.
-            ASSERT(!"implement me");
+            //http://www.bolet.org/~pornin/deflate-flush.html
+            while(head.bitOffset != 0){
+                uint16 bits = readBits(&head, 1);
+                ASSERT(bits == 0);
+            } //get rid of 0 bytes
+            
+            uint16 dataSize = readBits(&head, 16);
+            //this is redundancy
+            uint16 complement = readBits(&head, 16);
+            //now the data should be present
+            ASSERT(head.bitOffset == 0);
+            for(uint32 i = 0; i < dataSize; i++){
+                target[targetOffset++] = (byte) readBits(&head, 8);
+            }
+            
         }else if((header & 3) == 1){
             ASSERT(false);
             //a static Huffman compressed block, using a pre-agreed Huffman tree.
