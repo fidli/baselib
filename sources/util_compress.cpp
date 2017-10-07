@@ -344,6 +344,78 @@ struct CodeWord{
     uint8 bitSize;
 };
 
+inline static uint32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * literalsTree, const HuffmanNode * distancesTree, byte * target){
+    
+    
+    int32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
+    int32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
+    
+    
+    //inflating huffman codes
+    uint32 localOffset = 0;
+    const HuffmanNode * currentNode = literalsTree;
+    while(true){
+        if(readBits(head, 1) & 1){
+            currentNode = currentNode->one;
+        }else{
+            currentNode = currentNode->zero;
+        }
+        if(currentNode->leaf){
+            if(currentNode->value < 256){
+                target[localOffset++] = (char)currentNode->value;
+            }else if(currentNode->value == 256){
+                break;
+            }else{
+                //repetition, defined in specification
+                int32 count;
+                if(currentNode->value < 265){
+                    count = 254 - currentNode->value;
+                }else if(currentNode->value < 285){
+                    uint8 bits = (currentNode->value - 261) / 4;
+                    count = invertBits(readBits(head, bits), bits) + extraCounts[currentNode->value - 265];
+                }else{
+                    count = 258;
+                }
+                
+                int32 backOffset;
+                
+                if(distancesTree){
+                    const HuffmanNode * distNode = distancesTree;
+                    while(!distNode->leaf){
+                        if(readBits(head, 1) & 1){
+                            distNode = distNode->one;
+                        }else{
+                            distNode = distNode->zero;
+                        }
+                    }
+                    backOffset = distNode->value;
+                    
+                    
+                }else{
+                    backOffset = readBits(head, 5);
+                }
+                
+                
+                
+                if(backOffset > 3){
+                    uint8 bits = (backOffset-2)/2;
+                    backOffset =  invertBits(readBits(head, bits), bits) + extraBackOffsets[backOffset-4];
+                }
+                
+                unsigned char * start = target + localOffset - 1 - backOffset;
+                
+                for(int32 i = 0; i < count; i++){
+                    target[localOffset++] = start[i];
+                }
+                
+            }
+            currentNode = literalsTree;
+        }
+    }
+    ASSERT(currentNode->value == 256); //ended with close node
+    return localOffset;
+}
+
 
 static void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 code, uint8 codeLenght){
     
@@ -562,15 +634,12 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
     uint8 dynamicCodes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
     //uint8 ascendingIndices[] = { 3, 17, 15, 13, 11, 9, 7, 5, 4, 6, 8, 10, 12, 14, 16, 18, 0, 1, 2};
     
-    int32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
-    int32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
-    
     uint32 targetOffset = 0;
     
     bool processBlock = true;
     while(processBlock){
         PUSHI;
-        processBlock = readBits(&head, 1) & 1;
+        processBlock = !(readBits(&head, 1) & 1);
         uint16 header = invertBits(readBits(&head, 2), 2);
         
         
@@ -648,49 +717,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             }
             
             
-            //inflating huffman codes
-            HuffmanNode * currentNode = &tree;
-            while(head.byteOffset < compressedSize){
-                if(readBits(&head, 1) & 1){
-                    currentNode = currentNode->one;
-                }else{
-                    currentNode = currentNode->zero;
-                }
-                if(currentNode->leaf){
-                    if(currentNode->value < 256){
-                        target[targetOffset++] = (char)currentNode->value;
-                    }else if(currentNode->value == 256){
-                        break;
-                    }else{
-                        //repetition, defined in specification
-                        int32 count;
-                        if(currentNode->value < 265){
-                            count = 254 - currentNode->value;
-                        }else if(currentNode->value < 285){
-                            uint8 bits = (currentNode->value - 261) / 4;
-                            count = invertBits(readBits(&head, bits), bits) + extraCounts[currentNode->value - 265];
-                        }else{
-                            count = 258;
-                        }
-                        
-                        int32 backOffset = readBits(&head, 5);
-                        if(backOffset > 3){
-                            uint8 bits = (backOffset-2)/2;
-                            backOffset =  invertBits(readBits(&head, bits), bits) + extraBackOffsets[backOffset-4];
-                        }
-                        
-                        char * start = target + targetOffset - 1 - backOffset;
-                        
-                        for(int32 i = 0; i < count; i++){
-                            target[targetOffset++] = start[i];
-                        }
-                        
-                    }
-                    currentNode = &tree;
-                }
-            }
-            ASSERT(currentNode->value == 256); //ended with close node
-            
+            //call to func
             
         }else if((header & 3) == 2){
             
@@ -736,17 +763,16 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             readCodes(&head, &quickTree, literalCodes, 257 + litCode);
             
             
-            CodeWord * distanceCodes = &PUSHA(CodeWord, distCode);
-            readCodes(&head, &quickTree, distanceCodes, distCode);
+            CodeWord * distanceCodes = &PUSHA(CodeWord, distCode + 1);
+            readCodes(&head, &quickTree, distanceCodes, distCode + 1);
             
             HuffmanNode literalTree = assignCodesAndBuildTree(literalCodes, 257 + litCode);
             
-            HuffmanNode distanceTree = assignCodesAndBuildTree(distanceCodes, distCode);
+            HuffmanNode distanceTree = assignCodesAndBuildTree(distanceCodes, distCode + 1);
             
             
+            targetOffset += decompressHuffman(&head, &literalTree, &distanceTree, (unsigned char *)target + targetOffset);
             
-            
-            bool tru = true;
         }else{
             ASSERT(false);
             return false;
