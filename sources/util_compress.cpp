@@ -339,14 +339,13 @@ struct HuffmanNode{
 };
 
 struct CodeWord{
-    uint8 dynamicCode;
-    uint16 code;
+    uint32 weight;
+    uint32 code;
     uint8 bitSize;
 };
 
 
-
-void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 code, uint8 codeLenght){
+static void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 code, uint8 codeLenght){
     
     //if this fires, not a prefix code
     ASSERT(tree->value == -1);
@@ -392,6 +391,159 @@ void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 code, uint
     
 }
 
+static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, uint32 itemCount){
+    
+    
+    
+    //sort by weigth, then by size //then assign codes
+    insertSort((byte * )codeWords, sizeof(CodeWord), itemCount, [](void * a, void * b) -> int8{
+               CodeWord * A = (CodeWord *) a;
+               CodeWord * B = (CodeWord *) b;
+               if(A->weight > B->weight){
+               return 1;
+               }else if(A->weight == B->weight){
+               return 0;
+               }
+               return -1;
+               });
+    
+    insertSort((byte * )codeWords, sizeof(CodeWord), itemCount, [](void * a, void * b) -> int8{
+               CodeWord * A = (CodeWord *) a;
+               CodeWord * B = (CodeWord *) b;
+               if(A->bitSize > B->bitSize){
+               return 1;
+               }else if(A->bitSize == B->bitSize){
+               return 0;
+               }
+               return -1;
+               });
+    
+    
+    uint8 maxCodeLength = codeWords[itemCount-1].bitSize;
+    
+    uint32 * amounts = &PUSHA(uint32, maxCodeLength+1);
+    for(uint8 i = 0; i < maxCodeLength; i++){
+        amounts[i] = 0;
+    }
+    uint32 * codeDispenser = &PUSHA(uint32, maxCodeLength+1);
+    uint32 code = 0;
+    codeDispenser[0] = code;
+    
+    
+    for(uint32 i = 0; i < itemCount; i++){
+        amounts[codeWords[i].bitSize]++;
+    }
+    
+    for(uint8 i = 1; i <= maxCodeLength; i++){
+        code = (code + amounts[i-1]) << 1;
+        codeDispenser[i] = code;
+    }
+    
+    
+    
+    
+    for(uint32 i = 0; i < itemCount; i++){
+        //proccess each code length
+        
+        if(codeWords[i].bitSize == 0) continue;
+        
+        
+        
+        codeWords[i].code = codeDispenser[codeWords[i].bitSize];
+        codeDispenser[codeWords[i].bitSize]++;
+        
+    }
+    
+    HuffmanNode tree;
+    tree.leaf = false;
+    tree.value = -1;
+    tree.one = NULL;
+    tree.zero = NULL;
+    
+    for(uint32 i = 0; i < itemCount; i++){
+        if(codeWords[i].bitSize == 0) continue;
+        HuffmanNode * node = &PUSH(HuffmanNode);
+        
+        node->leaf = true;
+        node->value = codeWords[i].weight;
+        node->one = NULL;
+        node->zero = NULL;
+        
+        addHuffmanNodeRec(&tree, node, invertBits(codeWords[i].code, codeWords[i].bitSize), codeWords[i].bitSize);
+        
+    }
+    
+    return tree;
+    
+}
+
+
+
+static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeWord * target, uint32 limit){
+    
+    const HuffmanNode * currentNode = tree;
+    int32 i = 0;
+    while(i < limit){
+        
+        if(readBits(head, 1) & 1){
+            currentNode = currentNode->one;
+        }else{
+            currentNode = currentNode->zero;
+        }
+        ASSERT(currentNode != NULL);
+        if(currentNode->leaf){
+            
+            //17 repeat 0 n times n = 3 bits
+            if(currentNode->value == 17){
+                uint16 times0 = invertBits(readBits(head, 3), 3);
+                times0 += 3;
+                
+                for(uint16 ri = 0; ri < times0; ri++){
+                    target[i].bitSize = 0;
+                    target[i].weight = i;
+                    i++;
+                }
+                
+                
+            }else if(currentNode->value == 18){
+                //18 repeat 0 n times n = 7 bits
+                uint16 times0 = invertBits(readBits(head, 7), 7);
+                times0 += 11;
+                for(uint16 ri = 0; ri  < times0; ri++){
+                    target[i].bitSize = 0;
+                    target[i].weight = i;
+                    i++;
+                }
+                
+            }else if(currentNode->value == 16){
+                ////16 repeat previous n times
+                uint16 timesRepeat = invertBits(readBits(head, 2), 2);
+                timesRepeat += 3;
+                ASSERT(i-1 >= 0);
+                for(uint16 ri = 0; ri < timesRepeat; ri++){
+                    target[i].bitSize = target[i-1].bitSize;
+                    target[i].weight = i;
+                    i++;
+                }
+            }else{
+                target[i].bitSize = currentNode->value;
+                target[i].weight = i;
+                i++;
+            }
+            
+            
+            currentNode = tree;
+        }
+        
+        
+        
+        
+    }
+    ASSERT(i == limit);
+    
+}
+
+
 //deflate/inflate
 //http://www.gzip.org/algorithm.txt - idea
 
@@ -408,9 +560,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
     
     //phase1 repeat counts, is this hardcoded defined? or where do these repeat times come from?
     uint8 dynamicCodes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
-    uint8 ascendingIndices[] = {
-        3, 17, 15, 13, 11, 9, 7, 5, 4, 6, 8, 10, 12, 14, 16, 18, 0, 1, 2 
-    };
+    //uint8 ascendingIndices[] = { 3, 17, 15, 13, 11, 9, 7, 5, 4, 6, 8, 10, 12, 14, 16, 18, 0, 1, 2};
     
     int32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
     int32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
@@ -419,6 +569,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
     
     bool processBlock = true;
     while(processBlock){
+        PUSHI;
         processBlock = readBits(&head, 1) & 1;
         uint16 header = invertBits(readBits(&head, 2), 2);
         
@@ -427,17 +578,17 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             //a stored/raw/literal section, between 0 and 65,535 bytes in length.
             ASSERT(!"implement me");
         }else if((header & 3) == 1){
-            
+            ASSERT(false);
             //a static Huffman compressed block, using a pre-agreed Huffman tree.
             /** 
- * Build a Huffman tree for the following values:
- *   0 - 143: 00110000  - 10111111     (8)
- * 144 - 255: 110010000 - 111111111    (9)
- * 256 - 279: 0000000   - 0010111      (7)
- * 280 - 287: 11000000  - 11000111     (8)
- * According to the RFC 1951 rules in section 3.2.2
- * This is used to (de)compress small inputs.
- */
+            * Build a Huffman tree for the following values:
+            *   0 - 143: 00110000  - 10111111     (8)
+            * 144 - 255: 110010000 - 111111111    (9)
+            * 256 - 279: 0000000   - 0010111      (7)
+            * 280 - 287: 11000000  - 11000111     (8)
+            * According to the RFC 1951 rules in section 3.2.2
+            * This is used to (de)compress small inputs.
+            */
             
             HuffmanNode tree;
             tree.leaf = false;
@@ -563,174 +714,44 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             
             CodeWord codeWords[19];
             for(uint8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
+                codeWords[ci].weight = dynamicCodes[ci];
                 codeWords[ci].bitSize = 0;
-                codeWords[ci].dynamicCode = dynamicCodes[ci]; 
             }
             
             
             //kinda RlE 
             for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
                 uint16 codeLength = invertBits(readBits(&head, 3), 3);
-                codeLengthsForRepeat[dynamicCodes[bci]] = codeLength;
+                codeWords[bci].bitSize = codeLength;
             }
-            
-            //code words:
-            //This is one more than the last code of the previous bit length, left-shifted once.
-            //8 for 3 bits
-            uint16 currentCode = 0;
-            
-#if 0
-            uint16 mockedLengths[] = {6, 7, 7, 3, 3, 2, 3, 3, 4, 4, 5, 4};
-            
-            howMany3bitCodes = 12;
-            for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
-                codeLengthsForRepeat[dynamicCodes[bci]] = mockedLengths[bci];
-            }
-            
-#endif
-            for(uint8 codeLength = 1; codeLength < 8; codeLength++){
-                //proccess each code length
-                
-                uint8 currentLengthIndices[19];
-                uint8 currentLengthCount = 0;
-                for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
-                    if(codeLengthsForRepeat[dynamicCodes[bci]] == codeLength){
-                        currentLengthIndices[currentLengthCount++] = bci;
-                    }
-                }
-                
-                if(currentLengthCount > 0){
-                    //we now have indices with currennt length
-                    //we need to sort them 
-                    
-                    
-                    struct WeightAndIndex{
-                        uint8 weight;
-                        uint8 index;
-                    };
-                    
-                    WeightAndIndex currentWeights[19];
-                    
-                    
-                    for(uint8 li = 0; li < currentLengthCount; li++){
-                        
-                        for(uint8 weight = 0; weight < ARRAYSIZE(ascendingIndices); weight++){
-                            if(ascendingIndices[weight] == currentLengthIndices[li]){
-                                currentWeights[li].weight = weight;
-                                currentWeights[li].index = currentLengthIndices[li];
-                                break;
-                            }
-                        }
-                        
-                    }
-                    
-                    //sort by weight
-                    insertSort((byte*)currentWeights, sizeof(WeightAndIndex), currentLengthCount, [](void * a, void * b) -> int8 {
-                               WeightAndIndex * A = (WeightAndIndex *) a;
-                               WeightAndIndex * B = (WeightAndIndex *) b;
-                               if(A->weight < B->weight){
-                               return -1;
-                               }
-                               return 1;
-                               });
-                    
-                    //we now have weights, e.g order of code 
-                    
-                    for(uint8 li = 0; li < currentLengthCount; li++){
-                        codeWords[currentWeights[li].index].code = currentCode;
-                        codeWords[currentWeights[li].index].bitSize = codeLength;
-                        currentCode++;
-                    }
-                    
-                    
-                }
-                currentCode = currentCode << 1;
-            }
-            
             
             
             
             //now we have code book for following lz77 lengths
+            HuffmanNode quickTree = assignCodesAndBuildTree(codeWords, howMany3bitCodes);
             
-            HuffmanNode tree;
-            tree.leaf = false;
-            tree.value = -1;
-            tree.one = NULL;
-            tree.zero = NULL;
-            
-            for(uint8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
-                if(codeWords[ci].bitSize != 0){
-                    HuffmanNode * node = &PUSH(HuffmanNode);
-                    
-                    node->leaf = true;
-                    node->value = codeWords[ci].dynamicCode;
-                    node->one = NULL;
-                    node->zero = NULL;
-                    
-                    addHuffmanNodeRec(&tree, node, invertBits(codeWords[ci].code, codeWords[ci].bitSize), codeWords[ci].bitSize);
-                }
-            }
             
             //now decoding literals
-            uint16 literalIndex = 0;
-            uint16 literalCodeLengths[258];
+            CodeWord * literalCodes = &PUSHA(CodeWord, 257 + litCode); 
+            readCodes(&head, &quickTree, literalCodes, 257 + litCode);
             
-            HuffmanNode * currentNode = &tree;
-            while(head.byteOffset < compressedSize && literalIndex < 258){
-                
-                if(readBits(&head, 1) & 1){
-                    currentNode = currentNode->one;
-                }else{
-                    currentNode = currentNode->zero;
-                }
-                ASSERT(currentNode != NULL);
-                if(currentNode->leaf){
-                    
-                    //17 repeat 0 n times n = 3 bits
-                    if(currentNode->value == 17){
-                        uint16 times0 = invertBits(readBits(&head, 3), 3);
-                        times0 += 3;
-                        
-                        for(uint16 ri = 0; ri < times0; ri++){
-                            literalCodeLengths[literalIndex++] = 0;
-                        }
-                        
-                        
-                    }else if(currentNode->value == 18){
-                        //18 repeat 0 n times n = 7 bits
-                        uint16 times0 = invertBits(readBits(&head, 7), 7);
-                        times0 += 11;
-                        for(uint16 ri = 0; ri  < times0; ri++){
-                            literalCodeLengths[literalIndex++] = 0;
-                        }
-                        
-                    }else if(currentNode->value == 16){
-                        ////16 repeat previous n times
-                        uint16 timesRepeat = invertBits(readBits(&head, 2), 2);
-                        timesRepeat += 3;
-                        for(uint16 ri = 0; ri < timesRepeat; ri++){
-                            literalCodeLengths[literalIndex] = literalCodeLengths[literalIndex-1];
-                            literalIndex++;
-                        }
-                    }else{
-                        literalCodeLengths[literalIndex] = currentNode->value;
-                        literalIndex++;
-                    }
-                    
-                    
-                    currentNode = &tree;
-                }
-                
-                
-                
-                
-            }
+            
+            CodeWord * distanceCodes = &PUSHA(CodeWord, distCode);
+            readCodes(&head, &quickTree, distanceCodes, distCode);
+            
+            HuffmanNode literalTree = assignCodesAndBuildTree(literalCodes, 257 + litCode);
+            
+            HuffmanNode distanceTree = assignCodesAndBuildTree(distanceCodes, distCode);
+            
+            
+            
+            
             bool tru = true;
         }else{
             ASSERT(false);
             return false;
         }
-        
+        POPI;
     }
     
     return true;
