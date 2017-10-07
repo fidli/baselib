@@ -49,6 +49,21 @@ struct ReadHeadBit{
     uint8 bitOffset;
 };
 
+static inline uint16 invertBits(const uint16 sourceBits, uint8 bitCount){
+    uint16 result = 0;
+    
+    uint16 workBits = sourceBits;
+    int16 currentBit = bitCount-1;
+    
+    while(currentBit >= 0){
+        result |= ((workBits & 1) << currentBit);
+        currentBit--;
+        workBits >>= 1;
+    }
+    
+    return result;
+}
+
 static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
     ASSERT(bits > 0);
     ASSERT(bits <= 16);
@@ -302,11 +317,67 @@ uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
 }
 
 
+struct HuffmanNode{
+    bool leaf;
+    int32 value;
+    uint8 bit;
+    HuffmanNode * one;
+    HuffmanNode * zero;
+};
+
 struct CodeWord{
-    uint8 repeatTimes;
+    uint8 dynamicCode;
     uint16 code;
     uint8 bitSize;
 };
+
+
+
+void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 code, uint8 codeLenght){
+    
+    //if this fires, not a prefix code
+    ASSERT(tree->value == -1);
+    
+    if(codeLenght == 1){
+        if(code & 1){
+            ASSERT(tree->one == NULL);
+            tree->one = node;
+        }else{
+            ASSERT(tree->zero == NULL);
+            tree->zero = node;
+        }
+        tree->bit = code & 1;
+        return;
+    }
+    
+    HuffmanNode * subtree;
+    
+    if(code & 1){
+        if(tree->one == NULL){
+            tree->one = &PUSH(HuffmanNode);
+            tree->one->bit = 1;
+            tree->one->leaf = false;
+            tree->one->value = -1;
+            tree->one->one = NULL;
+            tree->one->zero = NULL;
+        }
+        subtree = tree->one;
+    }else{
+        if(tree->zero == NULL){
+            tree->zero = &PUSH(HuffmanNode);
+            tree->zero->bit = 0;
+            tree->zero->leaf = false;
+            tree->zero->value = -1;
+            tree->zero->one = NULL;
+            tree->zero->zero = NULL;
+        }
+        subtree = tree->zero;
+    }
+    
+    addHuffmanNodeRec(subtree, node, code >> 1, codeLenght-1);
+    
+    
+}
 
 //deflate/inflate
 //http://www.gzip.org/algorithm.txt - idea
@@ -321,34 +392,152 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
     head.source = (const unsigned char*)compressedData;
     
     //phase1 repeat counts, is this hardcoded defined? or where do these repeat times come from?
-    uint8 repeatTimes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
+    uint8 dynamicCodes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
     uint8 ascendingIndices[] = {
         3, 17, 15, 13, 11, 9, 7, 5, 4, 6, 8, 10, 12, 14, 16, 18, 0, 1, 2 
     };
     
+    int32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
+    int32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
+    
+    uint32 targetOffset = 0;
     
     bool processBlock = true;
     while(processBlock){
-        uint16 header = readBits(&head, 3);
-        processBlock = header & 4;
+        processBlock = readBits(&head, 1) & 1;
+        uint16 header = invertBits(readBits(&head, 2), 2);
+        
         
         if((header & 3) == 0){
             //a stored/raw/literal section, between 0 and 65,535 bytes in length.
             ASSERT(!"implement me");
         }else if((header & 3) == 1){
-            ASSERT(!"implement me");
+            
             //a static Huffman compressed block, using a pre-agreed Huffman tree.
+            /** 
+ * Build a Huffman tree for the following values:
+ *   0 - 143: 00110000  - 10111111     (8)
+ * 144 - 255: 110010000 - 111111111    (9)
+ * 256 - 279: 0000000   - 0010111      (7)
+ * 280 - 287: 11000000  - 11000111     (8)
+ * According to the RFC 1951 rules in section 3.2.2
+ * This is used to (de)compress small inputs.
+ */
+            
+            HuffmanNode tree;
+            tree.leaf = false;
+            tree.value = -1;
+            tree.one = NULL;
+            tree.zero = NULL;
+            
+            uint16 code = 48;
+            
+            for(int32 value = 0; value <= 143; value++){
+                HuffmanNode * node = &PUSH(HuffmanNode);
+                
+                node->value = value;
+                node->one = false;
+                node->zero = false;
+                node->leaf = true;
+                
+                addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
+                code++;
+            }
+            code = 400;
+            for(int32 value = 144; value <= 255; value++){
+                HuffmanNode * node = &PUSH(HuffmanNode);
+                
+                node->value = value;
+                node->one = false;
+                node->zero = false;
+                node->leaf = true;
+                
+                addHuffmanNodeRec(&tree, node, invertBits(code, 9), 9);
+                code++;
+            }
+            code = 0;
+            for(int32 value = 256; value <= 279; value++){
+                HuffmanNode * node = &PUSH(HuffmanNode);
+                
+                node->value = value;
+                node->one = false;
+                node->zero = false;
+                node->leaf = true;
+                
+                addHuffmanNodeRec(&tree, node, invertBits(code, 7), 7);
+                code++;
+            }
+            
+            code = 192;
+            for(int32 value = 280; value <= 287; value++){
+                HuffmanNode * node = &PUSH(HuffmanNode);
+                
+                node->value = value;
+                node->one = false;
+                node->zero = false;
+                node->leaf = true;
+                
+                addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
+                code++;
+            }
+            
+            
+            //inflating huffman codes
+            HuffmanNode * currentNode = &tree;
+            while(head.byteOffset < compressedSize){
+                if(readBits(&head, 1) & 1){
+                    currentNode = currentNode->one;
+                }else{
+                    currentNode = currentNode->zero;
+                }
+                if(currentNode->leaf){
+                    if(currentNode->value < 256){
+                        target[targetOffset++] = (char)currentNode->value;
+                    }else if(currentNode->value == 256){
+                        break;
+                    }else{
+                        //repetition, defined in specification
+                        int32 count;
+                        if(currentNode->value < 265){
+                            count = 254 - currentNode->value;
+                        }else if(currentNode->value < 285){
+                            uint8 bits = (currentNode->value - 261) / 4;
+                            count = invertBits(readBits(&head, bits), bits) + extraCounts[currentNode->value - 265];
+                        }else{
+                            count = 258;
+                        }
+                        
+                        int32 backOffset = readBits(&head, 5);
+                        if(backOffset > 3){
+                            uint8 bits = (backOffset-2)/2;
+                            backOffset =  invertBits(readBits(&head, bits), bits) + extraBackOffsets[backOffset-4];
+                        }
+                        
+                        char * start = target + targetOffset - 1 - backOffset;
+                        
+                        for(int32 i = 0; i < count; i++){
+                            target[targetOffset++] = start[i];
+                        }
+                        
+                    }
+                    currentNode = &tree;
+                }
+            }
+            ASSERT(currentNode->value == 256); //ended with close node
+            
+            
         }else if((header & 3) == 2){
+            
             
             // - http://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art001
             //see Listing 14: Read the GZIP pre-header
             
-            uint16 litCode = readBits(&head, 5);
-            uint16 distCode = readBits(&head, 5);
+            uint16 litCode = invertBits(readBits(&head, 5), 5);
+            uint16 distCode = invertBits(readBits(&head, 5), 5);
             
             
             //huffmann tree for following lenghts
-            uint16 howMany3bitCodes = readBits(&head, 4);
+            uint16 howMany3bitCodes = invertBits(readBits(&head, 4), 4);
             howMany3bitCodes += 4;
             
             uint16 codeLengthsForRepeat[19];
@@ -360,14 +549,14 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             CodeWord codeWords[19];
             for(uint8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
                 codeWords[ci].bitSize = 0;
-                codeWords[ci].repeatTimes = repeatTimes[ci]; 
+                codeWords[ci].dynamicCode = dynamicCodes[ci]; 
             }
             
             
             //kinda RlE 
             for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
-                uint16 codeLength = readBits(&head, 3);
-                codeLengthsForRepeat[repeatTimes[bci]] = codeLength;
+                uint16 codeLength = invertBits(readBits(&head, 3), 3);
+                codeLengthsForRepeat[dynamicCodes[bci]] = codeLength;
             }
             
             //code words:
@@ -380,7 +569,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             
             howMany3bitCodes = 12;
             for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
-                codeLengthsForRepeat[repeatTimes[bci]] = mockedLengths[bci];
+                codeLengthsForRepeat[dynamicCodes[bci]] = mockedLengths[bci];
             }
             
 #endif
@@ -390,7 +579,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 uint8 currentLengthIndices[19];
                 uint8 currentLengthCount = 0;
                 for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
-                    if(codeLengthsForRepeat[repeatTimes[bci]] == codeLength){
+                    if(codeLengthsForRepeat[dynamicCodes[bci]] == codeLength){
                         currentLengthIndices[currentLengthCount++] = bci;
                     }
                 }
@@ -438,86 +627,89 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                         currentCode++;
                     }
                     
-                    currentCode = currentCode << 1;
+                    
+                }
+                currentCode = currentCode << 1;
+            }
+            
+            
+            
+            
+            //now we have code book for following lz77 lengths
+            
+            HuffmanNode tree;
+            tree.leaf = false;
+            tree.value = -1;
+            tree.one = NULL;
+            tree.zero = NULL;
+            
+            for(uint8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
+                if(codeWords[ci].bitSize != 0){
+                    HuffmanNode * node = &PUSH(HuffmanNode);
+                    
+                    node->leaf = true;
+                    node->value = codeWords[ci].dynamicCode;
+                    node->one = NULL;
+                    node->zero = NULL;
+                    
+                    addHuffmanNodeRec(&tree, node, invertBits(codeWords[ci].code, codeWords[ci].bitSize), codeWords[ci].bitSize);
                 }
             }
             
-            //now we have code book for following lz77
-            //sort it for better matching
-            
-            insertSort((byte*)codeWords, sizeof(CodeWord), 19, [](void * a, void * b) -> int8 {
-                       CodeWord * A = (CodeWord *) a;
-                       CodeWord * B = (CodeWord *) b;
-                       if(A->bitSize < B->bitSize){
-                       return -1;
-                       }
-                       return 1;
-                       });
-            
-            
-            
-            uint8 startingCodeIndex = 0;
-            for(;startingCodeIndex < ARRAYSIZE(codeWords); startingCodeIndex++){
-                if(codeWords[startingCodeIndex].bitSize != 0) break;
-            }
-            
             //now decoding literals
-            int16 literalCodeLengths[257];
-            uint8 literalIndex = 0;
+            uint16 literalIndex = 0;
+            uint16 literalCodeLengths[258];
             
-            while(literalIndex < 257){
+            HuffmanNode * currentNode = &tree;
+            while(head.byteOffset < compressedSize && literalIndex < 258){
                 
-                uint16 currentStreamCode = 0;
-                uint16 currentBitSize = 0;
-                uint8 ci;
-                for(ci = startingCodeIndex; ci < ARRAYSIZE(codeWords); ci++){
-                    uint8 toRead = codeWords[ci].bitSize - currentBitSize;
-                    if(toRead != 0){
-                        uint16 addition = readBits(&head, toRead);
-                        currentStreamCode= currentStreamCode << toRead;
-                        currentStreamCode |= addition;
-                        currentBitSize = codeWords[ci].bitSize;
-                    }
-                    if(currentStreamCode == codeWords[ci].code){
+                if(readBits(&head, 1) & 1){
+                    currentNode = currentNode->one;
+                }else{
+                    currentNode = currentNode->zero;
+                }
+                ASSERT(currentNode != NULL);
+                if(currentNode->leaf){
+                    
+                    //17 repeat 0 n times n = 3 bits
+                    if(currentNode->value == 17){
+                        uint16 times0 = invertBits(readBits(&head, 3), 3);
+                        times0 += 3;
                         
-                        
-                        //17 repeat 0 n times n = 3 bits
-                        if(codeWords[ci].repeatTimes == 17){
-                            uint16 times0 = readBits(&head, 3);
-                            times0 += 3;
-                            for(; literalIndex < times0; literalIndex++){
-                                literalCodeLengths[literalIndex] = 0;
-                            }
-                            
-                        }else if(codeWords[ci].repeatTimes == 18){
-                            //18 repeat 0 n times n = 7 bits
-                            uint16 times0 = readBits(&head, 7);
-                            times0 += 10;
-                            for(; literalIndex < times0; literalIndex++){
-                                literalCodeLengths[literalIndex] = 0;
-                            }
-                            ASSERT(false); // check and set this to true
-                        }else if(codeWords[ci].repeatTimes == 16){
-                            ////16 repeat previous n times
-                            uint16 timesRepeat = readBits(&head, 2);
-                            //add some?
-                            
-                            ASSERT(false); // check and set this to true
-                        }else{
-                            literalCodeLengths[literalIndex] = codeWords[ci].repeatTimes;
-                            literalIndex++;
+                        for(uint16 ri = 0; ri < times0; ri++){
+                            literalCodeLengths[literalIndex++] = 0;
                         }
                         
                         
-                        break;
+                    }else if(currentNode->value == 18){
+                        //18 repeat 0 n times n = 7 bits
+                        uint16 times0 = invertBits(readBits(&head, 7), 7);
+                        times0 += 11;
+                        for(uint16 ri = 0; ri  < times0; ri++){
+                            literalCodeLengths[literalIndex++] = 0;
+                        }
+                        
+                    }else if(currentNode->value == 16){
+                        ////16 repeat previous n times
+                        uint16 timesRepeat = invertBits(readBits(&head, 2), 2);
+                        timesRepeat += 3;
+                        for(uint16 ri = 0; ri < timesRepeat; ri++){
+                            literalCodeLengths[literalIndex] = literalCodeLengths[literalIndex-1];
+                            literalIndex++;
+                        }
+                    }else{
+                        literalCodeLengths[literalIndex] = currentNode->value;
+                        literalIndex++;
                     }
                     
-                } 
-                ASSERT(ci != ARRAYSIZE(codeWords));
+                    
+                    currentNode = &tree;
+                }
+                
+                
+                
+                bool tru = true;
             }
-            
-            
-            
         }else{
             ASSERT(false);
             return false;
