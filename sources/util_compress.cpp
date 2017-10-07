@@ -45,6 +45,8 @@ static inline bool LZWempty(const LZWStack * stack){
 
 struct ReadHeadBit{
     const byte * source;
+    byte currentByte;
+    bool inverted;
     uint32 byteOffset;
     uint8 bitOffset;
 };
@@ -68,6 +70,9 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
     ASSERT(bits > 0);
     ASSERT(bits <= 16);
     uint16 result = 0;
+    
+    
+    
     int16 toRead = bits;
     while(toRead > 0){
         uint8 remainingBits = 8 - head->bitOffset;
@@ -77,9 +82,16 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
             head->byteOffset++;
             remainingBits = 8;
         }
+        if(head->bitOffset == 0){
+            head->currentByte = *(head->source + head->byteOffset);
+            if(head->inverted){
+                head->currentByte = invertBits(head->currentByte, 8);
+            }
+        }
+        
         uint8 reading = (toRead >= remainingBits) ? remainingBits : toRead;
         result <<= reading;
-        result |=(uint8)( (uint8)((uint8)((uint8)head->source[head->byteOffset] << head->bitOffset) >> head->bitOffset) >> (8-head->bitOffset - reading));
+        result |=(uint8)( (uint8)((uint8)((uint8)head->currentByte << head->bitOffset) >> head->bitOffset) >> (8-head->bitOffset - reading));
         ASSERT(reading <= toRead);
         toRead -= reading;
         head->bitOffset += reading;
@@ -100,6 +112,7 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
     
     ReadHeadBit compressedDataHead = {};
     compressedDataHead.source = source;
+    compressedDataHead.inverted = false;
     uint16 endOfInfo = 257;
     uint16 clearCode = 256;
     PUSHI;
@@ -384,11 +397,13 @@ void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 code, uint
 
 //more specific - https://en.wikipedia.org/wiki/DEFLATE or RFC
 bool decompressDeflate(const char * compressedData, const uint32 compressedSize, char * target){
+    
     //dict 32kbytes
     //maxLen = 256
     
     //start of block - huffman trees for indices and lenghts
     ReadHeadBit head = {};
+    head.inverted = true;
     head.source = (const unsigned char*)compressedData;
     
     //phase1 repeat counts, is this hardcoded defined? or where do these repeat times come from?
@@ -708,8 +723,9 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 
                 
                 
-                bool tru = true;
+                
             }
+            bool tru = true;
         }else{
             ASSERT(false);
             return false;
