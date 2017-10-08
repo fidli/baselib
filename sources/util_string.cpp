@@ -21,6 +21,16 @@ int32 strcmp(const char * a, const char * b){
     return result;
 }
 
+char * strcpy_n(char * target, const char * source, uint32 limit){
+    uint32 i = 0;
+    do{
+        target[i] = source[i];
+        i++;
+    }while(i < limit);
+    return target;
+    
+}
+
 char * strcpy(char * target, const char * source){
     uint32 i = 0;
     do{
@@ -331,7 +341,6 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                 
                 if(format[formatIndex] == '*'){
                     info.dryRun = true;
-                    ASSERT(false); //implement
                     formatIndex++;
                 }
                 if(isDigit19(format[formatIndex])){
@@ -431,16 +440,19 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                         uint32 i = 0;
                         for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
                             if(first) first = false;
-                            *(targetVar+i) = source[sourceIndex];
+                            if(!info.dryRun)
+                                *(targetVar+i) = source[sourceIndex];
                             
                         }
                         if(!first)
                             successfullyScanned++;
                         if(info.type == FormatType_s)
+                            if(!info.dryRun)
                             targetVar[i-1] = '\0';
                     }break;
                     case FormatType_d:
                     case FormatType_u:{
+                        ASSERT(!info.dryRun);
                         if(info.type == FormatType_u){
                             if(info.typeLength == FormatTypeSize_Default){
                                 uint32 * targetVar = va_arg(ap, uint32 * );
@@ -493,28 +505,28 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                             if(first) first = false;
                             if(info.charlist.digitRangeLow != '\0'){
                                 if(source[sourceIndex] >= info.charlist.digitRangeLow && source[sourceIndex] <= info.charlist.digitRangeHigh && !info.charlist.inverted){
-                                    targetVar[i] = source[sourceIndex];
+                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
                                     continue;               
                                 }else if((source[sourceIndex] < info.charlist.digitRangeLow && source[sourceIndex] > info.charlist.digitRangeHigh) && info.charlist.inverted){
-                                    targetVar[i] = source[sourceIndex];
+                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
                                     continue;                            
                                 }
                             }
                             if(info.charlist.capitalLetterRangeLow != '\0'){
                                 if(source[sourceIndex] >= info.charlist.capitalLetterRangeLow && source[sourceIndex] <= info.charlist.capitalLetterRangeHigh && !info.charlist.inverted){
-                                    targetVar[i] = source[sourceIndex];
+                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
                                     continue;               
                                 }else if((source[sourceIndex] < info.charlist.capitalLetterRangeLow && source[sourceIndex] > info.charlist.capitalLetterRangeHigh) && info.charlist.inverted){
-                                    targetVar[i] = source[sourceIndex];
+                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
                                     continue;                            
                                 }
                             }
                             if(info.charlist.smallLetterRangeLow != '\0'){
                                 if(source[sourceIndex] >= info.charlist.smallLetterRangeLow && source[sourceIndex] <= info.charlist.smallLetterRangeHigh && !info.charlist.inverted){
-                                    targetVar[i] = source[sourceIndex];
+                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
                                     continue;               
                                 }else if((source[sourceIndex] < info.charlist.smallLetterRangeLow || source[sourceIndex] > info.charlist.smallLetterRangeHigh) && info.charlist.inverted){
-                                    targetVar[i] = source[sourceIndex];
+                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
                                     continue;                            
                                 }                        
                             }
@@ -522,33 +534,35 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                             bool found = false;
                             for(int charlistIndex = 0; charlistIndex < info.charlist.charlistCount; charlistIndex++){
                                 for(int charIndex = 0; charIndex < info.charlist.charlistLengths[charlistIndex]; charIndex++){
-                                    if(source[sourceIndex] == info.charlist.charlist[charlistIndex][charIndex] && !info.charlist.inverted){
-                                        targetVar[i] = source[sourceIndex];
-                                        found = true;
-                                        break;
-                                    }else if(source[sourceIndex] != info.charlist.charlist[charlistIndex][charIndex] && info.charlist.inverted){
-                                        targetVar[i] = source[sourceIndex];
+                                    if(source[sourceIndex] == info.charlist.charlist[charlistIndex][charIndex]){
                                         found = true;
                                         break;
                                     }
-                                    if(!found){
-                                        break;    
-                                    }
+                                    
                                 }
-                                if(!found){
-                                    break;    
+                                if(found){
+                                    break;
                                 }
                             }
-                            if(!found){
-                                i++;
+                            
+                            if(!info.dryRun){
+                                if(!info.charlist.inverted && found){
+                                    targetVar[i] = source[sourceIndex];
+                                }else if(info.charlist.inverted && !found){
+                                    targetVar[i] = source[sourceIndex];
+                                }
+                            }
+                            
+                            if(!info.charlist.inverted && !found){
                                 break;    
+                            }else if(info.charlist.inverted && found){
+                                break;
                             }
                             
                         }
                         if(!first)
                             successfullyScanned++;
-                        targetVar[i-1] = '\0';
-                        
+                        if(!info.dryRun) targetVar[i] = '\0';
                     }break;
                     default:{
                         ASSERT(!"fuck");

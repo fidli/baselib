@@ -652,7 +652,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             //http://www.bolet.org/~pornin/deflate-flush.html
             while(head.bitOffset != 0){
                 uint16 bits = readBits(&head, 1);
-                ASSERT(bits == 0);
+                //ASSERT(bits == 0);
             } //get rid of 0 bytes
             
             uint16 dataSize = readBits(&head, 16);
