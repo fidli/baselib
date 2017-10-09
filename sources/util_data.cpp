@@ -28,7 +28,7 @@
      newNode->attributesCount = 0;
      waste[0] = '\0';
      buffer[0] = '\0';
-     ASSERT(sscanf(xml->contents + *readIndex, "<%64[^ >]%1024[^>]>%3[\r\n]", newNode->name, buffer, waste) >= 2);
+     ASSERT(sscanf(xml->contents + *readIndex, "<%64[^ >]%1024[^>]>%3[\r\n]", newNode->name, buffer, waste) >= 1);
      uint32 bufflen = strlen(buffer);
      
      
@@ -70,7 +70,7 @@
          }
          waste[0] = '\0';
          buffer[0] = '\0';
-         ASSERT(sscanf(xml->contents + *readIndex, "</%1024[^>]>%3[\r\n]", buffer, waste) >= 2);
+         ASSERT(sscanf(xml->contents + *readIndex, "</%1024[^>]>%3[\r\n]", buffer, waste) >= 1);
          *readIndex += strlen(buffer) + strlen(waste) + 3;
          target->children[target->childrenCount] = newNode;
          target->childrenCount++;
@@ -82,12 +82,13 @@
          ASSERT(sscanf(xml->contents + *readIndex, "%1024%1023[^<]", buffer) == 1);
          
          newNode->valueLength = strlen(buffer);
-         newNode->value = &PUSHA(char, newNode->valueLength);
+         newNode->value = &PUSHA(char, newNode->valueLength+1);
          strcpy(newNode->value, buffer);
+         newNode->value[newNode->valueLength] = '\0';
          *readIndex += newNode->valueLength;
          waste[0] = '\0';
          buffer[0] = '\0';
-         ASSERT(sscanf(xml->contents + *readIndex, "</%1024[^>]>%3[\r\n]", buffer, waste) >= 2);
+         ASSERT(sscanf(xml->contents + *readIndex, "</%1024[^>]>%3[\r\n]", buffer, waste) >= 1);
          *readIndex += strlen(buffer) + strlen(waste) + 3;
          target->children[target->childrenCount] = newNode;
          target->childrenCount++;

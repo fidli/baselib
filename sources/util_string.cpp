@@ -499,34 +499,39 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                     }break;
                     case FormatType_charlist:{
                         char * targetVar = va_arg(ap, char *);
-                        bool first = true;
+                        bool scanned = false;
                         uint32 i = 0;
                         for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
-                            if(first) first = false;
                             if(info.charlist.digitRangeLow != '\0'){
                                 if(source[sourceIndex] >= info.charlist.digitRangeLow && source[sourceIndex] <= info.charlist.digitRangeHigh && !info.charlist.inverted){
                                     if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                    scanned = true;
                                     continue;               
                                 }else if((source[sourceIndex] < info.charlist.digitRangeLow && source[sourceIndex] > info.charlist.digitRangeHigh) && info.charlist.inverted){
                                     if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                    scanned = true;
                                     continue;                            
                                 }
                             }
                             if(info.charlist.capitalLetterRangeLow != '\0'){
                                 if(source[sourceIndex] >= info.charlist.capitalLetterRangeLow && source[sourceIndex] <= info.charlist.capitalLetterRangeHigh && !info.charlist.inverted){
                                     if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                    scanned = true;
                                     continue;               
                                 }else if((source[sourceIndex] < info.charlist.capitalLetterRangeLow && source[sourceIndex] > info.charlist.capitalLetterRangeHigh) && info.charlist.inverted){
                                     if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                    scanned = true;
                                     continue;                            
                                 }
                             }
                             if(info.charlist.smallLetterRangeLow != '\0'){
                                 if(source[sourceIndex] >= info.charlist.smallLetterRangeLow && source[sourceIndex] <= info.charlist.smallLetterRangeHigh && !info.charlist.inverted){
                                     if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                    scanned = true;
                                     continue;               
                                 }else if((source[sourceIndex] < info.charlist.smallLetterRangeLow || source[sourceIndex] > info.charlist.smallLetterRangeHigh) && info.charlist.inverted){
                                     if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                    scanned = true;
                                     continue;                            
                                 }                        
                             }
@@ -545,13 +550,15 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                                 }
                             }
                             
-                            if(!info.dryRun){
-                                if(!info.charlist.inverted && found){
-                                    targetVar[i] = source[sourceIndex];
-                                }else if(info.charlist.inverted && !found){
-                                    targetVar[i] = source[sourceIndex];
-                                }
+                            
+                            if(!info.charlist.inverted && found){
+                                if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                scanned = true;
+                            }else if(info.charlist.inverted && !found){
+                                if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                                scanned = true;
                             }
+                            
                             
                             if(!info.charlist.inverted && !found){
                                 break;    
@@ -560,7 +567,7 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                             }
                             
                         }
-                        if(!first)
+                        if(scanned)
                             successfullyScanned++;
                         if(!info.dryRun) targetVar[i] = '\0';
                     }break;

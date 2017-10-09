@@ -108,10 +108,9 @@
          ASSERT(localHeader->uncompressedSize == 0 || localHeader->uncompressedSize == centralHeader->uncompressedSize);
          ASSERT(localHeader->compressionMethod == centralHeader->compressionMethod);
          
-         if(!strcmp(result->fileNames[ei], "xl/worksheets/sheet1.xml")){
-             
-             decompressDeflate(zipArchive->contents + centralHeader->localFileHeaderOffset + sizeof(ZipLocalFileHeader) - 1 + localHeader->fileNameLength + localHeader->extraFieldLength, centralHeader->compressedSize, result->files[ei].contents);
-         }
+         
+         decompressDeflate(zipArchive->contents + centralHeader->localFileHeaderOffset + sizeof(ZipLocalFileHeader) - 1 + localHeader->fileNameLength + localHeader->extraFieldLength, centralHeader->compressedSize, result->files[ei].contents);
+         
          
          customOffset += centralHeader->fileNameLength + centralHeader->fileCommentLength + centralHeader->extraFieldLength;
      }
