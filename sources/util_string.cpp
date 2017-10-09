@@ -561,15 +561,17 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                             
                             
                             if(!info.charlist.inverted && !found){
+                                i++;
                                 break;    
                             }else if(info.charlist.inverted && found){
+                                i++;
                                 break;
                             }
                             
                         }
                         if(scanned)
                             successfullyScanned++;
-                        if(!info.dryRun) targetVar[i] = '\0';
+                        if(!info.dryRun) targetVar[i-1] = '\0';
                     }break;
                     default:{
                         ASSERT(!"fuck");
