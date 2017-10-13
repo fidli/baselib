@@ -290,6 +290,7 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     target->info = source->info;
     target->info.width = targetWidth;
     target->info.height = targetHeight;
+    POP;
     return true;
 }
 

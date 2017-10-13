@@ -5,8 +5,7 @@
 
 //returns number of unmached chars
 uint32 convUTF8toAscii(const byte * source, const uint32 bytesize, char ** target, uint32 * targetSize){
-    //inefficient alloc now, fuck that tho
-    *target = &PUSHA(char, bytesize);
+    
     *targetSize = 0;
     
     uint32 errors = 0;

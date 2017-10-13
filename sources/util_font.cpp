@@ -21,7 +21,7 @@
      
      uint32 bytesize =  target->current.data.info.width * target->current.data.info.height *target->current.data.info.bitsPerSample * target->current.data.info.samplesPerPixel;
      
-     target->current.data.data = &PUSHA(byte,bytesize);
+     target->current.data.data = &PUSHA(byte,bytesize*2);
      
      memcpy(target->current.data.data, source->data, bytesize);
      
@@ -34,7 +34,7 @@
      
      
      if(font->current.gridSize != fontSize){
-         font->current.data.data = &PUSHA(byte, fontSize*16*fontSize*16);
+         //font->current.data.data = &PUSHA(byte, fontSize*16*fontSize*16);
          if(!scaleImage(&font->original.data, &font->current.data, fontSize * 16, fontSize * 16)){
              return false;
          }

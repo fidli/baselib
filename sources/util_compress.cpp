@@ -689,8 +689,8 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
-                node->one = false;
-                node->zero = false;
+                node->one = NULL;
+                node->zero = NULL;
                 node->leaf = true;
                 
                 addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
@@ -701,8 +701,8 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
-                node->one = false;
-                node->zero = false;
+                node->one = NULL;
+                node->zero = NULL;
                 node->leaf = true;
                 
                 addHuffmanNodeRec(&tree, node, invertBits(code, 9), 9);
@@ -713,8 +713,8 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
-                node->one = false;
-                node->zero = false;
+                node->one = NULL;
+                node->zero = NULL;
                 node->leaf = true;
                 
                 addHuffmanNodeRec(&tree, node, invertBits(code, 7), 7);
@@ -726,8 +726,8 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
-                node->one = false;
-                node->zero = false;
+                node->one = NULL;
+                node->zero = NULL;
                 node->leaf = true;
                 
                 addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
