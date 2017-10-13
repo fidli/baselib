@@ -28,7 +28,7 @@
      newNode->attributesCount = 0;
      waste[0] = '\0';
      buffer[0] = '\0';
-     ASSERT(sscanf(xml->contents + *readIndex, "<%64[^ >]%1024[^>]>%3[\r\n]", newNode->name, buffer, waste) >= 1);
+     ASSERT(sscanf(xml->contents + *readIndex, "<%64[^/ >]%1024[^>]>%3[\r\n]", newNode->name, buffer, waste) >= 1);
      uint32 bufflen = strlen(buffer);
      
      
@@ -43,6 +43,7 @@
      while(sscanf(buffer + attrOffset, "%104%49[^=]=\"%49[^\"]\"%1[ ]", name, value, waste2) >= 2){
          
          attrOffset += strlen(waste2) + 3 + strlen(name) + strlen(value);
+         while(attrOffset < 1023 && buffer[attrOffset] == ' ') attrOffset++;
          ASSERT(attrOffset < 1024);
          strcpy_n(newNode->attributeNames[newNode->attributesCount], name, 50);
          strcpy_n(newNode->attributeValues[newNode->attributesCount], value, 50);

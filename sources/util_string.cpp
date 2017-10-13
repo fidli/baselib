@@ -48,20 +48,19 @@ uint32 strlen(const char * source){
     return length;
 }
 
-char * strcat(const char * first, const char * second){
-    char * result = &PUSHA(char, strlen(first) + strlen(second) + 1);
+char * strcat(char * first, const char * second){
     uint32 index = 0;
     while(first[index] != '\0'){
-        result[index] = first[index];
+        first[index] = first[index];
         index++;
     }
     uint32 index2 = 0;
     while(second[index2] != '\0'){
-        result[index + index2] = second[index2];
+        first[index + index2] = second[index2];
         index2++;
     }
-    result[index + index2] = '\0';
-    return result;
+    first[index + index2] = '\0';
+    return first;
 }
 
 
