@@ -39,52 +39,55 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
             closeSocket(target);
             return false;
         }
-                    }
+    }
     
     
     if(target->socket != INVALID_SOCKET){
-    
-    addrinfo hints = {}; 
-    
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    
-    addrinfo * result = NULL;
-    if(getaddrinfo(ipAddress, port, &hints, &result) == 0){;
-    
-    bool found = false;
-    while(result != NULL){
-        if(hints.ai_family == result->ai_family && hints.ai_socktype ==  result->ai_socktype &&hints.ai_protocol == result->ai_protocol){
-            found = true;
-            break;
+        
+        addrinfo hints = {}; 
+        
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
+        
+        addrinfo * result = NULL;
+        if(getaddrinfo(ipAddress, port, &hints, &result) == 0){
+            
+            addrinfo * actual = result;
+            while(actual != NULL){
+                if(hints.ai_family == actual->ai_family && hints.ai_socktype ==  actual->ai_socktype &&hints.ai_protocol == actual->ai_protocol){
+                    found = true;
+                    break;
+                }
+                actual = actual->ai_next;
+            }
+            
+            if(!found){
+                closeSocket(target);
+                freeaddrinfo(result);
+                return false;
+            }
+            
+            if(bind(target->socket, actual->ai_addr, actual->ai_addrlen) == 0){
+                freeaddrinfo(result);
+                return true;
+            }else{
+                closeSocket(target);
+                freeaddrinfo(result);
+                return false;
+            }
+            
+            
         }
-        result = result->ai_next;
-    }
-    
-    if(!found){
-        closeSocket(target);
-        return false;
-    }
-    
-    if(bind(target->socket, result->ai_addr, result->ai_addrlen) == 0){
+        else{
+            closeSocket(target);
+            return false;
+        }
         return true;
-    }else{
-        closeSocket(target);
+    }
+    else{
         return false;
     }
-    
-    
-}
-else{
-    closeSocket(target);
-    return false;
-}
-    return true;
-}
-else{
-    return false;
-}
 }
 
 
@@ -103,11 +106,16 @@ bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSett
                 return false;
             }
         }
+        return true;
     }else{
         return false;
     }
 }
 
+bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
+    ASSERT(false);
+    return false;
+}
 
 NetResultType netRecv(const NetSocket * target, NetRecvResult * result){
     result->resultLength = recv(target->socket, result->buffer, result->bufferLength, 0);
@@ -124,9 +132,9 @@ NetResultType netRecv(const NetSocket * target, NetRecvResult * result){
         }else{
             return NetResultType_Error;
         }
-            
-        }
-        return NetResultType_Ok;
+        
+    }
+    return NetResultType_Ok;
 }
 
 NetResultType netSend(const NetSocket * target, const NetSendSource * source){
@@ -139,14 +147,12 @@ NetResultType netSend(const NetSocket * target, const NetSendSource * source){
             }else{
                 return NetResultType_Error;
             }
-            }else{
-                return NetResultType_Error;
-            }
         }else{
             return NetResultType_Error;
         }
+    }
     
     return NetResultType_Ok;
 }
 
-        #endif
+#endif

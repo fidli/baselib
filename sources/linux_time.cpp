@@ -8,9 +8,16 @@
 static timespec clock_;
 
 
+static float32 startTime;
+
+void initTime(){
+    startTime = getProcessCurrentTime();
+}
+
+
 float32 getProcessCurrentTime(){
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &clock_);
-    return ((float32)clock_.tv_sec) + clock_.tv_nsec / 1.0e9;
+    clock_gettime(CLOCK_MONOTONIC, &clock_);
+    return ((float32)clock_.tv_sec) + clock_.tv_nsec / 1.0e9 - startTime;
 }
 
 LocalTime sysToLocal(const timespec * timespec){
@@ -44,4 +51,4 @@ LocalTime getLocalTime(){
     return result;
 }
 
-        #endif
+#endif
