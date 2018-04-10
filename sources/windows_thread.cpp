@@ -3,6 +3,8 @@
 
 #define THREAD_ID DWORD
 
+#define FETCH_AND_ADD(addr, addon) {ASSERT((addon) == 1); InterlockedIncrement((addr));}
+
 
 struct Thread{
     HANDLE handle;
@@ -30,11 +32,11 @@ bool destroyMutex(Mutex * target){
     return CloseHandle(target->handle);
 }
 
- bool lock(Mutex * target){
-     return WAIT_OBJECT_0 == WaitForSingleObject(target->handle, INFINITE);
+bool lock(Mutex * target){
+    return WAIT_OBJECT_0 == WaitForSingleObject(target->handle, INFINITE);
 }
 
- bool unlock(Mutex * target){
+bool unlock(Mutex * target){
     return ReleaseMutex(target->handle) > 0;
 }
 

@@ -1,7 +1,11 @@
 #ifndef WINDOWS_NET
 #define WINDOWS_NET
 
+
+
 #include "util_net.h"
+
+
 
 WSADATA socketsContext;
 
@@ -34,6 +38,8 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
     
     target->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     
+    int err = WSAGetLastError();
+    
     if(settings->blocking == false){
         if(!setSocketOption(target->socket, FIONBIO, 1)){
             closeSocket(target);
@@ -52,7 +58,7 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
         
         addrinfo * result = NULL;
         if(getaddrinfo(ipAddress, port, &hints, &result) == 0){
-            
+            bool found = false;
             addrinfo * actual = result;
             while(actual != NULL){
                 if(hints.ai_family == actual->ai_family && hints.ai_socktype ==  actual->ai_socktype &&hints.ai_protocol == actual->ai_protocol){
@@ -97,11 +103,16 @@ bool tcpListen(const NetSocket * server, uint16 maxConnections){
 }
 
 bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSettings * clientSettings){
-    sockaddr * clientInfo;
-    client->socket = accept(server->socket, clientInfo, NULL);
+    //sockaddr * clientInfo = NULL;
+    client->socket = accept(server->socket, NULL, NULL);
     if (client->socket != INVALID_SOCKET){
         if(clientSettings->blocking == false){
             if(!setSocketOption(client->socket, FIONBIO, 1)){
+                closeSocket(client);
+                return false;
+            }
+        }else{
+            if(!setSocketOption(client->socket, FIONBIO, 0)){
                 closeSocket(client);
                 return false;
             }
@@ -119,6 +130,7 @@ bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
 
 NetResultType netRecv(const NetSocket * target, NetRecvResult * result){
     result->resultLength = recv(target->socket, result->buffer, result->bufferLength, 0);
+    
     if(result->resultLength == 0){
         return NetResultType_Closed;
     }else if(result->resultLength == INVALID_SOCKET){

@@ -22,7 +22,6 @@ struct memory{
 #define EFFECTIVE_TEMP_MEM_SIZE (TEMP_MEM - TEMP2_MEM_STACK_SIZE * sizeof(mem.temp2Offsets)  - TEMP_MEM_STACK_SIZE * sizeof(mem.tempOffsets))
 
 memory mem;
-
 void initMemory(void * memoryStart){
     mem.persistent = memoryStart;
     mem.stack = (void *) ((byte *) mem.persistent + PERSISTENT_MEM);

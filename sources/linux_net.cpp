@@ -165,7 +165,6 @@ bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSett
 }
 
 bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
-    
     addrinfo hints = {};
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -173,7 +172,6 @@ bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
     
     addrinfo * result;
     if(getaddrinfo(ip, port, &hints, &result) == 0){
-        
         bool found = false;
         addrinfo * actual = result;
         while(actual != NULL){
@@ -187,11 +185,34 @@ bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
         if(found){
             bool ret = connect(source->socket, actual->ai_addr, actual->ai_addrlen) == 0;
             if(!ret && errno == EINPROGRESS){
+                //this branch is fucked... either the target exists, is non blocking and connection is estabilishing, OR target does not exist, timeout of 1s should resolve this
+                //MAN says:
+                /*
+                
+                EINPROGRESS
+The socket is nonblocking and the connection cannot be completed immediately. It is possible to select(2) or poll(2) for completion by selecting the socket for writing. After select(2) indicates writability, use getsockopt(2) to read the SO_ERROR option at level SOL_SOCKET to determine whether connect() completed successfully (SO_ERROR is zero) or unsuccessfully (SO_ERROR is one of the usual error codes listed here, explaining the reason for the failure).
+
+*/
+                
                 pollfd arg;
                 arg.fd = source->socket;
                 arg.events = POLLOUT | POLLIN;
-                int pollres = poll(&arg, 1, -1);
-                ret = pollres > 0;
+                int pollres = poll(&arg, 1, 2000);
+                if(pollres > 0){
+                    if((arg.revents & POLLPRI) ||
+                       (arg.revents & POLLRDHUP) ||
+                       (arg.revents & POLLERR) ||
+                       (arg.revents & POLLHUP) ||
+                       (arg.revents & POLLNVAL)){
+                        ret = false;
+                        
+                    }else{
+                        ret = true;
+                    }
+                }else{
+                    ret = false;
+                }
+                
             }
             freeaddrinfo(result);
             return ret;
@@ -224,6 +245,7 @@ NetResultType netRecv(const NetSocket * target, NetRecvResult * result){
 }
 
 NetResultType netSend(const NetSocket * target, const NetSendSource * source){
+    
     int result = send(target->socket, (const char *) source->buffer, source->bufferLength, MSG_NOSIGNAL);
     if(result != source->bufferLength){
         if(result == -1){

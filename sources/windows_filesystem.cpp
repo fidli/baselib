@@ -12,7 +12,7 @@ struct FileHandle{
 
 bool readFile(const char * path, FileContents * target){
     HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    if(!SUCCEEDED(file)) return false;
+    if(file ==  INVALID_HANDLE_VALUE) return false;
     target->size = GetFileSize(file, 0);
     target->contents = &PUSHA(char, target->size);
     if(!ReadFile(file, (void *) target->contents, target->size, 0, 0)){
@@ -34,7 +34,7 @@ bool writeFile(FileHandle * target, const FileContents * source){
 
 bool saveFile(const char * path, const FileContents * source){
     HANDLE file = CreateFile(path, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    if(!SUCCEEDED(file)){
+    if(file == INVALID_HANDLE_VALUE){
         return false;
     }
     FileHandle handle;
@@ -46,7 +46,7 @@ bool saveFile(const char * path, const FileContents * source){
 
 bool appendFile(const char * path, const FileContents * source){
     HANDLE file = CreateFile(path, FILE_APPEND_DATA, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    if(!SUCCEEDED(file)){
+    if(file == INVALID_HANDLE_VALUE){
         return false;
     };
     FileHandle handle;
@@ -111,7 +111,8 @@ extern LocalTime sysToLocal(const SYSTEMTIME * time);
 
 LocalTime getFileChangeTime(const char * path){
     HANDLE file = CreateFile(path, FILE_READ_ATTRIBUTES, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    ASSERT(SUCCEEDED(file));
+    
+    ASSERT(file != INVALID_HANDLE_VALUE);
     
     FILETIME filetime;
     BOOL result = GetFileTime(file, NULL, NULL, &filetime);

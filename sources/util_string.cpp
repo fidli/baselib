@@ -40,7 +40,7 @@ char * strcpy(char * target, const char * source){
     return target;
 }
 
-uint32 strlen(const char * source){
+nint strlen(const char * source){
     uint32 length = 0;
     while(source[length] != '\0'){
         length++;
@@ -242,14 +242,19 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                 formatIndex++;
                 targetIndex += printDigits(target + targetIndex, (int64)source);
                 successfullyPrinted++;
-            }else if(format[formatIndex] == '.' || format[formatIndex] == ','){
-                char delim = format[formatIndex];
-                formatIndex++;
+            }else if(format[formatIndex] == 'f' || format[formatIndex] == '.' || format[formatIndex] == ','){
+                char delim;
+                if(format[formatIndex] == 'f'){
+                    delim = '.';
+                }else{
+                    delim = format[formatIndex];
+                    formatIndex++;
+                }
                 
-                int32 precision = 6;
-                uint8 scanOffset = scanNumber(format + formatIndex, &precision);
-                ASSERT(scanOffset > 0);               
-                formatIndex++;
+                uint32 precision = 6;
+                uint8 scanOffset = scanUnumber(format + formatIndex, &precision);
+                
+                formatIndex += scanOffset;
                 
                 if(format[formatIndex] == 'f'){
                     formatIndex++;

@@ -14,7 +14,7 @@
 #ifdef ARRAYSIZE
 #undef ARRAYSIZE
 #endif
-#define ARRAYSIZE(array) sizeof(array) /sizeof(*(array))
+#define ARRAYSIZE(array) (sizeof(array) /sizeof(*(array)))
 
 #define KILOBYTE(n) ((size_t)1024)*n
 #define MEGABYTE(n) ((size_t)1024)*((size_t)KILOBYTE(n))
