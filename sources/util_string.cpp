@@ -183,7 +183,8 @@ static uint8 printDigits(char * target, int64 number){
 
 enum FormatTypeSize{
     FormatTypeSize_Default,
-    FormatTypeSize_h
+    FormatTypeSize_h,
+    FormatTypeSize_l
 };
 
 enum FormatType{
@@ -192,7 +193,9 @@ enum FormatType{
     FormatType_u,
     FormatType_c,
     FormatType_charlist,
-    FormatType_s
+    FormatType_s,
+    FormatType_f,
+    FormatType_immediate
 };
 
 struct FormatInfo{
@@ -213,387 +216,442 @@ struct FormatInfo{
             uint8 charlistLengths[4];
             uint8 charlistCount;
         } charlist;
+        struct{
+            char * start;
+            uint32 length;
+        } immediate;
     };
+    uint32 length;
 };
 
 
-uint32 printFormatted(char * target, const char * format, va_list ap){
+
+static inline bool isDigit19(const char digit){
+    return digit >= '1' && digit <= '9';
+}
+
+
+//unsafe, format must be 0 terminated
+static FormatInfo parseFormat(const char * format){
     uint32 formatIndex = 0;
-    uint32 targetIndex = 0;
-    uint32 successfullyPrinted = 0;
-    while(format[formatIndex] != '\0'){
-        if(format[formatIndex] == '%'){
-            FormatInfo targetFormat = {};
+    FormatInfo info = {};
+    uint32 localMaxread = -1;
+    //%... or immediate
+    if(format[formatIndex] == '%'){
+        formatIndex++;
+        
+        
+        info.dryRun = false;
+        info.maxlen = 0;
+        info.typeLength = FormatTypeSize_Default;
+        
+        if(format[formatIndex] == '*'){
+            info.dryRun = true;
             formatIndex++;
-            
-            if(format[formatIndex] == 'd' || (format[formatIndex] == '0')){
-                int32 source = va_arg(ap, int32);
-                
-                if(format[formatIndex] == '0'){
-                    formatIndex++;
-                    uint32 width = 0;
-                    formatIndex += scanUnumber(&format[formatIndex], &width);
-                    ASSERT(width > 0);
-                    for(int i = 0; i < width - numlen(source); i++){
-                        target[targetIndex++] = '0';
+        }
+        if(isDigit19(format[formatIndex])){
+            formatIndex += scanUnumber(&format[formatIndex], &info.maxlen);
+        }
+        
+        if(format[formatIndex] == 'h'){
+            info.typeLength = FormatTypeSize_h;
+            formatIndex++;
+        }
+        
+        //type
+        if(format[formatIndex] == 'd'){
+            info.type = FormatType_d;
+            formatIndex++;
+        }else if(format[formatIndex] == 'u'){
+            info.type = FormatType_u;
+            formatIndex++;
+        }else if(format[formatIndex] == 'c'){
+            info.type = FormatType_c;
+            info.maxlen = 1;
+            formatIndex++;
+        }else if(format[formatIndex] == 's'){
+            info.type = FormatType_s;
+            formatIndex++;
+        }else if(format[formatIndex] == '['){
+            info.type = FormatType_charlist;
+            formatIndex++;
+            info.charlist.inverted = false;
+            if(format[formatIndex] == '^'){
+                info.charlist.inverted = true;
+                formatIndex++;
+            }
+            uint8 charlistLen = 0;
+            for(;format[formatIndex] != ']'; formatIndex++){
+                ASSERT(format[formatIndex] != '\0');
+                if(format[formatIndex+1] == '-'){
+                    
+                    if(charlistLen > 0){
+                        info.charlist.charlistLengths[info.charlist.charlistCount] = charlistLen;
+                        charlistLen = 0;
+                    }
+                    
+                    if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
+                        info.charlist.capitalLetterRangeLow = format[formatIndex];                            
+                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                        info.charlist.smallLetterRangeLow = format[formatIndex];                            
+                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                        info.charlist.digitRangeLow = format[formatIndex];
+                    }else{
+                        ASSERT(!"fuck");
+                    }
+                    
+                    formatIndex += 2;
+                    
+                    if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
+                        info.charlist.capitalLetterRangeHigh = format[formatIndex];                            
+                        ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
+                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                        info.charlist.smallLetterRangeHigh = format[formatIndex];
+                        ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
+                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                        info.charlist.digitRangeHigh = format[formatIndex];
+                        ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
+                    }else{
+                        ASSERT(!"fuck");
+                    }
+                    
+                }else{
+                    
+                    if(charlistLen == 0){
+                        info.charlist.charlistCount++;
+                        info.charlist.charlist[info.charlist.charlistCount-1] = &format[formatIndex];
+                    }
+                    info.charlist.charlistLengths[info.charlist.charlistCount-1]++;
+                    charlistLen++;
+                    
+                }
+            }
+            formatIndex++;//jumping over ']'
+        }else if(format[formatIndex] == 'f'){
+            info.type = FormatType_f;
+        }else{
+            ASSERT(!"fuck");
+        } 
+        
+    }else{
+        //immediate
+        info.immediate.start = (char *)&format[formatIndex];
+        while(format[formatIndex] != '\0' && format[formatIndex] != '%'){
+            formatIndex++;
+        }
+        info.immediate.length = formatIndex;
+        if(formatIndex > 0){
+            info.type = FormatType_immediate;
+        }
+    }
+    info.length = formatIndex;
+    
+    return info;
+}
+
+uint32 printFormatted(char * target, const char * format, va_list ap){
+    
+    uint32 maxprint = -1;
+    uint32 targetIndex = 0;
+    uint32 formatOffset = 0;
+    FormatInfo info;
+    uint32 successfullyPrinted = 0;
+    while((info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
+        formatOffset += info.length;
+        
+        switch(info.type){
+            case FormatType_c:
+            case FormatType_s:{
+                char * source;
+                if(FormatType_c){
+                    source = &va_arg(ap, char);
+                }else{
+                    source = va_arg(ap, char*);
+                }
+                //set proper max length to avoid buffer overflow
+                ASSERT(info.maxlen != 0); 
+                bool first = true;
+                uint32 i = 0;
+                for(; targetIndex < maxprint && i < info.maxlen; targetIndex++, i++){
+                    if(first) first = false;
+                    if(!info.dryRun){
+                        target[targetIndex + i] = source[targetIndex];
                     }
                 }
-                ASSERT(format[formatIndex] == 'd');
-                formatIndex++;
-                targetIndex += printDigits(target + targetIndex, (int64)source);
-                successfullyPrinted++;
-            }else if(format[formatIndex] == 'f' || format[formatIndex] == '.' || format[formatIndex] == ','){
-                char delim;
-                if(format[formatIndex] == 'f'){
-                    delim = '.';
-                }else{
-                    delim = format[formatIndex];
-                    formatIndex++;
+                if(!first)
+                    successfullyPrinted++;
+            }break;
+            case FormatType_d:
+            case FormatType_u:{
+                ASSERT(!info.dryRun);
+                if(info.type == FormatType_u){
+                    if(info.typeLength == FormatTypeSize_Default){
+                        uint32 source = va_arg(ap, uint32);
+                        uint8 maxDigits = 10;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        targetIndex += printDigits(target + targetIndex, source);
+                        successfullyPrinted++;
+                    }else if (info.typeLength == FormatTypeSize_h){
+                        uint16 source = va_arg(ap, uint16);
+                        uint8 maxDigits = 5;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        targetIndex += printDigits(target + targetIndex, source);
+                        successfullyPrinted++;
+                    }else{
+                        ASSERT(!"fuk");
+                    }
+                }else if(info.type == FormatType_d){
+                    if(info.typeLength == FormatTypeSize_Default){
+                        int32 source = va_arg(ap, int32);
+                        uint8 maxDigits = 10;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        targetIndex += printDigits(target + targetIndex, source);
+                        successfullyPrinted++;
+                    }else if (info.typeLength == FormatTypeSize_h){
+                        int16 source = va_arg(ap, int16);
+                        uint8 maxDigits = 5;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        targetIndex += printDigits(target + targetIndex, source);
+                        successfullyPrinted++;
+                    }else{
+                        ASSERT(!"fuk");
+                    }
                 }
-                
-                uint32 precision = 6;
-                uint8 scanOffset = scanUnumber(format + formatIndex, &precision);
-                
-                formatIndex += scanOffset;
-                
-                if(format[formatIndex] == 'f'){
-                    formatIndex++;
-                    float64 source = va_arg(ap, float64);
-                    int64 wholePart = (int64) source;
+            }break;
+            case FormatType_charlist:{
+                ASSERT(!"doesnt make sense, maybe is immediate?");
+            }break;
+            case FormatType_immediate:{
+                if(!info.dryRun){
+                    for(uint32 i = 0; i < info.immediate.length; i++){
+                        target[targetIndex + i] = info.immediate.start[i];
+                    }
+                }
+                successfullyPrinted++;
+            }break;
+            case FormatType_f:{
+                char delim = '.';
+                if(info.typeLength == FormatTypeSize_Default){
+                    float32 source = va_arg(ap, float32);
+                    int32 wholePart = (int32) source;
                     targetIndex += printDigits(target + targetIndex, wholePart);
                     target[targetIndex] = delim;
                     targetIndex++;
-                    uint64 decimalPart = (uint64)(source - wholePart) * (uint64)powd(10, precision);
+                    uint8 precision = 6;
+                    if(info.maxlen != 0){
+                        precision = info.maxlen;
+                    }
+                    
+                    uint32 decimalPart = (uint32)(source - wholePart) * (uint32)powd(10, precision);
                     uint8 prependLen = precision - numlen(decimalPart);
                     for(int i = 0; i < prependLen; i++){
                         target[targetIndex] = '0';
                         targetIndex++;
                     }
                     targetIndex += printDigits(target + targetIndex, decimalPart);
+                }else if(info.typeLength == FormatTypeSize_l){
+                    //implement me
+                    ASSERT(false);
                 }
-                else{
-                    ASSERT(!"fuck");
-                }
-                
-                successfullyPrinted++;
-            }else if(format[formatIndex] == 'c'){
-                formatIndex++;
-                char source = va_arg(ap, char);
-                target[targetIndex++] = source;
-                successfullyPrinted++;
-            }else if(format[formatIndex] == 's'){
-                formatIndex++;
-                char * source = va_arg(ap, char *);
-                while(*source != 0){
-                    target[targetIndex++] = *source;
-                    source++;
-                }
-                successfullyPrinted++;
-            }
-            else{
+            }break;
+            default:{
                 ASSERT(!"fuck");
-            }
-        }else{
-            target[targetIndex] = format[formatIndex];
-            formatIndex++;
-            targetIndex++;
+            }break;
         }
+        successfullyPrinted++;
         
-    };
-    target[targetIndex] = '\0';
+    }
+    if(successfullyPrinted != 0){
+        target[targetIndex] = '\0';
+    }
     return successfullyPrinted;
 }
 
 
-static inline bool isDigit19(const char digit){
-    return digit >= '1' && digit <= '9';
-}
-/*
- inline bool isInCharlist(const char source, const char * test, uint16 sourceSize, uint16 testSize){
-    for(uint16 i = 0; i < sourceSize; i++){
-        if(source == test[i]){
-            return true;
-        }
-    }
-    return false;
-}
-*/
-
 
 uint32 scanFormatted(const char * source, const char * format, va_list ap){
-    uint32 formatIndex = 0;
+    uint32 formatOffset = 0;
     uint32 sourceIndex = 0;
     uint32 successfullyScanned = 0;
     uint32 maxread = (uint32) -1;
-    while(format[formatIndex] != '\0' && sourceIndex < maxread && source[sourceIndex] != '\0'){
-        if(format[formatIndex] == '%'){
-            formatIndex++;
-            
-            FormatInfo info = {};
-            info.dryRun = false;
-            info.maxlen = 0;
-            info.typeLength = FormatTypeSize_Default;
-            
-            if(formatIndex == 1 && isDigit19(format[formatIndex])){
-                formatIndex += scanUnumber(&format[formatIndex], &maxread);
-                
-            }
-            else{
-                if(isDigit19(format[formatIndex])){
-                    formatIndex += scanUnumber(&format[formatIndex], &info.maxlen);
+    FormatInfo info;
+    bool exit = false;
+    while(!exit && (info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
+        formatOffset += info.length;
+        
+        uint32 scannedChars = 0;
+        
+        switch(info.type){
+            case FormatType_c:
+            case FormatType_s:{
+                char * targetVar = va_arg(ap, char *);
+                //set proper max length to avoid buffer overflow
+                ASSERT(info.maxlen != 0); 
+                bool first = true;
+                uint32 i = 0;
+                for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
+                    if(first) first = false;
+                    if(!info.dryRun)
+                        *(targetVar+i) = source[sourceIndex];
+                    
                 }
-                
-                if(format[formatIndex] == '*'){
-                    info.dryRun = true;
-                    formatIndex++;
-                }
-                if(isDigit19(format[formatIndex])){
-                    formatIndex+= scanUnumber(&format[formatIndex], &info.maxlen);
-                }
-                if(format[formatIndex] == 'h'){
-                    info.typeLength = FormatTypeSize_h;
-                    formatIndex++;
-                }
-                //type
-                if(format[formatIndex] == 'd'){
-                    info.type = FormatType_d;
-                    formatIndex++;
-                }else if(format[formatIndex] == 'u'){
-                    info.type = FormatType_u;
-                    formatIndex++;
-                }else if(format[formatIndex] == 'c'){
-                    info.type = FormatType_c;
-                    info.maxlen = 1;
-                    formatIndex++;
-                }else if(format[formatIndex] == 's'){
-                    info.type = FormatType_s;
-                    formatIndex++;
-                }else if(format[formatIndex] == '['){
-                    info.type = FormatType_charlist;
-                    formatIndex++;
-                    info.charlist.inverted = false;
-                    if(format[formatIndex] == '^'){
-                        info.charlist.inverted = true;
-                        formatIndex++;
+                if(!first)
+                    successfullyScanned++;
+                if(info.type == FormatType_s)
+                    if(!info.dryRun)
+                    targetVar[i-1] = '\0';
+            }break;
+            case FormatType_d:
+            case FormatType_u:{
+                ASSERT(!info.dryRun);
+                if(info.type == FormatType_u){
+                    if(info.typeLength == FormatTypeSize_Default){
+                        uint32 * targetVar = va_arg(ap, uint32 * );
+                        uint8 maxDigits = 10;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanUnumber(source + sourceIndex, (uint32 *) targetVar, maxDigits);
+                    }else if (info.typeLength == FormatTypeSize_h){
+                        uint16 * targetVar = va_arg(ap, uint16 * );
+                        uint8 maxDigits = 5;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanUnumber16(source + sourceIndex, (uint16 *) targetVar, maxDigits);
+                    }else{
+                        ASSERT(!"fuk");
                     }
-                    uint8 charlistLen = 0;
-                    for(;format[formatIndex] != ']'; formatIndex++){
-                        ASSERT(format[formatIndex] != '\0');
-                        if(format[formatIndex+1] == '-'){
-                            
-                            if(charlistLen > 0){
-                                info.charlist.charlistLengths[info.charlist.charlistCount] = charlistLen;
-                                charlistLen = 0;
-                            }
-                            
-                            if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
-                                info.charlist.capitalLetterRangeLow = format[formatIndex];                            
-                            }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                                info.charlist.smallLetterRangeLow = format[formatIndex];                            
-                            }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                                info.charlist.digitRangeLow = format[formatIndex];
-                            }else{
-                                ASSERT(!"fuck");
-                            }
-                            
-                            formatIndex += 2;
-                            
-                            if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
-                                info.charlist.capitalLetterRangeHigh = format[formatIndex];                            
-                                ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
-                            }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                                info.charlist.smallLetterRangeHigh = format[formatIndex];
-                                ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
-                            }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                                info.charlist.digitRangeHigh = format[formatIndex];
-                                ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
-                            }else{
-                                ASSERT(!"fuck");
-                            }
-                            
-                        }else{
-                            
-                            if(charlistLen == 0){
-                                info.charlist.charlistCount++;
-                                info.charlist.charlist[info.charlist.charlistCount-1] = &format[formatIndex];
-                            }
-                            info.charlist.charlistLengths[info.charlist.charlistCount-1]++;
-                            charlistLen++;
-                            
+                }else if(info.type == FormatType_d){
+                    if(info.typeLength == FormatTypeSize_Default){
+                        int32 * targetVar = va_arg(ap, int32 * );
+                        uint8 maxDigits = 10;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanNumber(source + sourceIndex, (int32 *) targetVar, maxDigits);
+                    }else if (info.typeLength == FormatTypeSize_h){
+                        int16 * targetVar = va_arg(ap, int16 * );
+                        uint8 maxDigits = 5;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanNumber16(source + sourceIndex, (int16 *) targetVar, maxDigits);
+                    }else{
+                        ASSERT(!"fuk");
+                    }
+                }
+                
+                if(scannedChars > 0){
+                    successfullyScanned++;
+                    sourceIndex += scannedChars;
+                }
+                
+            }break;
+            case FormatType_charlist:{
+                char * targetVar = va_arg(ap, char *);
+                bool scanned = false;
+                uint32 i = 0;
+                for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
+                    if(info.charlist.digitRangeLow != '\0'){
+                        if(source[sourceIndex] >= info.charlist.digitRangeLow && source[sourceIndex] <= info.charlist.digitRangeHigh && !info.charlist.inverted){
+                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            scanned = true;
+                            continue;               
+                        }else if((source[sourceIndex] < info.charlist.digitRangeLow && source[sourceIndex] > info.charlist.digitRangeHigh) && info.charlist.inverted){
+                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            scanned = true;
+                            continue;                            
                         }
                     }
-                    formatIndex++;//jumping over ']'
+                    if(info.charlist.capitalLetterRangeLow != '\0'){
+                        if(source[sourceIndex] >= info.charlist.capitalLetterRangeLow && source[sourceIndex] <= info.charlist.capitalLetterRangeHigh && !info.charlist.inverted){
+                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            scanned = true;
+                            continue;               
+                        }else if((source[sourceIndex] < info.charlist.capitalLetterRangeLow && source[sourceIndex] > info.charlist.capitalLetterRangeHigh) && info.charlist.inverted){
+                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            scanned = true;
+                            continue;                            
+                        }
+                    }
+                    if(info.charlist.smallLetterRangeLow != '\0'){
+                        if(source[sourceIndex] >= info.charlist.smallLetterRangeLow && source[sourceIndex] <= info.charlist.smallLetterRangeHigh && !info.charlist.inverted){
+                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            scanned = true;
+                            continue;               
+                        }else if((source[sourceIndex] < info.charlist.smallLetterRangeLow || source[sourceIndex] > info.charlist.smallLetterRangeHigh) && info.charlist.inverted){
+                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            scanned = true;
+                            continue;                            
+                        }                        
+                    }
                     
-                    
-                }else{
-                    INV;
-                }
-                
-                
-                
-                
-                uint32 scannedChars = 0;
-                
-                switch(info.type){
-                    case FormatType_c:
-                    case FormatType_s:{
-                        char * targetVar = va_arg(ap, char *);
-                        //set proper max length to avoid buffer overflow
-                        ASSERT(info.maxlen != 0); 
-                        bool first = true;
-                        uint32 i = 0;
-                        for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
-                            if(first) first = false;
-                            if(!info.dryRun)
-                                *(targetVar+i) = source[sourceIndex];
-                            
-                        }
-                        if(!first)
-                            successfullyScanned++;
-                        if(info.type == FormatType_s)
-                            if(!info.dryRun)
-                            targetVar[i-1] = '\0';
-                    }break;
-                    case FormatType_d:
-                    case FormatType_u:{
-                        ASSERT(!info.dryRun);
-                        if(info.type == FormatType_u){
-                            if(info.typeLength == FormatTypeSize_Default){
-                                uint32 * targetVar = va_arg(ap, uint32 * );
-                                uint8 maxDigits = 10;
-                                if(info.maxlen != 0){
-                                    maxDigits = info.maxlen;
-                                }
-                                scannedChars = scanUnumber(source + sourceIndex, (uint32 *) targetVar, maxDigits);
-                            }else if (info.typeLength == FormatTypeSize_h){
-                                uint16 * targetVar = va_arg(ap, uint16 * );
-                                uint8 maxDigits = 5;
-                                if(info.maxlen != 0){
-                                    maxDigits = info.maxlen;
-                                }
-                                scannedChars = scanUnumber16(source + sourceIndex, (uint16 *) targetVar, maxDigits);
-                            }else{
-                                ASSERT(!"fuk");
-                            }
-                        }else if(info.type == FormatType_d){
-                            if(info.typeLength == FormatTypeSize_Default){
-                                int32 * targetVar = va_arg(ap, int32 * );
-                                uint8 maxDigits = 10;
-                                if(info.maxlen != 0){
-                                    maxDigits = info.maxlen;
-                                }
-                                scannedChars = scanNumber(source + sourceIndex, (int32 *) targetVar, maxDigits);
-                            }else if (info.typeLength == FormatTypeSize_h){
-                                int16 * targetVar = va_arg(ap, int16 * );
-                                uint8 maxDigits = 5;
-                                if(info.maxlen != 0){
-                                    maxDigits = info.maxlen;
-                                }
-                                scannedChars = scanNumber16(source + sourceIndex, (int16 *) targetVar, maxDigits);
-                            }else{
-                                ASSERT(!"fuk");
-                            }
-                        }
-                        
-                        if(scannedChars > 0){
-                            successfullyScanned++;
-                            sourceIndex += scannedChars;
-                        }
-                        
-                    }break;
-                    case FormatType_charlist:{
-                        char * targetVar = va_arg(ap, char *);
-                        bool scanned = false;
-                        uint32 i = 0;
-                        for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
-                            if(info.charlist.digitRangeLow != '\0'){
-                                if(source[sourceIndex] >= info.charlist.digitRangeLow && source[sourceIndex] <= info.charlist.digitRangeHigh && !info.charlist.inverted){
-                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                    scanned = true;
-                                    continue;               
-                                }else if((source[sourceIndex] < info.charlist.digitRangeLow && source[sourceIndex] > info.charlist.digitRangeHigh) && info.charlist.inverted){
-                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                    scanned = true;
-                                    continue;                            
-                                }
-                            }
-                            if(info.charlist.capitalLetterRangeLow != '\0'){
-                                if(source[sourceIndex] >= info.charlist.capitalLetterRangeLow && source[sourceIndex] <= info.charlist.capitalLetterRangeHigh && !info.charlist.inverted){
-                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                    scanned = true;
-                                    continue;               
-                                }else if((source[sourceIndex] < info.charlist.capitalLetterRangeLow && source[sourceIndex] > info.charlist.capitalLetterRangeHigh) && info.charlist.inverted){
-                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                    scanned = true;
-                                    continue;                            
-                                }
-                            }
-                            if(info.charlist.smallLetterRangeLow != '\0'){
-                                if(source[sourceIndex] >= info.charlist.smallLetterRangeLow && source[sourceIndex] <= info.charlist.smallLetterRangeHigh && !info.charlist.inverted){
-                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                    scanned = true;
-                                    continue;               
-                                }else if((source[sourceIndex] < info.charlist.smallLetterRangeLow || source[sourceIndex] > info.charlist.smallLetterRangeHigh) && info.charlist.inverted){
-                                    if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                    scanned = true;
-                                    continue;                            
-                                }                        
-                            }
-                            
-                            bool found = false;
-                            for(int charlistIndex = 0; charlistIndex < info.charlist.charlistCount; charlistIndex++){
-                                for(int charIndex = 0; charIndex < info.charlist.charlistLengths[charlistIndex]; charIndex++){
-                                    if(source[sourceIndex] == info.charlist.charlist[charlistIndex][charIndex]){
-                                        found = true;
-                                        break;
-                                    }
-                                    
-                                }
-                                if(found){
-                                    break;
-                                }
-                            }
-                            
-                            
-                            if(!info.charlist.inverted && found){
-                                if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                scanned = true;
-                            }else if(info.charlist.inverted && !found){
-                                if(!info.dryRun) targetVar[i] = source[sourceIndex];
-                                scanned = true;
-                            }
-                            
-                            
-                            if(!info.charlist.inverted && !found){
-                                i++;
-                                break;    
-                            }else if(info.charlist.inverted && found){
-                                i++;
+                    bool found = false;
+                    for(int charlistIndex = 0; charlistIndex < info.charlist.charlistCount; charlistIndex++){
+                        for(int charIndex = 0; charIndex < info.charlist.charlistLengths[charlistIndex]; charIndex++){
+                            if(source[sourceIndex] == info.charlist.charlist[charlistIndex][charIndex]){
+                                found = true;
                                 break;
                             }
                             
                         }
-                        if(scanned)
-                            successfullyScanned++;
-                        if(!info.dryRun) targetVar[i-1] = '\0';
-                    }break;
-                    default:{
-                        ASSERT(!"fuck");
-                    }break;
+                        if(found){
+                            break;
+                        }
+                    }
+                    
+                    
+                    if(!info.charlist.inverted && found){
+                        if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                        scanned = true;
+                    }else if(info.charlist.inverted && !found){
+                        if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                        scanned = true;
+                    }
+                    
+                    
+                    if(!info.charlist.inverted && !found){
+                        i++;
+                        break;    
+                    }else if(info.charlist.inverted && found){
+                        i++;
+                        break;
+                    }
+                    
                 }
-                
-            }
-            
-        }else if(format[formatIndex] == source[sourceIndex]){
-            //todo: whitespaces eating
-            formatIndex++;
-            sourceIndex++;
-        }else{
-            return 0; //not hardcoded string match
-            //break;
+                if(scanned)
+                    successfullyScanned++;
+                if(!info.dryRun) targetVar[i-1] = '\0';
+            }break;
+            case FormatType_immediate:{
+                uint32 i;
+                for(i = 0; i < info.immediate.length; i++){
+                    if(source[sourceIndex] != info.immediate.start[i]){
+                        break;
+                    }
+                }
+                if(i == info.immediate.length){
+                    successfullyScanned++;
+                }else{
+                    exit = true;
+                }
+            }break;
+            default:{
+                ASSERT(!"fuck");
+            }break;
         }
         
     }
+    
     
     
     return successfullyScanned;
