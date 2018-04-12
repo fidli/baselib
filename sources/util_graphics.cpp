@@ -91,6 +91,14 @@ void drawRectangle(Image * target, const dv2 * topLeft, const dv2 * botRight, co
     drawLine(target, &botLeft, topLeft, borderColor, borderThickness); 
 }
 
+void drawRectangle(Image * target, const dv2 * topLeft, const dv2 * topRight, const dv2 * botLeft, const dv2 * botRight, const Color borderColor, uint8 borderThickness = 1){
+    ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
+    drawLine(target, topLeft, topRight, borderColor, borderThickness); 
+    drawLine(target, topRight, botRight, borderColor, borderThickness); 
+    drawLine(target, botRight, botLeft, borderColor, borderThickness); 
+    drawLine(target, botLeft, topLeft, borderColor, borderThickness); 
+}
+
 
 void drawCircle(Image * target, const dv2 * center, uint32 radius, const Color borderColor, uint8 borderThickness = 1){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);

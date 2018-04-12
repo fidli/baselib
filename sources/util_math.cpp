@@ -448,8 +448,15 @@ v2 operator*(const float32 a, const dv2 & b){
     return b * a;
 }
 
+v2 dv2Tov2(const dv2 & a){
+    v2 result = {(float32)a.x, (float32)a.y};
+    return result;
+}
 
-
+dv2 v2Todv2(const v2 & a){
+    dv2 result = {(int32)a.x, (int32)a.y};
+    return result;
+}
 
 v3 operator*(const v3 & b, const float32 a){
     v3 result;

@@ -1,8 +1,11 @@
 #ifndef WINDOWS_NET
 #define WINDOWS_NET
 
-
-
+//include these at the top of the file, even before windows.h
+/*
+#include <winsock2.h>
+#include <ws2tcpip.h>
+*/
 #include "util_net.h"
 
 
