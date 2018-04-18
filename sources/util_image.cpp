@@ -212,7 +212,11 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     float32 scaleX = (float32)source->info.width/(float32)targetWidth;
     float32 scaleY = (float32)source->info.height/(float32)targetHeight;
     
-    NearestNeighbourColor * nn = &PUSH(NearestNeighbourColor);
+    uint32 neighbourCount = (uint32)(scaleX*scaleY);
+    //does not hurt
+    neighbourCount++;
+    
+    NearestNeighbourColor * nn = &PUSHA(NearestNeighbourColor, neighbourCount);
     
     
     //support lesser bits per pixel later
@@ -228,7 +232,7 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
             int i = targetWidth*th  + tw;//final index
             
             //clear NN
-            for(int clr = 0; clr < scaleX*scaleY; clr++){
+            for(int clr = 0; clr < neighbourCount; clr++){
                 nn[clr] = {};
             }
             uint8 nncount = 0;

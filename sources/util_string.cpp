@@ -431,10 +431,13 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
             }break;
             case FormatType_immediate:{
                 if(!info.dryRun){
-                    for(uint32 i = 0; i < info.immediate.length; i++){
+                    uint32 i = 0;
+                    for(;i < info.immediate.length; i++){
                         target[targetIndex + i] = info.immediate.start[i];
                     }
+                    targetIndex += i;
                 }
+                
                 successfullyPrinted++;
             }break;
             case FormatType_f:{

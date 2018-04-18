@@ -81,17 +81,26 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
 }
 
 //this is not rotated
-void drawRectangle(Image * target, const dv2 * topLeft, const dv2 * botRight, const Color borderColor, uint8 borderThickness = 1){
+void drawRectangle(Image * target, const dv2 * topLeft, const dv2 * botRight, const Color borderColor, uint8 borderThickness = 1, bool filled = false){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
-    dv2 topRight = {botRight->x, topLeft->y};
-    dv2 botLeft = {topLeft->x, botRight->y};
-    drawLine(target, topLeft, &topRight, borderColor, borderThickness); 
-    drawLine(target, &topRight, botRight, borderColor, borderThickness); 
-    drawLine(target, botRight, &botLeft, borderColor, borderThickness); 
-    drawLine(target, &botLeft, topLeft, borderColor, borderThickness); 
+    if(!filled){
+        dv2 topRight = {botRight->x, topLeft->y};
+        dv2 botLeft = {topLeft->x, botRight->y};
+        drawLine(target, topLeft, &topRight, borderColor, borderThickness); 
+        drawLine(target, &topRight, botRight, borderColor, borderThickness); 
+        drawLine(target, botRight, &botLeft, borderColor, borderThickness); 
+        drawLine(target, &botLeft, topLeft, borderColor, borderThickness);
+    }else{
+        for(int32 y = topLeft->y; y < target->info.height && y <= botRight->y; y++){
+            int32 pitch = y * target->info.width;
+            for(int32 x = topLeft->x; x < target->info.width && x <= botRight->x; x++){
+                ((uint32 *)target->data)[pitch + x] = borderColor.full;
+            }
+        }
+    }
 }
 
-void drawRectangle(Image * target, const dv2 * topLeft, const dv2 * topRight, const dv2 * botLeft, const dv2 * botRight, const Color borderColor, uint8 borderThickness = 1){
+void drawQuad(Image * target, const dv2 * topLeft, const dv2 * topRight, const dv2 * botLeft, const dv2 * botRight, const Color borderColor, uint8 borderThickness = 1){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
     drawLine(target, topLeft, topRight, borderColor, borderThickness); 
     drawLine(target, topRight, botRight, borderColor, borderThickness); 
@@ -103,11 +112,11 @@ void drawRectangle(Image * target, const dv2 * topLeft, const dv2 * topRight, co
 void drawCircle(Image * target, const dv2 * center, uint32 radius, const Color borderColor, uint8 borderThickness = 1){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
     uint8 thicknessReal = MAX(borderThickness/2, 1);
-    uint32 startY = MAX(0, center->y - radius - thicknessReal);
-    uint32 startX = MAX(0, center->x - radius - thicknessReal);
+    int32 startY = MAX(0, center->y - radius - thicknessReal);
+    int32 startX = MAX(0, center->x - radius - thicknessReal);
     //+1 because this is count, not index
-    uint32 endY = MIN(target->info.height, center->y + radius + thicknessReal + 1);
-    uint32 endX = MIN(target->info.width, center->x + radius + thicknessReal + 1);
+    int32 endY = MIN(target->info.height, center->y + radius + thicknessReal + 1);
+    int32 endX = MIN(target->info.width, center->x + radius + thicknessReal + 1);
     
     for(int32 y = startY; y < endY; y++){
         int32 pitch = y*target->info.width;
@@ -124,6 +133,7 @@ void drawCircle(Image * target, const dv2 * center, uint32 radius, const Color b
 
 void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, const Color borderColor, uint8 borderThickness = 1){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
+    
     drawLine(target, A, B, borderColor, borderThickness);
     drawLine(target, B, C, borderColor, borderThickness);
     drawLine(target, C, A, borderColor, borderThickness);
