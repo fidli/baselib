@@ -14,6 +14,7 @@ WSADATA socketsContext;
 
 struct NetSocket{
     SOCKET socket;
+    bool valid;
 };
 
 
@@ -31,6 +32,10 @@ bool closeNet(){
 }
 
 
+bool isSocketHandleValid(NetSocket * target){
+    return target->valid;
+}
+
 bool closeSocket(NetSocket * target){
     int shutdownRes = shutdown(target->socket, SD_BOTH);
     int closesocketRes = closesocket(target->socket);
@@ -38,7 +43,7 @@ bool closeSocket(NetSocket * target){
 }
 
 bool initSocket(NetSocket * target, const char * ipAddress, const char * port, const NetSocketSettings * settings){
-    
+    target->valid = false;
     target->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     
     int err = WSAGetLastError();
@@ -92,6 +97,7 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
             closeSocket(target);
             return false;
         }
+        target->valid = true;
         return true;
     }
     else{
@@ -109,17 +115,23 @@ bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSett
     //sockaddr * clientInfo = NULL;
     client->socket = accept(server->socket, NULL, NULL);
     if (client->socket != INVALID_SOCKET){
+        if(client->socket == WSAEWOULDBLOCK){
+            client->valid = false;
+            return true;
+        }
         if(clientSettings->blocking == false){
             if(!setSocketOption(client->socket, FIONBIO, 1)){
                 closeSocket(client);
                 return false;
             }
+            
         }else{
             if(!setSocketOption(client->socket, FIONBIO, 0)){
                 closeSocket(client);
                 return false;
             }
         }
+        client->valid = true;
         return true;
     }else{
         return false;

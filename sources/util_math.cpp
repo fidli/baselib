@@ -71,10 +71,17 @@ float32 powd(float32 base, int16 power = 2){
 }
 
 static float32 subSqrt(float32 value, float32 guess, float32 prec = 0.0001f){
-    if(aseq(value / guess, guess, prec)){
+    float32 estimation = value / guess;
+    if(aseq(estimation, guess, prec)){
+        return (estimation + guess) / 2;
         return guess;
     }
-    return subSqrt(value, (guess + value/guess) / 2, prec);
+    float32 newGuess = (guess + value/guess) / 2;
+    //stack overflow with recursive shittery
+    if(aseq(guess, newGuess, prec)){
+        return (guess + newGuess) / 2;
+    }
+    return subSqrt(value, newGuess, prec);
 }
 
 
@@ -140,7 +147,7 @@ float32 ln(float32 number, uint8 precisionBits = 32){
     ASSERT(precisionBits > 0);
     const float32 ln2 = 0.6931471f;
     const uint8 m = 18;
-    ASSERT(number * powd(2, m) > powd(2, precisionBits / 2));
+    
     float32 meanB = powd(2, 2-m) / number;
     
     return (PI / (2*agMean(1, meanB))) - m * ln2;
@@ -414,9 +421,22 @@ v2 operator*(const v2 & b, const float32 a){
     return result;
 }
 
+v2 operator*(const v2 & b, const int32 a){
+    v2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = ((float32)a)*b.v[i];
+    }
+    return result;
+}
+
 v2 operator*(const float32 a, const v2 & b){
     return b * a;
 }
+
+v2 operator*(const int32 a, const v2 & b){
+    return b * a;
+}
+
 
 dv2 operator*(const dv2 & b, const int32 a){
     dv2 result;
@@ -801,17 +821,17 @@ v4 operator*(const v4 & quaternion1, const v4 & quaternion2){
 mat4 quaternionToMatrix(const v4 & quaternion){
     mat4 result = {};
     
-    result.c[0] = 1 - 2*pow(quaternion.y,2) - 2*pow(quaternion.z,2);
+    result.c[0] = 1 - 2*powd(quaternion.y,2) - 2*powd(quaternion.z,2);
     result.c[4] = 2*quaternion.x*quaternion.y - 2*quaternion.w*quaternion.z;
     result.c[8] = 2*quaternion.x*quaternion.z + 2*quaternion.w*quaternion.y;
     
     result.c[1] = 2*quaternion.x*quaternion.y + 2*quaternion.w*quaternion.z;
-    result.c[5] = 1 - 2*pow(quaternion.x,2) - 2*pow(quaternion.z,2);
+    result.c[5] = 1 - 2*powd(quaternion.x,2) - 2*powd(quaternion.z,2);
     result.c[9] = 2*quaternion.y*quaternion.z - 2*quaternion.w*quaternion.x;
     
     result.c[2] = 2*quaternion.x*quaternion.z - 2*quaternion.w*quaternion.y;
     result.c[6] = 2*quaternion.y*quaternion.z + 2*quaternion.w*quaternion.x;
-    result.c[10] = 1 - 2*pow(quaternion.x,2) - 2*pow(quaternion.y,2);
+    result.c[10] = 1 - 2*powd(quaternion.x,2) - 2*powd(quaternion.y,2);
     result.c[15] = 1;
     
     return result;

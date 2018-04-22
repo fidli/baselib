@@ -41,7 +41,7 @@ char * strcpy(char * target, const char * source){
 }
 
 nint strlen(const char * source){
-    uint32 length = 0;
+    nint length = 0;
     while(source[length] != '\0'){
         length++;
     }
@@ -90,6 +90,23 @@ static uint8 scanNumber16(const char * source, int16 * target, uint8 maxDigits =
     }
     if(negative){
         *target = -1 * *target;
+    }
+    return i;
+}
+
+static uint8 scanUnumber8(const char * source, uint8 * target, uint8 maxDigits = 3){
+    ASSERT(maxDigits <= 5);
+    uint8 i = 0;
+    bool first = true;
+    for(;source[i] != '\0' && i < maxDigits; i++){
+        int8 digit = (int8) source[i];
+        if(digit < 48 || digit > 57) break;
+        digit -= 48;
+        if(first){
+            first = false;
+            *target = 0;
+        }
+        *target = 10 * *target + digit; 
     }
     return i;
 }
@@ -220,6 +237,9 @@ struct FormatInfo{
             char * start;
             uint32 length;
         } immediate;
+        struct {
+            uint8 precision;
+        } real;
     };
     uint32 length;
 };
@@ -327,8 +347,18 @@ static FormatInfo parseFormat(const char * format){
                 }
             }
             formatIndex++;//jumping over ']'
-        }else if(format[formatIndex] == 'f'){
-            info.type = FormatType_f;
+        }else if(format[formatIndex] == 'f' || format[formatIndex] == '.'){
+            
+            info.real.precision = 6;
+            
+            if(format[formatIndex] == '.'){
+                formatIndex++;
+                formatIndex += scanUnumber8(format + formatIndex, &info.real.precision);
+            }
+            if(format[formatIndex] == 'f'){
+                info.type = FormatType_f;
+            }
+            formatIndex++;
         }else{
             ASSERT(!"fuck");
         } 
@@ -363,23 +393,23 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
             case FormatType_c:
             case FormatType_s:{
                 char * source;
-                if(FormatType_c){
+                if(info.type == FormatType_c){
                     source = &va_arg(ap, char);
                 }else{
                     source = va_arg(ap, char*);
                 }
                 //set proper max length to avoid buffer overflow
                 ASSERT(info.maxlen != 0); 
-                bool first = true;
                 uint32 i = 0;
-                for(; targetIndex < maxprint && i < info.maxlen; targetIndex++, i++){
-                    if(first) first = false;
+                for(; targetIndex + i < maxprint && i < info.maxlen && source[i] != '\0'; i++){
                     if(!info.dryRun){
-                        target[targetIndex + i] = source[targetIndex];
+                        target[targetIndex + i] = source[i];
                     }
                 }
-                if(!first)
-                    successfullyPrinted++;
+                if(!info.dryRun){
+                    targetIndex += i;
+                }
+                successfullyPrinted++;
             }break;
             case FormatType_d:
             case FormatType_u:{
@@ -443,17 +473,19 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
             case FormatType_f:{
                 char delim = '.';
                 if(info.typeLength == FormatTypeSize_Default){
-                    float32 source = va_arg(ap, float32);
+                    //float is promoted to double,...
+                    float32 source = (float32)va_arg(ap, float64);
                     int32 wholePart = (int32) source;
+                    if(wholePart == 0 && source < 0){
+                        target[targetIndex] = '-';
+                        targetIndex++;
+                    }
                     targetIndex += printDigits(target + targetIndex, wholePart);
                     target[targetIndex] = delim;
                     targetIndex++;
-                    uint8 precision = 6;
-                    if(info.maxlen != 0){
-                        precision = info.maxlen;
-                    }
+                    uint8 precision = info.real.precision;
                     
-                    uint32 decimalPart = (uint32)(source - wholePart) * (uint32)powd(10, precision);
+                    uint32 decimalPart = ABS((int32)((source - wholePart) * powd(10, precision)));
                     uint8 prependLen = precision - numlen(decimalPart);
                     for(int i = 0; i < prependLen; i++){
                         target[targetIndex] = '0';
@@ -469,8 +501,6 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                 ASSERT(!"fuck");
             }break;
         }
-        successfullyPrinted++;
-        
     }
     if(successfullyPrinted != 0){
         target[targetIndex] = '\0';
