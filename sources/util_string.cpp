@@ -480,18 +480,23 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         target[targetIndex] = '-';
                         targetIndex++;
                     }
-                    targetIndex += printDigits(target + targetIndex, wholePart);
-                    target[targetIndex] = delim;
-                    targetIndex++;
-                    uint8 precision = info.real.precision;
-                    
-                    uint32 decimalPart = ABS((int32)((source - wholePart) * powd(10, precision)));
-                    uint8 prependLen = precision - numlen(decimalPart);
-                    for(int i = 0; i < prependLen; i++){
-                        target[targetIndex] = '0';
+                    uint8 numlength = numlen(wholePart);
+                    if(info.maxlen == 0 || numlength + info.real.precision + 1 <= info.maxlen){
+                        targetIndex += printDigits(target + targetIndex, wholePart);
+                        target[targetIndex] = delim;
+                        
                         targetIndex++;
+                        uint8 precision = info.real.precision;
+                        
+                        uint32 decimalPart = ABS((int32)((source - wholePart) * powd(10, precision)));
+                        uint8 prependLen = precision - numlen(decimalPart);
+                        for(int i = 0; i < prependLen; i++){
+                            target[targetIndex] = '0';
+                            targetIndex++;
+                        }
+                        targetIndex += printDigits(target + targetIndex, decimalPart);
+                        successfullyPrinted++;
                     }
-                    targetIndex += printDigits(target + targetIndex, decimalPart);
                 }else if(info.typeLength == FormatTypeSize_l){
                     //implement me
                     ASSERT(false);

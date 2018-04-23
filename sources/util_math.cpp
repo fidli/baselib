@@ -71,10 +71,13 @@ float32 powd(float32 base, int16 power = 2){
 }
 
 static float32 subSqrt(float32 value, float32 guess, float32 prec = 0.0001f){
+    if(guess != guess){
+        //fucking nan
+        return guess;
+    }
     float32 estimation = value / guess;
     if(aseq(estimation, guess, prec)){
         return (estimation + guess) / 2;
-        return guess;
     }
     float32 newGuess = (guess + value/guess) / 2;
     //stack overflow with recursive shittery
@@ -213,7 +216,14 @@ float32 normalize(float32 value, float32 min, float32 max){
     return (value - min) / (max - min);
 }
 
-
+float32 fmodd(float32 value, uint32 modulus){
+    int32 wholePart = (int32) value;
+    float32 preResult = (float32)(wholePart % modulus) + (value - wholePart);
+    if(preResult < 0){
+        preResult += modulus;
+    }
+    return preResult; 
+}
 
 //-----------------------------------------------------------------------VERTICES
 
@@ -818,7 +828,7 @@ v4 operator*(const v4 & quaternion1, const v4 & quaternion2){
 }
 
 
-mat4 quaternionToMatrix(const v4 & quaternion){
+mat4 quaternionToMatrixT(const v4 & quaternion){
     mat4 result = {};
     
     result.c[0] = 1 - 2*powd(quaternion.y,2) - 2*powd(quaternion.z,2);
@@ -837,24 +847,43 @@ mat4 quaternionToMatrix(const v4 & quaternion){
     return result;
 }
 
+mat4 quaternionToMatrix(const v4 & quaternion){
+    mat4 result = {};
+    
+    result.c[0] = 1 - 2*powd(quaternion.y,2) - 2*powd(quaternion.z,2);
+    result.c[1] = 2*quaternion.x*quaternion.y - 2*quaternion.w*quaternion.z;
+    result.c[2] = 2*quaternion.x*quaternion.z + 2*quaternion.w*quaternion.y;
+    
+    result.c[4] = 2*quaternion.x*quaternion.y + 2*quaternion.w*quaternion.z;
+    result.c[5] = 1 - 2*powd(quaternion.x,2) - 2*powd(quaternion.z,2);
+    result.c[6] = 2*quaternion.y*quaternion.z - 2*quaternion.w*quaternion.x;
+    
+    result.c[8] = 2*quaternion.x*quaternion.z - 2*quaternion.w*quaternion.y;
+    result.c[9] = 2*quaternion.y*quaternion.z + 2*quaternion.w*quaternion.x;
+    result.c[10] = 1 - 2*powd(quaternion.x,2) - 2*powd(quaternion.y,2);
+    result.c[15] = 1;
+    
+    return result;
+}
 
-mat4 rotationYMatrix(float32 radAngle){
+
+mat4 rotationXMatrix(float32 radAngle){
     mat4 result = {};
     result.c[0] = 1.0f;
     result.c[5] = cos(radAngle);
-    result.c[6] = sin(radAngle);
-    result.c[9] = -sin(radAngle);
+    result.c[6] = -sin(radAngle);
+    result.c[9] = sin(radAngle);
     result.c[10] = cos(radAngle);
     result.c[15] = 1.0f;
     return result;
 }
 
-mat4 rotationXMatrix(float32 radAngle){
+mat4 rotationYMatrix(float32 radAngle){
     mat4 result = {};
     result.c[0] = cos(radAngle);
-    result.c[2] = -sin(radAngle);
+    result.c[2] = sin(radAngle);
     result.c[5] = 1.0f;
-    result.c[8] = sin(radAngle);
+    result.c[8] = -sin(radAngle);
     result.c[10] = cos(radAngle);
     result.c[15] = 1.0f;
     return result;
