@@ -545,7 +545,7 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                     successfullyScanned++;
                 if(info.type == FormatType_s)
                     if(!info.dryRun)
-                    targetVar[i-1] = '\0';
+                    targetVar[i] = '\0';
             }break;
             case FormatType_d:
             case FormatType_u:{
@@ -672,14 +672,12 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
             }break;
             case FormatType_immediate:{
                 uint32 i;
-                for(i = 0; i < info.immediate.length; i++){
+                for(i = 0; i < info.immediate.length; i++, sourceIndex++){
                     if(source[sourceIndex] != info.immediate.start[i]){
                         break;
                     }
                 }
-                if(i == info.immediate.length){
-                    successfullyScanned++;
-                }else{
+                if(i != info.immediate.length){
                     exit = true;
                 }
             }break;
