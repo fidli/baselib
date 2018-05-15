@@ -21,6 +21,22 @@ int32 strcmp(const char * a, const char * b){
     return result;
 }
 
+int32 strcmp_n(const char * a, const char * b, uint32 maxlen){
+    int32 result = 0;
+    for(uint32 index = 0; index < maxlen;index++){
+        
+        result = a[index] - b[index];
+        if(result){
+            return result;
+        }
+        
+        if(a[index] == '\0')
+            break;
+    } 
+    
+    return result;
+}
+
 char * strcpy_n(char * target, const char * source, uint32 limit){
     uint32 i = 0;
     do{
@@ -668,7 +684,13 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                 }
                 if(scanned)
                     successfullyScanned++;
-                if(!info.dryRun) targetVar[i-1] = '\0';
+                if(!info.dryRun){ 
+                    if(i == info.maxlen){
+                        targetVar[i-1] = '\0';
+                    }else{
+                        targetVar[i] = '\0';
+                    }
+                }
             }break;
             case FormatType_immediate:{
                 uint32 i;
