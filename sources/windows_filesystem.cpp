@@ -5,10 +5,18 @@
 
 #include "util_filesystem.h"
 
+#include "util_string.cpp"
 
 struct FileHandle{
     HANDLE handle;
 };
+
+struct FileWatchHandle{
+    char path[256];
+    LocalTime lastChangeTime;
+};
+
+
 
 bool readFile(const char * path, FileContents * target){
     HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
@@ -130,6 +138,27 @@ bool getFileChangeTime(const char * path, LocalTime * result){
     }
     return false;
 }
+
+bool watchFile(const char * path, FileWatchHandle * result){
+    if(getFileChangeTime(path, &result->lastChangeTime)){
+        strcpy_n(result->path, path, ARRAYSIZE(FileWatchHandle::path));
+        return true;
+    }
+    return false;
+}
+
+bool hasFileChanged(FileWatchHandle * target){
+    LocalTime newTime;
+    if(getFileChangeTime(target->path, &newTime)){
+        if(newTime != target->lastChangeTime){
+            target->lastChangeTime = newTime;
+            return true;
+        }
+    }
+    return false;
+}
+
+
 
 
 #endif
