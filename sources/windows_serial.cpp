@@ -96,6 +96,16 @@ int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 t
     return -1;
 }
 
+bool isHandleOpened(const SerialHandle * target){
+    return target->handle != NULL;
+}
 
+bool closeHandle(SerialHandle * target){
+    bool result = CloseHandle(target->handle);
+    if(result){
+        target->handle = NULL;
+    }
+    return result;
+}
 
 #endif

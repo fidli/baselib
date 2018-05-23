@@ -484,7 +484,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                     targetIndex += i;
                 }
                 
-                successfullyPrinted++;
+                //successfullyPrinted++;
             }break;
             case FormatType_f:{
                 char delim = '.';

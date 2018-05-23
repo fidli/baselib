@@ -4,6 +4,8 @@
 struct SerialHandle;
 
 bool openHandle(const char * addr, SerialHandle * result);
+bool closeHandle(SerialHandle * result);
+bool isHandleOpened(const SerialHandle * target);
 
 bool setBaudRate(SerialHandle * target, int32 rate);
 
