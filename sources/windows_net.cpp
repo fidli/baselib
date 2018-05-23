@@ -106,6 +106,29 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
 }
 
 
+bool openSocket(NetSocket * target, const NetSocketSettings * settings){
+    target->valid = false;
+    target->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    
+    int err = WSAGetLastError();
+    
+    if(settings->blocking == false){
+        if(!setSocketOption(target->socket, FIONBIO, 1)){
+            closeSocket(target);
+            return false;
+        }
+    }
+    
+    
+    if(target->socket != INVALID_SOCKET){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+
+
 
 bool tcpListen(const NetSocket * server, uint16 maxConnections){
     return listen(server->socket, maxConnections) == 0;
@@ -139,7 +162,31 @@ bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSett
 }
 
 bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
-    ASSERT(false);
+    addrinfo hints = {};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    
+    addrinfo * result;
+    if(getaddrinfo(ip, port, &hints, &result) == 0){
+        bool found = false;
+        addrinfo * actual = result;
+        while(actual != NULL){
+            if(hints.ai_family == actual->ai_family && hints.ai_socktype ==  actual->ai_socktype &&hints.ai_protocol == actual->ai_protocol){
+                found = true;
+                break;
+            }
+            actual = actual->ai_next;
+        }
+        
+        if(found){
+            int resultInt = connect(source->socket, actual->ai_addr, actual->ai_addrlen);
+            int error = WSAGetLastError();
+            bool ret = resultInt == 0;
+            freeaddrinfo(result);
+            return ret;
+        }
+    }
     return false;
 }
 

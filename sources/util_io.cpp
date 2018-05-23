@@ -25,6 +25,14 @@ int printf(const char * format, ...){
     return successfullyPrinted;
 }
 
+void print(char * source){
+    FileContents con;
+    con.contents = source;
+    con.size = strlen(con.contents);
+    ASSERT(con.size < 1024);
+    writeConsole(&con);
+}
+
 int scanf(const char * format, ...){
     va_list ap;
     va_start(ap, format);
