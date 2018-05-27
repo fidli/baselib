@@ -141,7 +141,7 @@ bool getFileChangeTime(const char * path, LocalTime * result){
 
 bool watchFile(const char * path, FileWatchHandle * result){
     if(getFileChangeTime(path, &result->lastChangeTime)){
-        strcpy_n(result->path, path, ARRAYSIZE(FileWatchHandle::path));
+        strncpy(result->path, path, ARRAYSIZE(FileWatchHandle::path));
         return true;
     }
     return false;

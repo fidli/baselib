@@ -21,7 +21,7 @@ int32 strcmp(const char * a, const char * b){
     return result;
 }
 
-int32 strcmp_n(const char * a, const char * b, uint32 maxlen){
+int32 strncmp(const char * a, const char * b, nint maxlen){
     int32 result = 0;
     for(uint32 index = 0; index < maxlen;index++){
         
@@ -37,7 +37,7 @@ int32 strcmp_n(const char * a, const char * b, uint32 maxlen){
     return result;
 }
 
-char * strcpy_n(char * target, const char * source, uint32 limit){
+char * strncpy(char * target, const char * source, nint limit){
     uint32 i = 0;
     do{
         target[i] = source[i];
@@ -394,7 +394,7 @@ static FormatInfo parseFormat(const char * format){
     
     return info;
 }
-
+//returns printed entities, not printed characters, when needed, change
 uint32 printFormatted(char * target, const char * format, va_list ap){
     
     uint32 maxprint = -1;
@@ -449,6 +449,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         successfullyPrinted++;
                     }else{
                         ASSERT(!"fuk");
+                        return -1;
                     }
                 }else if(info.type == FormatType_d){
                     if(info.typeLength == FormatTypeSize_Default){
@@ -469,11 +470,13 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         successfullyPrinted++;
                     }else{
                         ASSERT(!"fuk");
+                        return -1;
                     }
                 }
             }break;
             case FormatType_charlist:{
                 ASSERT(!"doesnt make sense, maybe is immediate?");
+                return -1;
             }break;
             case FormatType_immediate:{
                 if(!info.dryRun){
@@ -516,10 +519,12 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                 }else if(info.typeLength == FormatTypeSize_l){
                     //implement me
                     ASSERT(false);
+                    return -1;
                 }
             }break;
             default:{
                 ASSERT(!"fuck");
+                return -1;
             }break;
         }
     }

@@ -495,7 +495,7 @@ bool saveMLPNeuralNet(const MLPNeuralNet * source, FileContents * target){
     }
     target->size = 0;
     target->contents = &PUSHA(char, maxLen);
-    ASSERT(sprintf(target->contents, "%d\n", (int32)source->hiddenLayersAmount) == 1);
+    ASSERT(sprintf(target->contents, "%d\n", (int32)source->hiddenLayersAmount) != -1);
     target->size += strlen(target->contents + target->size);
     for(int i = 0; i < source->hiddenLayersAmount; i++){
         NeuralHiddenLayer * layer = &source->hiddenLayers[i];
@@ -511,7 +511,7 @@ bool saveMLPNeuralNet(const MLPNeuralNet * source, FileContents * target){
             INV;
             break;
         }
-        ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (int32)layer->W.width, (int32)layer->W.height, c) == 3);
+        ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (int32)layer->W.width, (int32)layer->W.height, c) != -1);
         target->size += strlen(target->contents + target->size);
         for(int row = 0; row < layer->W.height; row++){
             for(int col = 0; col < layer->W.width; col++){
@@ -519,7 +519,7 @@ bool saveMLPNeuralNet(const MLPNeuralNet * source, FileContents * target){
                 if(col == layer->W.width-1){
                     divider[0] = '\n';
                 }
-                ASSERT(sprintf(target->contents+target->size, "%,9f%c", layer->W.c[col*layer->W.height + row], divider[0]) == 2);
+                ASSERT(sprintf(target->contents+target->size, "%,9f%c", layer->W.c[col*layer->W.height + row], divider[0]) != -1);
                 
                 target->size += strfind(divider, target->contents + target->size) + 1;
             }
@@ -583,7 +583,7 @@ bool saveRNNNeuralNet(const RNNNeuralNet * source, FileContents * target){
         INV;
         break;
     }
-    ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (int32)source->W.width, (int32)source->W.height, c) == 3);
+    ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (int32)source->W.width, (int32)source->W.height, c) != -1);
     target->size += strlen(target->contents + target->size);
     for(int row = 0; row < source->W.height; row++){
         for(int col = 0; col < source->W.width; col++){
@@ -591,7 +591,7 @@ bool saveRNNNeuralNet(const RNNNeuralNet * source, FileContents * target){
             if(col == source->W.width-1){
                 divider[0] = '\n';
             }
-            ASSERT(sprintf(target->contents+target->size, "%,9f%c", source->W.c[col*source->W.height + row], divider[0]) == 2);
+            ASSERT(sprintf(target->contents+target->size, "%,9f%c", source->W.c[col*source->W.height + row], divider[0]) != -1);
             
             target->size += strfind(divider, target->contents + target->size) + 1;
         }
