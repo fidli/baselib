@@ -11,10 +11,6 @@ struct FileHandle{
     HANDLE handle;
 };
 
-struct FileWatchHandle{
-    char path[256];
-    LocalTime lastChangeTime;
-};
 
 
 bool readFile(const char * path, FileContents * target){
@@ -138,26 +134,8 @@ bool getFileChangeTime(const char * path, LocalTime * result){
     return false;
 }
 
-bool watchFile(const char * path, FileWatchHandle * result){
-    if(getFileChangeTime(path, &result->lastChangeTime)){
-        strncpy(result->path, path, ARRAYSIZE(FileWatchHandle::path));
-        result->lastChangeTime = {};
-        return true;
-    }
-    return false;
-}
 
 
-bool hasFileChanged(FileWatchHandle * target){
-    LocalTime newTime;
-    if(getFileChangeTime(target->path, &newTime)){
-        if(newTime != target->lastChangeTime){
-            target->lastChangeTime = newTime;
-            return true;
-        }
-    }
-    return false;
-}
 
 
 

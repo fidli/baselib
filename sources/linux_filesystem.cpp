@@ -12,6 +12,7 @@ struct FileHandle{
     int descriptor;
 };
 
+
 static inline int getFileSizeAndGoBackToBeginning(FileHandle * handle){
     fseek(handle->handle, 0L, SEEK_END);
     int byteSize = ftell(handle->handle);
@@ -54,5 +55,23 @@ bool appendFile(const char * path, const FileContents * source){
 bool readDirectory(const char * path, DirectoryContents * target){
     INV;
 }
+
+
+extern LocalTime sysToLocal(const timespec * timespec);
+
+bool getFileChangeTime(const char * path, LocalTime * result){
+    struct stat attr;
+    int res = stat(path, &attr);
+    if(res == -1) return false;
+    
+    timespec wrap;
+    wrap.tv_sec = attr.st_mtime;
+    wrap.tv_nsec = 0;
+    
+    *result = sysToLocal(&wrap);
+    
+    return true;
+}
+
 
 #endif
