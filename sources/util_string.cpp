@@ -278,7 +278,7 @@ static FormatInfo parseFormat(const char * format){
         
         
         info.dryRun = false;
-        info.maxlen = 0;
+        info.maxlen = -1;
         info.typeLength = FormatTypeSize_Default;
         
         if(format[formatIndex] == '*'){
@@ -619,7 +619,7 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                 char * targetVar = va_arg(ap, char *);
                 bool scanned = false;
                 uint32 i = 0;
-                for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
+                for(; sourceIndex < maxread && i < info.maxlen && source[sourceIndex] != '\0'; sourceIndex++, i++){
                     if(info.charlist.digitRangeLow != '\0'){
                         if(source[sourceIndex] >= info.charlist.digitRangeLow && source[sourceIndex] <= info.charlist.digitRangeHigh && !info.charlist.inverted){
                             if(!info.dryRun) targetVar[i] = source[sourceIndex];
