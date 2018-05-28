@@ -1,11 +1,15 @@
 #ifndef LINUX_FILESYSTEM
 #define LINUX_FILESYSTEM
 
+#include "util_filesystem.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+
+
 
 struct FileHandle{
     FILE * handle;

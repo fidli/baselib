@@ -1,6 +1,8 @@
 #ifndef LINUX_TYPES_H
 #define LINUX_TYPES_H
 
+#include <cstddef>
+
 #define float32 float
 #define float64 double
 #define uint32 unsigned int

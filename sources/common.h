@@ -16,8 +16,8 @@
 #endif
 #define ARRAYSIZE(array) (sizeof(array) /sizeof(*(array)))
 
-#define KILOBYTE(n) ((size_t)1024)*(n)
-#define MEGABYTE(n) ((size_t)1024)*((size_t)KILOBYTE((n)))
-#define GIGABYTE(n) ((size_t)1024)*((size_t)MEGABYTE((n)))
+#define KILOBYTE(n) ((nint)1024)*(n)
+#define MEGABYTE(n) ((nint)1024)*((nint)KILOBYTE((n)))
+#define GIGABYTE(n) ((nint)1024)*((nint)MEGABYTE((n)))
 
 #endif

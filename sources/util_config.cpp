@@ -1,7 +1,6 @@
 #ifndef UTIL_CONFIG
 #define UTIL_CONFIG
 
-#include "util_string.cpp"
 #include "util_filesystem.h"
 
 bool loadConfig(const char * file, bool (*lineCallback)(const char *)){
@@ -17,12 +16,12 @@ bool loadConfig(const char * file, bool (*lineCallback)(const char *)){
                 trail = contents.contents[offset];
             }
             if(!lineCallback(line)){
-                POP;
+                POP; // read file pushes
                 return false;
             }
             
         }
-        POP;
+        POP; //read file pushesh
         return true;
     }
     return false;

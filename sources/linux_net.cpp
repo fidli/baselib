@@ -11,6 +11,9 @@
 #include <ifaddrs.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 struct NetSocket{
     int socket;

@@ -1,6 +1,11 @@
 #ifndef LINUX_SERIAL
 #define LINUX_SERIAL
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+
 #include <termios.h>
 #include <unistd.h>
 
@@ -12,19 +17,23 @@ struct SerialHandle{
 };
 
 bool openHandle(const char * addr, SerialHandle * result){
-    result->handle = open(addr, O_RDWR | O_ASYNC);
+    result->handle = open(addr, O_RDWR | O_NOCTTY);
     if(result->handle != -1){
         termios setting = {};
         if(tcgetattr(result->handle, &setting) == -1){
             closeHandle(result);
             return false;
         }
-        setting.c_iflag = IGNBRK | CS8 | CLOCAL;
-        setting.c_oflag = IGNBRK | CS8 | CLOCAL;
+        setting.c_iflag = IGNPAR;
+        setting.c_oflag = 0;
+        setting.c_cflag &= ~CSIZE;
+        setting.c_cflag = CREAD | CS8 | CLOCAL;
+        setting.c_lflag = 0;
         
         //nonblocking
         setting.c_cc[VMIN] = 0;
         setting.c_cc[VTIME] = 0;
+        
         
         if(tcsetattr(result->handle, TCSANOW, &setting) == -1)
         {

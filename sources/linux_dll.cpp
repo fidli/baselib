@@ -22,7 +22,11 @@ bool hasDllChangedAndReloaded(FileWatchHandle * target, void ** lib, void (*cust
             dlclose(lib);
         }
         *lib = dlopen(target->path, RTLD_NOW | RTLD_GLOBAL);
-        return *lib != 0;
+        if(*lib != 0){
+            return true;
+        }else{
+            //printf("error,  %s\n", dlerror());
+        }
     }
     return false;
 }
