@@ -292,6 +292,9 @@ static FormatInfo parseFormat(const char * format){
         if(format[formatIndex] == 'h'){
             info.typeLength = FormatTypeSize_h;
             formatIndex++;
+        }else if(format[formatIndex] == 'l'){
+            info.typeLength = FormatTypeSize_l;
+            formatIndex++;
         }
         
         //type
@@ -491,35 +494,29 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
             }break;
             case FormatType_f:{
                 char delim = '.';
-                if(info.typeLength == FormatTypeSize_Default){
-                    //float is promoted to double,...
-                    float32 source = (float32)va_arg(ap, float64);
-                    int32 wholePart = (int32) source;
-                    if(wholePart == 0 && source < 0){
-                        target[targetIndex] = '-';
+                //float is promoted to double,...
+                float64 source = (float64)va_arg(ap, float64);
+                int64 wholePart = (int64) source;
+                if(wholePart == 0 && source < 0){
+                    target[targetIndex] = '-';
+                    targetIndex++;
+                }
+                uint8 numlength = numlen(wholePart);
+                if(info.maxlen == 0 || numlength + info.real.precision + 1 <= info.maxlen){
+                    targetIndex += printDigits(target + targetIndex, wholePart);
+                    target[targetIndex] = delim;
+                    
+                    targetIndex++;
+                    uint8 precision = info.real.precision;
+                    
+                    uint32 decimalPart = ABS((int32)((source - wholePart) * powd(10, precision)));
+                    uint8 prependLen = precision - numlen(decimalPart);
+                    for(int i = 0; i < prependLen; i++){
+                        target[targetIndex] = '0';
                         targetIndex++;
                     }
-                    uint8 numlength = numlen(wholePart);
-                    if(info.maxlen == 0 || numlength + info.real.precision + 1 <= info.maxlen){
-                        targetIndex += printDigits(target + targetIndex, wholePart);
-                        target[targetIndex] = delim;
-                        
-                        targetIndex++;
-                        uint8 precision = info.real.precision;
-                        
-                        uint32 decimalPart = ABS((int32)((source - wholePart) * powd(10, precision)));
-                        uint8 prependLen = precision - numlen(decimalPart);
-                        for(int i = 0; i < prependLen; i++){
-                            target[targetIndex] = '0';
-                            targetIndex++;
-                        }
-                        targetIndex += printDigits(target + targetIndex, decimalPart);
-                        successfullyPrinted++;
-                    }
-                }else if(info.typeLength == FormatTypeSize_l){
-                    //implement me
-                    ASSERT(false);
-                    return -1;
+                    targetIndex += printDigits(target + targetIndex, decimalPart);
+                    successfullyPrinted++;
                 }
             }break;
             default:{
@@ -528,9 +525,9 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
             }break;
         }
     }
-    if(successfullyPrinted != 0){
-        target[targetIndex] = '\0';
-    }
+    
+    target[targetIndex] = '\0';
+    
     return successfullyPrinted;
 }
 

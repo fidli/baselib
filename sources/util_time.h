@@ -40,9 +40,13 @@ bool operator!=(const LocalTime a, const LocalTime b){
 }
 
 
+uint64 getTick();
+
+float64 translateTickToTime();
+
 float32 getProcessCurrentTime();
 
 
 LocalTime getLocalTime();
 
-        #endif
+#endif

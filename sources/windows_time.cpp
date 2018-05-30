@@ -4,16 +4,32 @@
 #include "util_time.h"
 
 static LARGE_INTEGER frequency;
+static float32 frequencyF;
 
 bool initTime(){
-    return QueryPerformanceFrequency(&frequency) != 0;
+    int result = QueryPerformanceFrequency(&frequency);
+    if(result != 0){
+        frequencyF = (float32)frequency.QuadPart;
+        return true;
+    }
+    return false;
 }
 
 float32 getProcessCurrentTime(){
     LARGE_INTEGER counter;
     QueryPerformanceCounter(&counter);
-    return ((float32)counter.QuadPart / (float32)frequency.QuadPart);
+    return ((float32)counter.QuadPart / frequencyF);
     
+}
+
+uint64 getTick(){
+    LARGE_INTEGER counter;
+    QueryPerformanceCounter(&counter);
+    return counter.QuadPart;
+}
+
+float64 translateTickToTime(const uint64 tick){
+    return (float64)tick / frequencyF;
 }
 
 LocalTime sysToLocal(const SYSTEMTIME * time){
@@ -57,4 +73,4 @@ bool setLocalTime(const LocalTime * source){
     return SetLocalTime(&time) > 0;
 }
 
-        #endif
+#endif

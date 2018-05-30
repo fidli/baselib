@@ -89,7 +89,8 @@ int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 t
                     return read;
                 }
             }while(getProcessCurrentTime() - start < timeout);
-            ASSERT(CancelIoEx(source->handle, &result));
+            /*BOOL cancelRes = CancelIoEx(source->handle, &result);
+            ASSERT(cancelRes || GetLastError() == ERROR_NOT_FOUND);*/
             return 0;
         }
     }

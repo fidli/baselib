@@ -13,15 +13,16 @@ int printf(const char * format, ...){
     va_list ap;
     va_start(ap, format);
     
+    char buffer[1024];
+    
     FileContents con;
-    con.contents = &PUSHA(char, 1024);
+    con.contents = buffer;
     uint32 successfullyPrinted = printFormatted(con.contents, format, ap);
     con.size = strlen(con.contents);
     ASSERT(con.size < 1024);
     va_end(ap);
     
     writeConsole(&con);
-    POP;
     return successfullyPrinted;
 }
 
@@ -37,11 +38,11 @@ int scanf(const char * format, ...){
     va_list ap;
     va_start(ap, format);
     
-    char * buffer = &PUSHA(char, 1024);
-    ASSERT(readConsole(buffer, 1024) > 0);
+    char buffer[1024];
+    int res = readConsole(buffer, 1024);
+    ASSERT(res > 0);
     
     uint32 succesfullyScanned = scanFormatted(buffer, format, ap);
-    POP;
     va_end(ap);
     
     return succesfullyScanned;
