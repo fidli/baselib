@@ -65,8 +65,10 @@ int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
     OVERLAPPED result = {};
     DWORD writeOp = WriteFile(target->handle, buffer, length, NULL, &result);
     if(writeOp || (!writeOp && GetLastError() == ERROR_IO_PENDING)){
-        while(!GetOverlappedResult(target->handle, &result, &written, false)){};
-        return written;
+        if(GetOverlappedResultEx(target->handle, &result, &written, INFINITE, false)){
+            return written;
+        }
+        return -1;
     }
     return -1;
     
@@ -78,17 +80,16 @@ int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 t
     DWORD readOp = ReadFile(source->handle, buffer, maxRead, NULL, &result);
     if(timeout == -1){
         if(readOp || (!readOp && GetLastError() == ERROR_IO_PENDING)){
-            while(!GetOverlappedResult(source->handle, &result, &read, false)){};
+            if(GetOverlappedResultEx(source->handle, &result, &read, INFINITE, false)){
+                return read;
+            }
             return read;
         }
     }else{
         if(readOp || (!readOp && GetLastError() == ERROR_IO_PENDING)){
-            float32 start = getProcessCurrentTime();
-            do{
-                if(GetOverlappedResult(source->handle, &result, &read, false)){
-                    return read;
-                }
-            }while(getProcessCurrentTime() - start < timeout);
+            if(GetOverlappedResultEx(source->handle, &result, &read, (DWORD)(timeout*1000), false)){
+                return read;
+            }
             /*BOOL cancelRes = CancelIoEx(source->handle, &result);
             ASSERT(cancelRes || GetLastError() == ERROR_NOT_FOUND);*/
             return 0;

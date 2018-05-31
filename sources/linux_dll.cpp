@@ -19,7 +19,8 @@ bool hasDllChangedAndReloaded(FileWatchHandle * target, void ** lib, void (*cust
             customWait();
         }
         if(*lib != 0){
-            dlclose(lib);
+            dlclose(*lib);
+            *lib = 0;
         }
         *lib = dlopen(target->path, RTLD_NOW | RTLD_GLOBAL);
         if(*lib != 0){
