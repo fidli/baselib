@@ -3,7 +3,7 @@
 
 #define THREAD_ID DWORD
 
-#define FETCH_AND_ADD(addr, addon) {ASSERT((addon) == 1); InterlockedIncrement((addr));}
+#define FETCH_AND_ADD(addr, addon)  InterlockedExchangeAdd((LONG *)(addr), (LONG)(addon));
 
 
 struct Thread{

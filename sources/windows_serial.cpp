@@ -90,8 +90,9 @@ int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 t
             if(GetOverlappedResultEx(source->handle, &result, &read, (DWORD)(timeout*1000), false)){
                 return read;
             }
-            /*BOOL cancelRes = CancelIoEx(source->handle, &result);
-            ASSERT(cancelRes || GetLastError() == ERROR_NOT_FOUND);*/
+            //cancel the result to avoid memory rewriting
+            BOOL cancelRes = CancelIoEx(source->handle, &result);
+            ASSERT(cancelRes || GetLastError() == ERROR_NOT_FOUND);
             return 0;
         }
     }
