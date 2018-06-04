@@ -262,6 +262,7 @@ struct FormatInfo{
         } real;
     };
     uint32 length;
+    bool forceSign;
 };
 
 
@@ -285,8 +286,15 @@ static FormatInfo parseFormat(const char * format){
         info.maxlen = -1;
         info.typeLength = FormatTypeSize_Default;
         
-        if(format[formatIndex] == '*'){
-            info.dryRun = true;
+        while(format[formatIndex] == '*' || format[formatIndex] == '+'){
+            
+            if(format[formatIndex] == '*'){
+                info.dryRun = true;
+            }
+            if(format[formatIndex] == '+'){
+                info.forceSign = true;
+            }
+            
             formatIndex++;
         }
         if(isDigit19(format[formatIndex])){
@@ -449,6 +457,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         if(info.maxlen != 0){
                             maxDigits = info.maxlen;
                         }
+                        if(info.forceSign && source != 0) target[targetIndex++] = '+';
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else if (info.typeLength == FormatTypeSize_h){
@@ -457,6 +466,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         if(info.maxlen != 0){
                             maxDigits = info.maxlen;
                         }
+                        if(info.forceSign && source != 0) target[targetIndex++] = '+';
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else if (info.typeLength == FormatTypeSize_hh){
@@ -465,6 +475,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         if(info.maxlen != 0){
                             maxDigits = info.maxlen;
                         }
+                        if(info.forceSign && source != 0) target[targetIndex++] = '+';
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else{
@@ -478,6 +489,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         if(info.maxlen != 0){
                             maxDigits = info.maxlen;
                         }
+                        if(info.forceSign && source > 0) target[targetIndex++] = '+';
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else if (info.typeLength == FormatTypeSize_h){
@@ -486,6 +498,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         if(info.maxlen != 0){
                             maxDigits = info.maxlen;
                         }
+                        if(info.forceSign && source > 0) target[targetIndex++] = '+';
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else if (info.typeLength == FormatTypeSize_hh){
@@ -494,6 +507,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                         if(info.maxlen != 0){
                             maxDigits = info.maxlen;
                         }
+                        if(info.forceSign && source > 0) target[targetIndex++] = '+';
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else{
@@ -518,6 +532,7 @@ uint32 printFormatted(char * target, const char * format, va_list ap){
                 //successfullyPrinted++;
             }break;
             case FormatType_f:{
+                ASSERT(info.forceSign == false);
                 char delim = '.';
                 //float is promoted to double,...
                 float64 source = (float64)va_arg(ap, float64);
@@ -733,10 +748,8 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                     
                     
                     if(!info.charlist.inverted && !found){
-                        i++;
                         break;    
                     }else if(info.charlist.inverted && found){
-                        i++;
                         break;
                     }
                     

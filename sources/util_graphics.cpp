@@ -112,11 +112,11 @@ void drawQuad(Image * target, const dv2 * topLeft, const dv2 * topRight, const d
 void drawCircle(Image * target, const dv2 * center, uint32 radius, const Color borderColor, uint8 borderThickness = 1){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
     uint8 thicknessReal = MAX(borderThickness/2, 1);
-    int32 startY = MAX(0, center->y - radius - thicknessReal);
-    int32 startX = MAX(0, center->x - radius - thicknessReal);
+    int32 startY = MAX(0, (int32)(center->y - radius - thicknessReal));
+    int32 startX = MAX(0, (int32)(center->x - radius - thicknessReal));
     //+1 because this is count, not index
-    int32 endY = MIN(target->info.height, center->y + radius + thicknessReal + 1);
-    int32 endX = MIN(target->info.width, center->x + radius + thicknessReal + 1);
+    int32 endY = MIN(target->info.height, (int32)(center->y + radius + thicknessReal + 1));
+    int32 endX = MIN(target->info.width, (int32)(center->x + radius + thicknessReal + 1));
     
     for(int32 y = startY; y < endY; y++){
         int32 pitch = y*target->info.width;
