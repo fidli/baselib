@@ -74,6 +74,13 @@ int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
     
 }
 
+OVERLAPPED trash;
+
+void writeSerialQuick(SerialHandle * target, const char * buffer, uint32 length){
+    WriteFile(target->handle, buffer, length, NULL, &trash);
+}
+
+
 int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 timeout){
     DWORD read;
     OVERLAPPED result = {};

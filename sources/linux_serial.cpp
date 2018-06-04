@@ -107,6 +107,10 @@ int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
     
 }
 
+void writeSerialQuick(SerialHandle * target, const char * buffer, uint32 length){
+    write(target->handle, buffer, length);
+}
+
 int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 timeout){
     ssize_t readBytes = 0;
     float32 startTime = getProcessCurrentTime();

@@ -13,6 +13,7 @@ bool clearSerialPort(SerialHandle * target);
 
 
 int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length);
+void writeSerialQuick(SerialHandle * target, const char * buffer, uint32 length);
 int32 readSerial(SerialHandle * module, char * buffer, uint32 maxRead, float32 timeout = -1);
 
 #endif
