@@ -11,17 +11,27 @@ struct FileHandle{
     HANDLE handle;
 };
 
-
+bool getFileSize(const char * path, uint32 * result){
+    HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if(file ==  INVALID_HANDLE_VALUE) return false;
+    DWORD r = GetFileSize(file, 0);
+    if(r == INVALID_FILE_SIZE) return false;
+    *result = r;
+    CloseHandle(file);
+    return true;
+}
 
 bool readFile(const char * path, FileContents * target){
     HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if(file ==  INVALID_HANDLE_VALUE) return false;
-    target->size = GetFileSize(file, 0);
-    target->contents = &PUSHA(char, target->size);
+    if(target->size == 0){
+        target->size = GetFileSize(file, 0);
+        target->contents = &PUSHA(char, target->size);
+    }
     if(!ReadFile(file, (void *) target->contents, target->size, 0, 0)){
         return false;
     }
-    
+    target->head = 0;
     CloseHandle(file);
     return true;
 }

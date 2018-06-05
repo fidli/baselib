@@ -4,21 +4,15 @@
 #include "util_filesystem.h"
 
 bool loadConfig(const char * file, bool (*lineCallback)(const char *)){
-    FileContents contents;
+    FileContents contents = {};
     if(readFile(file, &contents)){
-        uint32 offset = 0;
+        
         char line[1024];
         
-        while(sscanf(contents.contents + offset, "%[^\r\n]", line) == 1){
+        while(getNextLine(&contents, line, ARRAYSIZE(line))){
             uint32 localOffset = 0;
             while(line[localOffset] == ' ' || line[localOffset] == '\t'){
                 localOffset++;
-            }
-            offset += strlen(line);
-            char trail = contents.contents[offset];
-            while((trail == '\r' || trail == '\n') && trail != '\0'){
-                offset++;
-                trail = contents.contents[offset];
             }
             //skip commentary
             if(line[localOffset] == '#') continue;

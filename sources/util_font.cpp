@@ -32,6 +32,8 @@ bool initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
 
 bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize, Color color = {0xFF,0xFF,0xFF,0xFF}){
     
+    if(startY > (int64)target->info.height - fontSize) return false;
+    if(startX > (int64)target->info.width - fontSize * strlen(asciiText)) return false;
     
     if(font->current.gridSize != fontSize){
         //font->current.data.data = &PUSHA(byte, fontSize*16*fontSize*16);
@@ -40,9 +42,10 @@ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * as
         }
         font->current.gridSize = fontSize;
     }
+    startX = MAX(0, startX);
+    startY = MAX(0, startY);
     
-    ASSERT(startY <= (int64)target->info.height - fontSize);
-    ASSERT(startX <= (int64)target->info.width - fontSize * strlen(asciiText));
+    //todo implement support
     ASSERT(target->info.samplesPerPixel * target->info.bitsPerSample >= 8);
     ASSERT(target->info.samplesPerPixel * target->info.bitsPerSample % 8 == 0);
     
@@ -57,7 +60,9 @@ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * as
     while(asciiText[letterIndex] != '\0'){
         ASSERT((uint8)asciiText[letterIndex] <= 127);
         uint32 sourcePixel = (asciiText[letterIndex] / 16) * fontSize * font->current.data.info.width + (asciiText[letterIndex] % 16) * fontSize;
-        uint32 targetPixel = startX + startY * target->info.width + letterIndex * fontSize;
+        uint32 offsetRow = startY * target->info.width;
+        uint32 offsetCol = startX + letterIndex * fontSize;
+        uint32 targetPixel = offsetRow + offsetCol;
         
         
         for(uint32 rH = 0; rH < fontSize; rH++){

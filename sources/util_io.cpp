@@ -17,7 +17,7 @@ int printf(const char * format, ...){
     
     FileContents con;
     con.contents = buffer;
-    uint32 successfullyPrinted = printFormatted(con.contents, format, ap);
+    uint32 successfullyPrinted = printFormatted(ARRAYSIZE(buffer), con.contents, format, ap);
     con.size = strlen(con.contents);
     ASSERT(con.size < 1024);
     va_end(ap);
