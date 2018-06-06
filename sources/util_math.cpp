@@ -70,6 +70,18 @@ float32 powd(float32 base, int16 power = 2){
     return (power < 0) ? (1.0f / result) : result;
 }
 
+float64 powd64(float64 base, int16 power = 2){
+    //todo square mult
+    if(power == 0){
+        return 1;
+    }
+    float64 result = base;
+    for(uint16 i = 1; i < ABS(power); i++){
+        result *= base;
+    }
+    return (power < 0) ? (1.0f / result) : result;
+}
+
 static float32 subSqrt(float32 value, float32 guess, float32 prec = 0.0001f){
     if(guess != guess){
         //fucking nan

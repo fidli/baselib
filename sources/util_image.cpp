@@ -216,7 +216,7 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     //does not hurt
     neighbourCount++;
     
-    NearestNeighbourColor * nn = &PUSHA(NearestNeighbourColor, neighbourCount);
+    
     
     
     //support lesser bits per pixel later
@@ -224,6 +224,8 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     if(source->info.bitsPerSample * source->info.samplesPerPixel < 8 && source->info.bitsPerSample * source->info.samplesPerPixel % 8 != 0){
         return false;
     }
+    
+    NearestNeighbourColor * nn = &PUSHA(NearestNeighbourColor, neighbourCount);
     uint8 channelCount = (source->info.bitsPerSample * source->info.samplesPerPixel) / 8;
     
     //each target pixel

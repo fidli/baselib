@@ -1,5 +1,6 @@
 #include "common.h"
 #include "util_time.h"
+#include "util_string.cpp"
 
 #ifndef UTIL_FILESYSTEM
 #define UTIL_FILESYSTEM
@@ -33,7 +34,6 @@ bool getFileSize(const char * path, int32 * result);
 bool getNextLine(FileContents * contents, char * line, uint32 linelen){
     char format[30];
     uint32 res = snprintf(format, 30, "%%%u[^\r\n]", linelen-1);
-    ASSERT(res == 1);
     if(sscanf(contents->contents + contents->head, format, line) == 1){
         contents->head += strlen(line);
         char trail = contents->contents[contents->head];
