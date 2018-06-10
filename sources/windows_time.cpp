@@ -28,7 +28,11 @@ uint64 getTick(){
     return counter.QuadPart;
 }
 
-float64 translateTickToTime(const uint64 tick){
+uint64 getTickDivisor(){
+    return frequency.QuadPart;
+}
+
+float64 translateTickToTime(const uint64 tick, uint64 divisor = getTickDivisor()){
     return (float64)tick / frequencyF;
 }
 

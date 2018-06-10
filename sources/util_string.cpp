@@ -228,6 +228,24 @@ static uint8 scanUnumber(const char * source, uint32 * target, uint8 maxDigits =
 }
 
 
+static uint8 scanUnumber64(const char * source, uint64 * target, uint8 maxDigits = 20){
+    if(maxDigits > 20) maxDigits = 20; //cant fit more
+    uint8 i = 0;
+    bool first = true;
+    for(;source[i] != '\0' && i < maxDigits; i++){
+        int8 digit = (int8) source[i];
+        if(digit < 48 || digit > 57) break;
+        digit -= 48;
+        if(first){
+            first = false;
+            *target = 0;
+        }
+        *target = 10 * *target + digit; 
+    }
+    return i;
+}
+
+
 static uint8 printDigits(char * target, int64 number){
     char digitsStack[20];
     int8 stackSize = 0;
@@ -255,7 +273,8 @@ enum FormatTypeSize{
     FormatTypeSize_Default,
     FormatTypeSize_h,
     FormatTypeSize_hh,
-    FormatTypeSize_l
+    FormatTypeSize_l,
+    FormatTypeSize_ll
 };
 
 enum FormatType{
@@ -352,6 +371,10 @@ static FormatInfo parseFormat(const char * format){
         }else if(format[formatIndex] == 'l'){
             info.typeLength = FormatTypeSize_l;
             formatIndex++;
+            if(format[formatIndex] == 'l'){
+                info.typeLength = FormatTypeSize_ll;
+                formatIndex++;
+            }
         }
         
         if(info.typeLength == FormatTypeSize_h && format[formatIndex] == 'h'){
@@ -577,6 +600,32 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                         }
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
+                    }else if(info.typeLength == FormatTypeSize_ll){
+                        uint64 source = va_arg(ap, uint64);
+                        uint8 maxDigits = 20;
+                        int8 prepend = 0;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                            prepend = info.maxlen;
+                        }
+                        
+                        if(info.forceSign && source != 0){
+                            target[targetIndex++] = '+';
+                            prepend--;
+                        }
+                        uint8 digitsWouldBePrinted = numlen(source);
+                        prepend -= digitsWouldBePrinted;
+                        if(info.padding0){
+                            for(int8 pi = 0; pi < prepend; pi++){
+                                target[targetIndex++] = '0';
+                            }
+                        }else{
+                            for(int8 pi = 0; pi < prepend; pi++){
+                                target[targetIndex++] = ' ';
+                            }
+                        }
+                        targetIndex += printDigits(target + targetIndex, source);
+                        successfullyPrinted++;
                     }else{
                         ASSERT(!"fuk");
                         return -1;
@@ -657,6 +706,31 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                         }
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
+                    }else if(info.typeLength == FormatTypeSize_ll){
+                        int64 source = va_arg(ap, int64);
+                        uint8 maxDigits = 20;
+                        int8 prepend = 0;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                            prepend = info.maxlen;
+                        }
+                        if(info.forceSign && source > 0){
+                            target[targetIndex++] = '+';
+                            prepend--;
+                        }
+                        uint8 digitsWouldBePrinted = numlen(source);
+                        prepend -= digitsWouldBePrinted;
+                        if(info.padding0){
+                            for(int8 pi = 0; pi < prepend; pi++){
+                                target[targetIndex++] = '0';
+                            }
+                        }else{
+                            for(int8 pi = 0; pi < prepend; pi++){
+                                target[targetIndex++] = ' ';
+                            }
+                        }
+                        targetIndex += printDigits(target + targetIndex, source);
+                        successfullyPrinted++;
                     }else{
                         ASSERT(!"fuk");
                         return -1;
@@ -679,11 +753,14 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 //successfullyPrinted++;
             }break;
             case FormatType_f:{
-                ASSERT(info.forceSign == false);
                 char delim = '.';
                 //float is promoted to double,...
                 float64 source = (float64)va_arg(ap, float64);
                 int64 wholePart = (int64) source;
+                if(info.forceSign && source >= 0){
+                    target[targetIndex] = '+';
+                    targetIndex++;
+                }
                 if(wholePart == 0 && source < 0){
                     target[targetIndex] = '-';
                     targetIndex++;
@@ -770,6 +847,13 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                             maxDigits = info.maxlen;
                         }
                         scannedChars = scanUnumber16(source + sourceIndex, (uint16 *) targetVar, maxDigits);
+                    }else if (info.typeLength == FormatTypeSize_ll){
+                        uint64 * targetVar = va_arg(ap, uint64 * );
+                        uint8 maxDigits = 20;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanUnumber64(source + sourceIndex, (uint64 *) targetVar, maxDigits);
                     }else{
                         ASSERT(!"fuk");
                     }
@@ -788,6 +872,13 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                             maxDigits = info.maxlen;
                         }
                         scannedChars = scanNumber16(source + sourceIndex, (int16 *) targetVar, maxDigits);
+                    }else if (info.typeLength == FormatTypeSize_ll){
+                        int64 * targetVar = va_arg(ap, int64 * );
+                        uint8 maxDigits = 20;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanNumber64(source + sourceIndex, (int64 *) targetVar, maxDigits);
                     }else{
                         ASSERT(!"fuk");
                     }
@@ -1004,7 +1095,9 @@ uint32 sscanf(const char * target, const char * format, ...){
     va_end(ap);
     return successfullyScanned;
 }
-
+#else
+#include <cstdio>
 #endif
+
 
 #endif

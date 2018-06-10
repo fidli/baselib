@@ -9,7 +9,6 @@
 #include "util_net.h"
 
 
-
 WSADATA socketsContext;
 
 struct NetSocket{
@@ -161,7 +160,7 @@ bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSett
     }
 }
 
-bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
+bool tcpConnect(NetSocket * source, const char * ip, const char * port){
     addrinfo hints = {};
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;

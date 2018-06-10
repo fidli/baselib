@@ -1,6 +1,9 @@
-
 #ifndef UTIL_MATH
 #define UTIL_MATH
+
+#ifdef PRECISE_MATH
+#include <cmath>
+#endif
 
 #include "common.h"
 
@@ -15,6 +18,9 @@
 #define MAX(a, b) (((a) < (b)) ? (b) : (a))
 #define ABS(a) (((a) < 0) ? -(a) : (a))
 #define KRONECKER(a, b) ((a) == (b) ? 1 : 0)
+
+
+#ifndef PRECISE_MATH
 
 bool32 isOdd(const uint64 a){
     return (a & (uint64) 1);
@@ -33,9 +39,6 @@ bool aseqr(float32 test, float32 fixedpoint, float32 delta = 0.000005f){
     float32 eps = test - fixedpoint;
     return eps < delta;
 }
-
-
-
 
 float32 ceil(float32 value){
     float32 result = (float32)(uint64) ABS(value);
@@ -190,19 +193,6 @@ float32 log(float32 number, float32 base = 10){
     
 }
 
-uint8 numlen(int64 number){
-    int result = 1;
-    if(number < 0){
-        result++;
-    }
-    number = ABS(number);
-    while(number > 9){
-        number /= 10;
-        result++;
-    }
-    return result;
-}
-
 
 float32 clamp(float32 originalValue, float32 min, float32 max){
     if(originalValue < min){
@@ -236,6 +226,40 @@ float32 fmodd(float32 value, uint32 modulus){
     }
     return preResult; 
 }
+#else
+
+
+//this is just interface
+
+float32 powd(float32 base, int16 power = 2){
+    return (float32)pow((double) base, (double) power);
+}
+
+float64 powd64(float64 base, int16 power = 2){
+    return (float64)pow(base, (double) power);
+}
+
+
+float32 fmodd(float32 value, uint32 modulus){
+    return (float32) fmod((double) value, (double) modulus);
+}
+
+
+#endif
+
+uint8 numlen(int64 number){
+    int result = 1;
+    if(number < 0){
+        result++;
+    }
+    number = ABS(number);
+    while(number > 9){
+        number /= 10;
+        result++;
+    }
+    return result;
+}
+
 
 //-----------------------------------------------------------------------VERTICES
 
@@ -295,6 +319,25 @@ union v3{
         float32 upward;
     };
     float32 v[3];
+};
+
+union dv3{
+    struct{
+        int32 x;
+        int32 y;
+        int32 z;
+    };
+    struct{
+        int32 r;
+        int32 g;
+        int32 b;
+    };
+    struct{
+        int32 right;
+        int32 forward;
+        int32 upward;
+    };
+    int32 v[3];
 };
 
 union v4{
@@ -418,6 +461,13 @@ v3 operator-(const v3 & a, const v3 & b){
 }
 
 v3 & operator+=(v3 & a, const v3 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] += b.v[i];
+    }
+    return a;
+}
+
+dv3 & operator+=(dv3 & a, const dv3 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
     }
@@ -886,6 +936,17 @@ mat4 rotationXMatrix(float32 radAngle){
     result.c[6] = -sin(radAngle);
     result.c[9] = sin(radAngle);
     result.c[10] = cos(radAngle);
+    result.c[15] = 1.0f;
+    return result;
+}
+
+mat4 rotationZMatrix(float32 radAngle){
+    mat4 result = {};
+    result.c[0] = cos(radAngle);
+    result.c[1] = -sin(radAngle);
+    result.c[4] = sin(radAngle);
+    result.c[5] = -cos(radAngle);
+    result.c[10] = 1.0f;
     result.c[15] = 1.0f;
     return result;
 }

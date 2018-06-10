@@ -9,6 +9,7 @@ bool writeConsole(const FileContents * source);
 int readConsole(char * buffer, uint16 maxlen);
 bool initIo();
 
+#ifndef CRT_PRESENT
 int printf(const char * format, ...){
     va_list ap;
     va_start(ap, format);
@@ -47,5 +48,8 @@ int scanf(const char * format, ...){
     
     return succesfullyScanned;
 }
+#else
+#include <cstdio>
+#endif
 
 #endif

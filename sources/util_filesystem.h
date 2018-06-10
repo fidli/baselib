@@ -5,6 +5,8 @@
 #ifndef UTIL_FILESYSTEM
 #define UTIL_FILESYSTEM
 
+#include "util_string.cpp"
+
 struct FileHandle;
 
 

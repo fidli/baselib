@@ -42,7 +42,9 @@ bool operator!=(const LocalTime a, const LocalTime b){
 
 uint64 getTick();
 
-float64 translateTickToTime();
+float64 translateTickToTime(const uint64 tick, const uint64 tickDivisor);
+
+uint64 getTickDivisor();
 
 float32 getProcessCurrentTime();
 
