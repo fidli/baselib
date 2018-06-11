@@ -452,13 +452,13 @@ bool decodeTiff(const FileContents * file, Image * target){
             }break;
             case 296:{
                 //resolution unit
-                //cm/inch we dont give fuck for now
+                //cm/inch we dont care for now
             }break;
             case 306:{
-                //date time we dont give fuck for now
+                //date time we dont care for now
             }break;
             case 315:{
-                //artist we dont give fuck for now
+                //artist we dont care for now
             }break;
             default:{
                 INV;
@@ -770,7 +770,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     /*
     case 296:{
     //resolution unit
-    //cm/inch we dont give fuck for now
+    //cm/inch we dont give care for now
     }break;
     */
     

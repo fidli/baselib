@@ -74,7 +74,7 @@ bool predictRNNStep(RNNNeuralNet * model, vN * input, vN * output){
             model->outputs.v[i] = model->outputs.v[i];
             break;
             default:
-            ASSERT(!"FUCK");
+            INV; //implement me or genuine error
             break;
         }
     }
@@ -122,7 +122,7 @@ bool predictMLP(const MLPNeuralNet * model, vN * input, vN * result){
             }
             break;
             default:
-            ASSERT(!"FUCK");
+            INV; //implement me or genuine error
             break;
         }
         layerOutput->v[layerOutput->size-1] = 1;
@@ -225,7 +225,7 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
                     model->outputs.v[i] = nodeArgs.v[i];
                     break;
                     default:
-                    ASSERT(!"FUCK");
+                    INV; //implement me or genuine error
                     break;
                 }
             }
@@ -254,7 +254,7 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
                     
                     break;
                     default:
-                    ASSERT(!"FUCK");
+                    INV; //implement me or genuine error
                     break;
                 }
                 
@@ -333,7 +333,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
                 }
                 break;
                 default:
-                ASSERT(!"FUCK");
+                INV; //implement me or genuine error
                 break;
             }
             layerOutput->v[layerOutput->size-1] = 1;
@@ -405,7 +405,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
                             }
                             break;
                             default:
-                            ASSERT(!"FUCK");
+                            INV; //implement me or genuine error
                             break;
                         }
                         
@@ -430,7 +430,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
             }
             break;
             default:
-            ASSERT(!"FUCK");
+            INV; //implement me or genuine error
             break;
         }
         

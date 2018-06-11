@@ -334,7 +334,7 @@ void mix(AudioItem * queue){
             mixer.talkbuffer->Stop();
             break;
             default:
-            ASSERT(!"FUCK");
+            INV; //implement me or genuine error
             break;
         }
         current = current->next;

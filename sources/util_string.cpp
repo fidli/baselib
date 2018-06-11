@@ -421,7 +421,7 @@ static FormatInfo parseFormat(const char * format){
                     }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
                         info.charlist.digitRangeLow = format[formatIndex];
                     }else{
-                        ASSERT(!"fuck");
+                        INV; //implement me maybe? makes sense? i havent been in these depths for long
                     }
                     
                     formatIndex += 2;
@@ -436,7 +436,7 @@ static FormatInfo parseFormat(const char * format){
                         info.charlist.digitRangeHigh = format[formatIndex];
                         ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
                     }else{
-                        ASSERT(!"fuck");
+                        INV; //implement me maybe? makes sense?
                     }
                     
                 }else{
@@ -469,7 +469,7 @@ static FormatInfo parseFormat(const char * format){
             }
             formatIndex++;
         }else{
-            ASSERT(!"fuck");
+            INV; //implement me or genuine errer
         } 
         
     }else{
@@ -627,7 +627,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else{
-                        ASSERT(!"fuk");
+                        INV; //implement me or genuine error
                         return -1;
                     }
                 }else if(info.type == FormatType_d){
@@ -732,7 +732,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                         targetIndex += printDigits(target + targetIndex, source);
                         successfullyPrinted++;
                     }else{
-                        ASSERT(!"fuk");
+                        INV; //implement me or genuine error
                         return -1;
                     }
                 }
@@ -784,7 +784,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 }
             }break;
             default:{
-                ASSERT(!"fuck");
+                INV; //implement me or genuine errer
                 return -1;
             }break;
         }
@@ -855,7 +855,7 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                         }
                         scannedChars = scanUnumber64(source + sourceIndex, (uint64 *) targetVar, maxDigits);
                     }else{
-                        ASSERT(!"fuk");
+                        INV; //implement me or genuine error
                     }
                 }else if(info.type == FormatType_d){
                     if(info.typeLength == FormatTypeSize_Default){
@@ -880,7 +880,7 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                         }
                         scannedChars = scanNumber64(source + sourceIndex, (int64 *) targetVar, maxDigits);
                     }else{
-                        ASSERT(!"fuk");
+                        INV; //implement me or genuine error
                     }
                 }
                 
@@ -1059,7 +1059,7 @@ uint32 scanFormatted(const char * source, const char * format, va_list ap){
                 }
             }break;
             default:{
-                ASSERT(!"fuck");
+                INV; //implement me or genuine error
             }break;
         }
         

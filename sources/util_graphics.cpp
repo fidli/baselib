@@ -109,7 +109,7 @@ void drawQuad(Image * target, const dv2 * topLeft, const dv2 * topRight, const d
 }
 
 
-void drawCircle(Image * target, const dv2 * center, uint32 radius, const Color borderColor, uint8 borderThickness = 1){
+void drawCircle(Image * target, const dv2 * center, uint32 radius, const Color borderColor, uint8 borderThickness = 1, bool filled = false){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
     uint8 thicknessReal = MAX(borderThickness/2, 1);
     int32 startY = MAX(0, (int32)(center->y - radius - thicknessReal));
@@ -123,20 +123,88 @@ void drawCircle(Image * target, const dv2 * center, uint32 radius, const Color b
         for(int32 x = startX; x < endX; x++){
             dv2 pos = {x - center->x, y - center->y};
             float32 len = length(pos);
-            if(len > radius - thicknessReal && len < radius + thicknessReal){
-                ((uint32 *)target->data)[pitch + x] = borderColor.full;
+            if(len < radius + thicknessReal){
+                if(filled || len > radius - thicknessReal){
+                    ((uint32 *)target->data)[pitch + x] = borderColor.full;
+                }
             }
         }
     }
     
 }
 
-void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, const Color borderColor, uint8 borderThickness = 1){
+void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, const Color borderColor, uint8 borderThickness = 1, bool filled = false){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
-    
-    drawLine(target, A, B, borderColor, borderThickness);
-    drawLine(target, B, C, borderColor, borderThickness);
-    drawLine(target, C, A, borderColor, borderThickness);
+    if(!filled){
+        drawLine(target, A, B, borderColor, borderThickness);
+        drawLine(target, B, C, borderColor, borderThickness);
+        drawLine(target, C, A, borderColor, borderThickness);
+    }else{
+        uint8 thicknessReal = MAX(borderThickness/2, 1);
+        dv2 leftTop;
+        dv2 rightBot;
+        leftTop.x = MAX(0, MIN(MIN(A->x, B->x), C->x));
+        leftTop.y = MAX(0, MIN(MIN(A->y, B->y), C->y));
+        rightBot.x = MIN(target->info.width - thicknessReal, MAX(MAX(A->x, B->x), C->x));
+        rightBot.y = MIN(target->info.height - thicknessReal, MAX(MAX(A->y, B->y), C->y));
+        
+        
+        /*convex hull style (is convex hull still triangle?)
+        //http://mathworld.wolfram.com/TriangleInterior.html // does not seem to work properly
+        
+        v2 _v0 = {(float32)A->x, (float32)A->y};
+        dv2 v1d = *B - *A;
+        dv2 v2d = *C - *A;
+        v2 _v1 = {(float32) v1d.x, (float32) v1d.y};
+        v2 _v2 = {(float32) v2d.x, (float32) v2d.y};
+        
+        float32 detV1V2 = det(_v1, _v2);
+        float32 detV0V2 = det(_v0, _v2);
+        float32 detV0V1 = det(_v0, _v1);
+        
+        for(int32 y = leftTop.y; y < rightBot.y; y++){
+            int32 pitch = y*target->info.width;
+            for(int32 x = leftTop.x; x < rightBot.x; x++){
+            
+                v2 _v = {(float32) (x), (float32) (y)};
+                float32 a = (det(_v, _v2) - detV0V2) / detV1V2;
+                float32 b = (det(_v, _v1) - detV0V1) / detV1V2;
+                if(((a > 0 && b < 0) || (a < 0 && b > 0)) && (a + b < 1)){
+                    ((uint32 *)target->data)[pitch + x] = borderColor.full;
+                }
+            }
+            */
+        //barycentric stuff
+        //https://math.stackexchange.com/questions/51326/determining-if-an-arbitrary-point-lies-inside-a-triangle-defined-by-three-points
+        
+        dv2 b0 = *B - *A;
+        dv2 c0 = *C - *A;
+        
+        float32 d = (float32)(b0.x * c0.y - c0.x * b0.y);
+        
+        float32 member1 = (float32)(b0.y - c0.y);
+        float32 member2 = (float32)(c0.x - b0.x);
+        float32 member3 = (float32)(b0.x * c0.y);
+        float32 member4 = (float32)(c0.x * b0.y);
+        
+        
+        for(int32 y = leftTop.y; y < rightBot.y; y++){
+            int32 pitch = y*target->info.width;
+            for(int32 x = leftTop.x; x < rightBot.x; x++){
+                
+                v2 p0 = {(float32) (x-A->x), (float32) (y-A->y)};
+                
+                float32 wA = (p0.x * member1 + p0.y * member2 + member3 - member4) / d;
+                float32 wB = (p0.x * c0.y - p0.y * c0.x) / d;
+                float32 wC = (p0.y * b0.x - p0.x * b0.y) / d;
+                
+                if(wA > 0 && wB > 0 && wC > 0 && wA < 1 && wB < 1 && wC < 1){
+                    ((uint32 *)target->data)[pitch + x] = borderColor.full;
+                }
+            }
+        }
+        
+    }
 }
 
 

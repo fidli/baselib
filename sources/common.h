@@ -9,7 +9,7 @@
 #endif
 #endif
 
-#define INV ASSERT(!"FUCK");
+#define INV ASSERT(!"INVALID PROGRAM PATH");
 
 #ifdef ARRAYSIZE
 #undef ARRAYSIZE

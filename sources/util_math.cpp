@@ -8,6 +8,7 @@
 #include "common.h"
 
 #define PI 3.14159265f
+#define PI_64 3.1415926535897932f
 #define E 2.71828182f
 
 //-----------------------------------------------------------------------NUMBERS
@@ -27,6 +28,10 @@ bool32 isOdd(const uint64 a){
 }
 
 bool aseq(float32 a, float32 b, float32 delta = 0.000001f){
+    return ABS(a-b) <= delta;
+}
+
+bool aseq64(float64 a, float64 b, float64 delta = 0.000001f){
     return ABS(a-b) <= delta;
 }
 
@@ -87,7 +92,7 @@ float64 powd64(float64 base, int16 power = 2){
 
 static float32 subSqrt(float32 value, float32 guess, float32 prec = 0.0001f){
     if(guess != guess){
-        //fucking nan
+        //nan
         return guess;
     }
     float32 estimation = value / guess;
@@ -102,12 +107,35 @@ static float32 subSqrt(float32 value, float32 guess, float32 prec = 0.0001f){
     return subSqrt(value, newGuess, prec);
 }
 
+static float64 subSqrt64(float64 value, float64 guess, float64 prec = 0.0001f){
+    if(guess != guess){
+        //nan
+        return guess;
+    }
+    float64 estimation = value / guess;
+    if(aseq64(estimation, guess, prec)){
+        return (estimation + guess) / 2;
+    }
+    float64 newGuess = (guess + value/guess) / 2;
+    //stack overflow with recursive shittery
+    if(aseq64(guess, newGuess, prec)){
+        return (guess + newGuess) / 2;
+    }
+    return subSqrt64(value, newGuess, prec);
+}
+
 
 
 float32 sqrt(float32 value){
     if(aseq(value, 0)) return 0;
     if(value < 0) INV;
     return subSqrt(value, value / 2, value < 1 ? 0.000001f : 0.01f);
+}
+
+float64 sqrt64(float64 value){
+    if(aseq64(value, 0)) return 0;
+    if(value < 0) INV;
+    return subSqrt64(value, value / 2, value < 1 ? 0.000001f : 0.01f);
 }
 
 /* e N
@@ -128,7 +156,7 @@ float32 sqrt(float32 value){
 
 
 float32 atan2(float32, float32){
-    ASSERT(!"fuck");
+    ASSERT(!"implement me");
     return 0;
 }
 
@@ -136,8 +164,16 @@ float32 sin(float32 xRad){
     return xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19;
 }
 
+float32 sin64(float64 xRad){
+    return xRad - powd64(xRad,3)/6.0 + powd64(xRad,5)/120.0 - powd64(xRad,7)/5040.0 +  powd64(xRad,9)/362880.0 - powd64(xRad,11)/39916800.0 + powd64(xRad,13)/6227020800.0 - powd64(xRad,15)/1307674368000.0 +  powd64(xRad,17)/355687428096000.0 - powd64(xRad,19)/1.216451e+17 + powd64(xRad,21)/5.1090942e+19;
+}
+
 float32 cos(float32 xRad){
     return 1 - powd(xRad,2)/2.0 + powd(xRad,4)/24.0 - powd(xRad,6)/720.0 + powd(xRad,8)/40320.0 - powd(xRad,10)/3628800.0 + powd(xRad,12)/479001600.0 - powd(xRad,14)/87178291200.0 + powd(xRad,16)/20922789888000.0 - powd(xRad,18)/6.402373705728e+15 + powd(xRad,20)/2.43290200817664e+18;
+}
+
+float64 cos64(float64 xRad){
+    return 1 - powd64(xRad,2)/2.0 + powd64(xRad,4)/24.0 - powd64(xRad,6)/720.0 + powd64(xRad,8)/40320.0 - powd64(xRad,10)/3628800.0 + powd64(xRad,12)/479001600.0 - powd64(xRad,14)/87178291200.0 + powd64(xRad,16)/20922789888000.0 - powd64(xRad,18)/6.402373705728e+15 + powd64(xRad,20)/2.43290200817664e+18;
 }
 
 
@@ -149,6 +185,16 @@ float32 acos(float32 cos){
     float32 c = -1.2845906244690837f;
     float32 d =  0.295624144969963174f;
     return PI/2 + (a*cos + b * powd(cos,3)) / (1 + c*powd(cos,2) + d*powd(cos, 4));
+    
+}
+
+float64 acos64(float64 cos){
+    //https://stackoverflow.com/questions/3380628/fast-arc-cos-algorithm/36387954#36387954
+    float64 a = -0.939115566365855f;
+    float64 b =  0.9217841528914573f;
+    float64 c = -1.2845906244690837f;
+    float64 d =  0.295624144969963174f;
+    return PI_64/2 + (a*cos + b * powd64(cos,3)) / (1 + c*powd64(cos,2) + d*powd64(cos, 4));
     
 }
 
@@ -239,10 +285,26 @@ float64 powd64(float64 base, int16 power = 2){
     return (float64)pow(base, (double) power);
 }
 
+float64 sqrt64(float64 value){
+    return (float64)sqrt((double) value);
+}
 
 float32 fmodd(float32 value, uint32 modulus){
     return (float32) fmod((double) value, (double) modulus);
 }
+
+float64 acos64(float64 cos64){
+    return (float64)acos((double)cos64);
+}
+
+float64 cos64(float64 radAngle){
+    return (float64)cos((double)radAngle);
+}
+
+float64 sin64(float64 radAngle){
+    return (float64)sin((double)radAngle);
+}
+
 
 
 #endif
@@ -290,6 +352,19 @@ union v2{
     float32 v[2];
 };
 
+union v2_64{
+    struct{
+        float64 x;
+        float64 y;
+    };
+    struct{
+        float64 pitch;
+        float64 yaw;
+    };
+    float64 v[2];
+};
+
+
 union dv2{
     struct{
         int32 x;
@@ -319,6 +394,25 @@ union v3{
         float32 upward;
     };
     float32 v[3];
+};
+
+union v3_64{
+    struct{
+        float64 x;
+        float64 y;
+        float64 z;
+    };
+    struct{
+        float64 r;
+        float64 g;
+        float64 b;
+    };
+    struct{
+        float64 right;
+        float64 forward;
+        float64 upward;
+    };
+    float64 v[3];
 };
 
 union dv3{
@@ -357,14 +451,42 @@ union v4{
 };
 
 
+
+union v4_64{
+    struct{
+        float64 x;
+        float64 y;
+        float64 z;
+        float64 w;
+    };
+    struct{
+        float64 r;
+        float64 g;
+        float64 b;
+        float64 a;
+    };
+    float64 v[4];
+};
+
+
 v3 V3(float32 x, float32 y, float32 z){
     v3 res = {x,y,z};
+    return res;
+}
+
+v3_64 V3_64(float64 x, float64 y, float64 z){
+    v3_64 res = {x,y,z};
     return res;
 }
 
 
 v2 V2(float32 x, float32 y){
     v2 res = {x,y};
+    return res;
+}
+
+v2_64 V2_64(float64 x, float64 y){
+    v2_64 res = {x,y};
     return res;
 }
 
@@ -378,6 +500,11 @@ v4 V4(float32 x, float32 y, float32 z, float32 w){
     return result;
 }
 
+v4_64 V4_64(float64 x, float64 y, float64 z, float64 w){
+    v4_64 result = {x, y, z, w};
+    return result;
+}
+
 v3 operator+(const v3 & a, const v3 & b){
     v3 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
@@ -385,6 +512,15 @@ v3 operator+(const v3 & a, const v3 & b){
     }
     return result;
 }
+
+v3_64 operator+(const v3_64 & a, const v3_64 & b){
+    v3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] + b.v[i];
+    }
+    return result;
+}
+
 
 v2 operator+(const v2 & a, const v2 & b){
     v2 result;
@@ -416,6 +552,14 @@ v2 operator+(const dv2 & a, const v2 & b){
 
 v2 operator-(const v2 & a, const v2 & b){
     v2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] - b.v[i];
+    }
+    return result;
+}
+
+v2_64 operator-(const v2_64 & a, const v2_64 & b){
+    v2_64 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
@@ -460,7 +604,22 @@ v3 operator-(const v3 & a, const v3 & b){
     return result;
 }
 
+v3_64 operator-(const v3_64 & a, const v3_64 & b){
+    v3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] - b.v[i];
+    }
+    return result;
+}
+
 v3 & operator+=(v3 & a, const v3 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] += b.v[i];
+    }
+    return a;
+}
+
+v3_64 & operator+=(v3_64 & a, const v3_64 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
     }
@@ -475,6 +634,13 @@ dv3 & operator+=(dv3 & a, const dv3 & b){
 }
 
 v3 & operator-=(v3 & a, const v3 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] -= b.v[i];
+    }
+    return a;
+}
+
+v3_64 & operator-=(v3_64 & a, const v3_64 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] -= b.v[i];
     }
@@ -562,6 +728,19 @@ v3 operator*(const float32 a, const v3 & b){
     return b * a;
 }
 
+v3_64 operator*(const v3_64 & b, const float64 a){
+    v3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a*b.v[i];
+    }
+    return result;
+}
+
+v3_64 operator*(const float64 a, const v3_64 & b){
+    return b * a;
+}
+
+
 vN operator*(const vN & b, const float32 a){
     vN result = b;
     for(int i = 0; i < b.size; i++){
@@ -589,11 +768,19 @@ float32 dot(v3 a, v3 b){
     return a.x*b.x + a.y * b.y + a.z * b.z;
 }
 
+float64 dot64(v3_64 a, v3_64 b){
+    return a.x*b.x + a.y * b.y + a.z * b.z;
+}
+
 float32 dot(v4 a, v4 b){
     return a.x*b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
 float32 dot(v2 a, v2 b){
+    return a.x*b.x + a.y * b.y;
+}
+
+float64 dot64(v2_64 a, v2_64 b){
     return a.x*b.x + a.y * b.y;
 }
 
@@ -619,6 +806,10 @@ float32 length(v3 a){
     return sqrt(dot(a,a));
 }
 
+float64 length64(v3_64 a){
+    return sqrt64(dot64(a,a));
+}
+
 float32 length(vN a){
     return sqrt(dot(a,a));
 }
@@ -629,6 +820,10 @@ float32 length(v4 a){
 
 float32 length(v2 a){
     return sqrt(dot(a,a));
+}
+
+float64 length64(v2_64 a){
+    return sqrt64(dot64(a,a));
 }
 
 float32 length(dv2 a){
@@ -643,6 +838,11 @@ float32 radAngleFull(v2 a, v2 b){
 float32 radAngle(v2 a, v2 b){
     float32 cos = dot(a,b) / (length(a) * length(b));
     return acos(cos);
+}
+
+float64 radAngle64(v2_64 a, v2_64 b){
+    float64 cos = dot64(a,b) / (length64(a) * length64(b));
+    return acos64(cos);
 }
 
 v4 normalize(v4 source){
@@ -735,6 +935,12 @@ union mat4{
     float32 c[16];
 };
 
+union mat4_64{
+    float64 cells[4][4];
+    float64 c[16];
+};
+
+
 union mat3{
     float32 cells[3][3];
     float32 c[9];
@@ -751,6 +957,19 @@ v3 operator*(const mat4 & matrix, const v3 & vector){
         }
     }
     return V3(resultVector.x, resultVector.y, resultVector.z);
+}
+
+v3_64 operator*(const mat4_64 & matrix, const v3_64 & vector){
+    v4_64 originalVector = V4_64(vector.x, vector.y, vector.z, 1);
+    
+    v4_64 resultVector = {};
+    
+    for(int matrixRow = 0; matrixRow < 4; matrixRow++){
+        for(int vectorMember = 0; vectorMember < 4; vectorMember++){
+            resultVector.v[matrixRow] += matrix.c[4*matrixRow + vectorMember] * originalVector.v[vectorMember];
+        }
+    }
+    return V3_64(resultVector.x, resultVector.y, resultVector.z);
 }
 
 void mul(const vN * vector, const matNM * matrix, vN * result){
@@ -778,6 +997,17 @@ v3 operator*(const mat4 & matrix, const v4 & originalVector){
         }
     }
     return V3(resultVector.x, resultVector.y, resultVector.z) * (1.0f / resultVector.w);
+}
+
+v3_64 operator*(const mat4_64 & matrix, const v4_64 & originalVector){
+    v4_64 resultVector = {};
+    
+    for(int matrixRow = 0; matrixRow < 4; matrixRow++){
+        for(int vectorMember = 0; vectorMember < 4; vectorMember++){
+            resultVector.v[matrixRow] += matrix.c[4*matrixRow + vectorMember] * originalVector.v[vectorMember];
+        }
+    }
+    return V3_64(resultVector.x, resultVector.y, resultVector.z) * (1.0f / resultVector.w);
 }
 
 mat4 operator*(const mat4 & matrix, const float32 alfa){
@@ -870,8 +1100,16 @@ float32 degToRad(float32 degAngle){
     return  degAngle * PI / 180.0f;
 }
 
+float64 degToRad64(float64 degAngle){
+    return  degAngle * PI_64 / 180.0f;
+}
+
 float32 radToDeg(float32 radAngle){
     return radAngle * 180.0f / PI;
+}
+
+float64 radToDeg64(float64 radAngle){
+    return radAngle * 180.0f / PI_64;
 }
 
 v4 Quat(v3 axis, float32 radAngle){
@@ -880,8 +1118,23 @@ v4 Quat(v3 axis, float32 radAngle){
     return result;
 }
 
+v4_64 Quat64(v3_64 axis, float64 radAngle){
+    float64 sinHalf = sin64(radAngle/2.0f);
+    v4_64 result = {axis.x*sinHalf, axis.y*sinHalf, axis.z*sinHalf, cos64(radAngle/2.0f)};
+    return result;
+}
+
 v4 operator*(const v4 & quaternion1, const v4 & quaternion2){
     v4 result;
+    result.x = quaternion1.w * quaternion2.x + quaternion1.x * quaternion2.w + quaternion1.y * quaternion2.z - quaternion1.z * quaternion2.y;
+    result.y = quaternion1.w * quaternion2.y + quaternion1.y * quaternion2.w + quaternion1.z * quaternion2.x - quaternion1.x * quaternion2.z;
+    result.z = quaternion1.w * quaternion2.z + quaternion1.z * quaternion2.w + quaternion1.x * quaternion2.y - quaternion1.y * quaternion2.x;
+    result.w = quaternion1.w * quaternion2.w - quaternion1.x * quaternion2.x - quaternion1.y * quaternion2.y - quaternion1.z * quaternion2.z;
+    return result;
+}
+
+v4_64 operator*(const v4_64 & quaternion1, const v4_64 & quaternion2){
+    v4_64 result;
     result.x = quaternion1.w * quaternion2.x + quaternion1.x * quaternion2.w + quaternion1.y * quaternion2.z - quaternion1.z * quaternion2.y;
     result.y = quaternion1.w * quaternion2.y + quaternion1.y * quaternion2.w + quaternion1.z * quaternion2.x - quaternion1.x * quaternion2.z;
     result.z = quaternion1.w * quaternion2.z + quaternion1.z * quaternion2.w + quaternion1.x * quaternion2.y - quaternion1.y * quaternion2.x;
@@ -929,6 +1182,26 @@ mat4 quaternionToMatrix(const v4 & quaternion){
 }
 
 
+mat4_64 quaternionToMatrix64(const v4_64 & quaternion){
+    mat4_64 result = {};
+    
+    result.c[0] = 1 - 2*powd64(quaternion.y,2) - 2*powd64(quaternion.z,2);
+    result.c[1] = 2*quaternion.x*quaternion.y - 2*quaternion.w*quaternion.z;
+    result.c[2] = 2*quaternion.x*quaternion.z + 2*quaternion.w*quaternion.y;
+    
+    result.c[4] = 2*quaternion.x*quaternion.y + 2*quaternion.w*quaternion.z;
+    result.c[5] = 1 - 2*powd64(quaternion.x,2) - 2*powd64(quaternion.z,2);
+    result.c[6] = 2*quaternion.y*quaternion.z - 2*quaternion.w*quaternion.x;
+    
+    result.c[8] = 2*quaternion.x*quaternion.z - 2*quaternion.w*quaternion.y;
+    result.c[9] = 2*quaternion.y*quaternion.z + 2*quaternion.w*quaternion.x;
+    result.c[10] = 1 - 2*powd64(quaternion.x,2) - 2*powd64(quaternion.y,2);
+    result.c[15] = 1;
+    
+    return result;
+}
+
+
 mat4 rotationXMatrix(float32 radAngle){
     mat4 result = {};
     result.c[0] = 1.0f;
@@ -958,6 +1231,39 @@ mat4 rotationYMatrix(float32 radAngle){
     result.c[5] = 1.0f;
     result.c[8] = -sin(radAngle);
     result.c[10] = cos(radAngle);
+    result.c[15] = 1.0f;
+    return result;
+}
+
+mat4_64 rotationXMatrix64(float64 radAngle){
+    mat4_64 result = {};
+    result.c[0] = 1.0f;
+    result.c[5] = cos64(radAngle);
+    result.c[6] = -sin64(radAngle);
+    result.c[9] = sin64(radAngle);
+    result.c[10] = cos64(radAngle);
+    result.c[15] = 1.0f;
+    return result;
+}
+
+mat4_64 rotationZMatrix64(float64 radAngle){
+    mat4_64 result = {};
+    result.c[0] = cos64(radAngle);
+    result.c[1] = -sin64(radAngle);
+    result.c[4] = sin64(radAngle);
+    result.c[5] = -cos64(radAngle);
+    result.c[10] = 1.0f;
+    result.c[15] = 1.0f;
+    return result;
+}
+
+mat4_64 rotationYMatrix64(float64 radAngle){
+    mat4_64 result = {};
+    result.c[0] = cos64(radAngle);
+    result.c[2] = sin64(radAngle);
+    result.c[5] = 1.0f;
+    result.c[8] = -sin64(radAngle);
+    result.c[10] = cos64(radAngle);
     result.c[15] = 1.0f;
     return result;
 }
