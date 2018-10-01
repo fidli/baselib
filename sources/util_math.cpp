@@ -21,8 +21,6 @@
 #define KRONECKER(a, b) ((a) == (b) ? 1 : 0)
 
 
-#ifndef PRECISE_MATH
-
 bool32 isOdd(const uint64 a){
     return (a & (uint64) 1);
 }
@@ -35,15 +33,34 @@ bool aseq64(float64 a, float64 b, float64 delta = 0.000001f){
     return ABS(a-b) <= delta;
 }
 
+
+//is test on the right side of fixedpoint ? is test > fixedpoint?
 bool aseql(float32 test, float32 fixedpoint, float32 delta = 0.000005f){
     float32 eps = fixedpoint - test;
     return eps < delta;
 }
 
+//is test on the right side of fixedpoint ? is test > fixedpoint?
+bool aseql64(float64 test, float64 fixedpoint, float64 delta = 0.000005f){
+    float64 eps = fixedpoint - test;
+    return eps < delta;
+}
+
+
+//is test on the left side of fixedpoint ? is test < fixedpoint?
 bool aseqr(float32 test, float32 fixedpoint, float32 delta = 0.000005f){
     float32 eps = test - fixedpoint;
     return eps < delta;
 }
+
+//is test on the left side of fixedpoint ? is test < fixedpoint?
+bool aseqr64(float64 test, float64 fixedpoint, float64 delta = 0.000005f){
+    float64 eps = test - fixedpoint;
+    return eps < delta;
+}
+
+
+#ifndef PRECISE_MATH
 
 float32 ceil(float32 value){
     float32 result = (float32)(uint64) ABS(value);
@@ -882,6 +899,15 @@ v3 normalize(v3 source){
     return result;
 }
 
+v3_64 normalize64(v3_64 source){
+    v3_64 result = {};
+    float64 len = length64(source);
+    for(int i = 0; i < ARRAYSIZE(source.v); i++){
+        result.v[i] = source.v[i] / len;
+    }
+    return result;
+}
+
 vN normalize(vN source){
     vN result = source;
     float32 len = length(source);
@@ -1087,14 +1113,26 @@ mat4 inverseMatrix(const mat4 * originalMatrix){
     
 }
 
+int gem3_64(v4_64 rowA, v4_64 rowB, v4_64 rowC, v3_64 * result){
+    int degOfFreedom = -1;
+    v4_64 * rows[3];
+    rows[0] = &rowA;
+    rows[1] = &rowB;
+    rows[2] = &rowC;
+    
+    // NOTE(AK): we need to make lower triangle consisting of 3 zeros, 2nd and 3rd row, 1st and 2nd column
+    for(int row = 1; row < 3; row++){
+        for(int col = 0; col < 2; col++){
+            
+        }
+    }
+    
+    
+    return degOfFreedom;
+}
 
 
 //-----------------------------------------------------------------------GEOMETRY
-struct box{
-    v3 lowerCorner;
-    v3 upperCorner;
-};
-
 
 float32 degToRad(float32 degAngle){
     return  degAngle * PI / 180.0f;

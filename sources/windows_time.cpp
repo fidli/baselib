@@ -33,7 +33,7 @@ uint64 getTickDivisor(){
 }
 
 float64 translateTickToTime(const uint64 tick, uint64 divisor = getTickDivisor()){
-    return (float64)tick / frequencyF;
+    return (float64)tick / divisor;
 }
 
 LocalTime sysToLocal(const SYSTEMTIME * time){
