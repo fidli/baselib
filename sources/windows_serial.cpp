@@ -63,21 +63,32 @@ bool clearSerialPort(SerialHandle * target){
 int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
     DWORD written;
     OVERLAPPED result = {};
+    result.Offset =  0xFFFFFFFF;
+    result.OffsetHigh =  0xFFFFFFFF;
     DWORD writeOp = WriteFile(target->handle, buffer, length, NULL, &result);
     if(writeOp || (!writeOp && GetLastError() == ERROR_IO_PENDING)){
-        if(GetOverlappedResultEx(target->handle, &result, &written, INFINITE, false)){
+        if(GetOverlappedResultEx(target->handle, &result, &written, INFINITE, false) != 0){
             return written;
         }
+        //cancel the result to avoid memory rewriting
+        BOOL cancelRes = CancelIoEx(target->handle, &result);
+        ASSERT(cancelRes || GetLastError() == ERROR_NOT_FOUND);
         return -1;
     }
     return -1;
     
 }
 
-OVERLAPPED trash;
+//@Hack @Robustness make this dynamic?
+OVERLAPPED trashPool[50];
+int trashIndex = 0;
 
 void writeSerialQuick(SerialHandle * target, const char * buffer, uint32 length){
-    WriteFile(target->handle, buffer, length, NULL, &trash);
+    OVERLAPPED * trash = &trashPool[trashIndex];
+    trashIndex = (trashIndex + 1) % ARRAYSIZE(trashPool);
+    trash->Offset =  0xFFFFFFFF;
+    trash->OffsetHigh =  0xFFFFFFFF;
+    WriteFile(target->handle, buffer, length, NULL, trash);
 }
 
 
@@ -87,14 +98,17 @@ int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 t
     DWORD readOp = ReadFile(source->handle, buffer, maxRead, NULL, &result);
     if(timeout == -1){
         if(readOp || (!readOp && GetLastError() == ERROR_IO_PENDING)){
-            if(GetOverlappedResultEx(source->handle, &result, &read, INFINITE, false)){
+            if(GetOverlappedResultEx(source->handle, &result, &read, INFINITE, false) != 0){
                 return read;
             }
-            return read;
+            //cancel the result to avoid memory rewriting
+            BOOL cancelRes = CancelIoEx(source->handle, &result);
+            ASSERT(cancelRes || GetLastError() == ERROR_NOT_FOUND);
+            return 0;
         }
     }else{
         if(readOp || (!readOp && GetLastError() == ERROR_IO_PENDING)){
-            if(GetOverlappedResultEx(source->handle, &result, &read, (DWORD)(timeout*1000), false)){
+            if(GetOverlappedResultEx(source->handle, &result, &read, (DWORD)(timeout*1000), false) != 0){
                 return read;
             }
             //cancel the result to avoid memory rewriting
