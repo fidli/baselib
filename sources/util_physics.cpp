@@ -1,5 +1,7 @@
 #ifndef UTIL_PHYSICS
 #define UTIL_PHYSICS
+#include "common.h"
+
 #include "util_math.cpp"
 
 //NOTE(AK): Alert, this util file expects +x to right, +y to upper, +z forward through the screen
@@ -42,7 +44,7 @@ bool isInBox(const Box * check, const v3 * point){
 }
 
 
-bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box_64 * result){
+bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box64 * result){
     
     float64 distance = length64(A->origin - B->origin);
     //the spheres are too far
@@ -51,7 +53,7 @@ bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box_64 * r
     }
     //one sphere is inside the other
     if(aseql64(A->radius, distance + B->radius) || aseql64(B->radius, distance + A->radius)){
-        Sphere_64 * source;
+        const Sphere_64 * source;
         if(A->radius > B->radius){
             source = B;
         }else{
@@ -71,13 +73,13 @@ bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box_64 * r
     
     float64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
     
-    float64 origin = B1 + AtoBNormalised * halfIntersectionWidth;
+    v3_64 origin = B1 + AtoBNormalised * halfIntersectionWidth;
     float64 upperAndBackwards = sqrt64(powd(A->radius) - powd(A->radius - halfIntersectionWidth));
     
     float64 sideways = halfIntersectionWidth;
     
-    result->lowerCorner = origin + V3(sideways, upperAndBackwards, upperAndBackwards);
-    result->upperCorner = origin - V3(sideways, upperAndBackwards, upperAndBackwards);
+    result->lowerCorner = origin + V3_64(sideways, upperAndBackwards, upperAndBackwards);
+    result->upperCorner = origin - V3_64(sideways, upperAndBackwards, upperAndBackwards);
     
     return true;
 }
