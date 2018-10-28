@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-struct NetSocket{
+struct NetSocket : NetSocketSettings{
     int socket;
 };
 
@@ -87,6 +87,7 @@ bool openSocket(NetSocket * target, const NetSocketSettings * settings){
             closeSocket(target);
             return false;
         }
+        *((NetSocketSettings *) &target) = *settings;
         return true;
     }
     
@@ -139,6 +140,7 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
             closeSocket(target);
             return false;
         }
+        *((NetSocketSettings *) &target) = *settings;
         return true;
     }
     else{
@@ -162,6 +164,7 @@ bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSett
             return false;
         }
         return true;
+        *((NetSocketSettings *) &client) = *clientSettings;
     }else{
         return false;
     }

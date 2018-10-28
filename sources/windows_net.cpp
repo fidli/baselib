@@ -11,7 +11,7 @@
 
 WSADATA socketsContext;
 
-struct NetSocket{
+struct NetSocket : NetSocketSettings{
     SOCKET socket;
     bool valid;
 };
@@ -97,6 +97,7 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
             return false;
         }
         target->valid = true;
+        *((NetSocketSettings *) &target) = *settings;
         return true;
     }
     else{
@@ -120,6 +121,7 @@ bool openSocket(NetSocket * target, const NetSocketSettings * settings){
     
     
     if(target->socket != INVALID_SOCKET){
+        *((NetSocketSettings *) &target) = *settings;
         return true;
     }else{
         return false;
@@ -154,6 +156,7 @@ bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSett
             }
         }
         client->valid = true;
+        *((NetSocketSettings *) &client) = *clientSettings;
         return true;
     }else{
         return false;
@@ -180,8 +183,30 @@ bool tcpConnect(NetSocket * source, const char * ip, const char * port){
         
         if(found){
             int resultInt = connect(source->socket, actual->ai_addr, actual->ai_addrlen);
-            int error = WSAGetLastError();
-            bool ret = resultInt == 0;
+            bool ret = false;
+            if(!source->blocking){
+                int error = WSAGetLastError();
+                if(error == WSAEWOULDBLOCK){
+                    fd_set bullshit;
+                    FD_ZERO(&bullshit);
+                    FD_SET(source->socket, &bullshit);
+                    int selectRes = select(0, &bullshit, &bullshit, NULL, NULL);
+                    if(selectRes == 1){
+                        ret = true;
+                    }else if(selectRes == 0){
+                        //NOTE(AK): this means that the timeout has expired, but it was supposed to be inifinite
+                        INV;
+                    }else{
+                        //WSAGetLastError(); for debugging
+                        //https://docs.microsoft.com/en-us/windows/desktop/api/winsock2/nf-winsock2-select
+                        ret = false;
+                    }
+                }else{
+                    ret = false;
+                }
+            }else{
+                ret = resultInt == 0;
+            }
             freeaddrinfo(result);
             return ret;
         }

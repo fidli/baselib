@@ -1,6 +1,11 @@
 #ifndef UTIL_NET
 #define UTIL_NET
 
+struct NetSocketSettings{
+    bool blocking;
+    bool reuseAddr;
+};
+
 struct NetSocket;
 
 enum NetResultType{
@@ -21,10 +26,7 @@ struct NetSendSource{
     int32 bufferLength;
 };
 
-struct NetSocketSettings{
-    bool blocking;
-    bool reuseAddr;
-};
+
 
 void invalidateSocketHandle(NetSocket * target);
 bool isSocketHandleValid(NetSocket * target);
