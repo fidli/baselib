@@ -2,9 +2,16 @@
 #define UTIL_PHYSICS
 #include "util_math.cpp"
 
+//NOTE(AK): Alert, this util file expects +x to right, +y to upper, +z forward through the screen
+
 struct Box{
     v3 lowerCorner;
     v3 upperCorner;
+};
+
+struct Box64{
+    v3_64 lowerCorner;
+    v3_64 upperCorner;
 };
 
 
@@ -34,6 +41,46 @@ bool isInBox(const Box * check, const v3 * point){
            && point->x <= check->upperCorner.x && point->y <= check->upperCorner.y && point->z >= check->upperCorner.z);
 }
 
+
+bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box_64 * result){
+    
+    float64 distance = length64(A->origin - B->origin);
+    //the spheres are too far
+    if(aseqr64(B->radius + A->radius, distance)){
+        return false;
+    }
+    //one sphere is inside the other
+    if(aseql64(A->radius, distance + B->radius) || aseql64(B->radius, distance + A->radius)){
+        Sphere_64 * source;
+        if(A->radius > B->radius){
+            source = B;
+        }else{
+            source = A;
+        }
+        result->upperCorner = source->origin + V3_64(source->radius, source->radius, source->radius);
+        result->lowerCorner = source->origin - V3_64(source->radius, source->radius, source->radius);
+        return true;
+    }
+    
+    //else, there must be an intersection
+    v3_64 AtoB = B->origin - A->origin;
+    v3_64 AtoBNormalised = normalize64(AtoB);
+    
+    v3_64 A1 = A->origin + AtoBNormalised * A->radius;
+    v3_64 B1 = B->origin + AtoBNormalised * (-1) * B->radius;
+    
+    float64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
+    
+    float64 origin = B1 + AtoBNormalised * halfIntersectionWidth;
+    float64 upperAndBackwards = sqrt64(powd(A->radius) - powd(A->radius - halfIntersectionWidth));
+    
+    float64 sideways = halfIntersectionWidth;
+    
+    result->lowerCorner = origin + V3(sideways, upperAndBackwards, upperAndBackwards);
+    result->upperCorner = origin - V3(sideways, upperAndBackwards, upperAndBackwards);
+    
+    return true;
+}
 
 bool intersectSpheres64(const Sphere_64 * A, const Sphere_64 * B, Circle3D_64 * result){
     float64 distance = length64(A->origin - B->origin);
