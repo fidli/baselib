@@ -312,6 +312,7 @@ struct FormatInfo{
         } immediate;
         struct {
             uint8 precision;
+            bool defaultPrecision;
         } real;
     };
     uint32 length;
@@ -452,22 +453,29 @@ static FormatInfo parseFormat(const char * format){
             }
             formatIndex++;//jumping over ']'
         }else if(format[formatIndex] == 'f' || format[formatIndex] == '.'){
-            if(info.typeLength == FormatTypeSize_l){
-                info.real.precision = 15;
-            }else{
-                info.real.precision = 7;
-                ASSERT(info.typeLength == FormatTypeSize_Default);
-            }
-            
-            
+            bool setPrecision = false;
             if(format[formatIndex] == '.'){
                 formatIndex++;
                 formatIndex += scanUnumber8(format + formatIndex, &info.real.precision);
+                setPrecision = true;
+            }
+            if(format[formatIndex] == 'l'){
+                info.typeLength = FormatTypeSize_l;
+                formatIndex++;
             }
             if(format[formatIndex] == 'f'){
                 info.type = FormatType_f;
             }
             formatIndex++;
+            if(!setPrecision){
+                if(info.typeLength == FormatTypeSize_l){
+                    info.real.precision = 15;
+                }else{
+                    info.real.precision = 7;
+                    ASSERT(info.typeLength == FormatTypeSize_Default);
+                }
+            }
+            info.real.defaultPrecision = !setPrecision;
         }else{
             INV; //implement me or genuine errer
         } 
@@ -757,24 +765,39 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 //float is promoted to double,...
                 float64 source = (float64)va_arg(ap, float64);
                 int64 wholePart = (int64) source;
-                if(info.forceSign && source >= 0){
-                    target[targetIndex] = '+';
-                    targetIndex++;
-                }
-                if(wholePart == 0 && source < 0){
-                    target[targetIndex] = '-';
-                    targetIndex++;
-                }
-                uint8 numlength = numlen(wholePart);
-                if(info.maxlen == 0 || numlength + info.real.precision + 1 <= info.maxlen){
-                    targetIndex += printDigits(target + targetIndex, wholePart);
+                
+                int32 slots = info.maxlen;
+                uint8 numlength = numlen(ABS(wholePart));
+                
+                if(numlength + info.real.precision + 1 <= slots){
+                    if(info.forceSign && source >= 0){
+                        target[targetIndex] = '+';
+                        targetIndex++;
+                    }
+                    if(source < 0){
+                        target[targetIndex] = '-';
+                        targetIndex++;
+                    }
+                    
+                    int8 prependLen = slots - 1 - info.real.precision - numlength;
+                    
+                    for(int8 i = 0; i < prependLen; i++){
+                        if(info.padding0){
+                            target[targetIndex++] = '0';
+                        }else{
+                            target[targetIndex++] = ' ';
+                        }
+                    }
+                    
+                    targetIndex += printDigits(target + targetIndex, ABS(wholePart));
+                    
                     target[targetIndex] = delim;
                     
                     targetIndex++;
                     uint8 precision = info.real.precision;
                     
                     int64 decimalPart = ABS((int64)((source - wholePart) * powd64(10, precision)));
-                    uint8 prependLen = precision - numlen(decimalPart);
+                    prependLen = precision - numlen(decimalPart);
                     for(int i = 0; i < prependLen; i++){
                         target[targetIndex] = '0';
                         targetIndex++;

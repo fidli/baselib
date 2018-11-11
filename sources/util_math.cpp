@@ -363,6 +363,10 @@ union v2{
         float32 y;
     };
     struct{
+        float32 a;
+        float32 b;
+    };
+    struct{
         float32 pitch;
         float32 yaw;
     };
@@ -373,6 +377,10 @@ union v2_64{
     struct{
         float64 x;
         float64 y;
+    };
+    struct{
+        float64 a;
+        float64 b;
     };
     struct{
         float64 pitch;
@@ -449,6 +457,25 @@ union dv3{
         int32 upward;
     };
     int32 v[3];
+};
+
+union dv3_64{
+    struct{
+        int64 x;
+        int64 y;
+        int64 z;
+    };
+    struct{
+        int64 r;
+        int64 g;
+        int64 b;
+    };
+    struct{
+        int64 right;
+        int64 forward;
+        int64 upward;
+    };
+    int64 v[3];
 };
 
 union v4{
@@ -643,11 +670,59 @@ v3_64 & operator+=(v3_64 & a, const v3_64 & b){
     return a;
 }
 
+
 dv3 & operator+=(dv3 & a, const dv3 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
     }
     return a;
+}
+
+dv3_64 & operator+=(dv3_64 & a, const dv3_64 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] += b.v[i];
+    }
+    return a;
+}
+
+v3_64 operator/(const dv3_64 & a, const float64 b){
+    v3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = (float64) a.v[i] / b;
+    }
+    return result;
+}
+
+v3_64 operator*(const dv3_64 & a, const float64 b){
+    v3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] * b;
+    }
+    return result;
+}
+
+dv3_64 operator*(const dv3_64 & a, const int32 b){
+    dv3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] * b;
+    }
+    return result;
+}
+
+dv3_64 operator+(const dv3_64 & a, const dv3_64 & b){
+    dv3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] + b.v[i];
+    }
+    return result;
+}
+
+dv3_64 operator-(const dv3_64 & a, const dv3_64 & b){
+    dv3_64 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] -  b.v[i];
+    }
+    return result;
 }
 
 v3 & operator-=(v3 & a, const v3 & b){
@@ -1111,24 +1186,6 @@ mat4 inverseMatrix(const mat4 * originalMatrix){
     ASSERT(originalDeterminant != 0);
     return (1.0f/ originalDeterminant) * adjugate;
     
-}
-
-int gem3_64(v4_64 rowA, v4_64 rowB, v4_64 rowC, v3_64 * result){
-    int degOfFreedom = -1;
-    v4_64 * rows[3];
-    rows[0] = &rowA;
-    rows[1] = &rowB;
-    rows[2] = &rowC;
-    
-    // NOTE(AK): we need to make lower triangle consisting of 3 zeros, 2nd and 3rd row, 1st and 2nd column
-    for(int row = 1; row < 3; row++){
-        for(int col = 0; col < 2; col++){
-            
-        }
-    }
-    
-    
-    return degOfFreedom;
 }
 
 
