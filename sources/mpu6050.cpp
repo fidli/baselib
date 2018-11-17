@@ -198,6 +198,27 @@ float32 mpu6050_getGyroDivisor(const MPU6050Settings * setting){
     return 0;
 }
 
+int16 mpu6050_getGyroDivisorTimes10(const MPU6050Settings * setting){
+    switch(setting->gyroPrecision){
+        case GyroPrecision_250:{
+            return 1310; 
+        }break;
+        case GyroPrecision_500:{
+            return 655;
+        }break;
+        case GyroPrecision_1000:{
+            return 328;
+        }break;
+        case GyroPrecision_2000:{
+            return 164;
+        }break;
+        default:{
+            INV;
+        }break;
+    }
+    return 0;
+}
+
 
 void mpu6050_acc16_float32(const MPU6050Settings setting, const int16 x, const int16 y, const int16 z, float32 * result_x, float32 * result_y,float32 * result_z){
     float32 attun = 1.0f / mpu6050_getAccDivisor(&setting);

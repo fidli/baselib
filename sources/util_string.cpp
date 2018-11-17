@@ -766,7 +766,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 float64 source = (float64)va_arg(ap, float64);
                 int64 wholePart = (int64) source;
                 
-                int32 slots = info.maxlen;
+                int64 slots = info.maxlen;
                 uint8 numlength = numlen(ABS(wholePart));
                 
                 if(numlength + info.real.precision + 1 <= slots){

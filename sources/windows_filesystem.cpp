@@ -1,11 +1,9 @@
 #ifndef WINDOWS_FILESYSTEM
 #define WINDOWS_FILESYSTEM
 
+#include "util_filesystem.cpp"
 
 
-#include "util_filesystem.h"
-
-#include "util_string.cpp"
 
 struct FileHandle{
     HANDLE handle;

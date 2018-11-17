@@ -284,9 +284,12 @@ float32 normalize(float32 value, float32 min, float32 max){
 float32 fmodd(float32 value, uint32 modulus){
     int32 wholePart = (int32) value;
     float32 preResult = (float32)(wholePart % modulus) + (value - wholePart);
-    if(preResult < 0){
-        preResult += modulus;
-    }
+    return preResult; 
+}
+
+float64 fmodd64(float64 value, uint64 modulus){
+    int64 wholePart = (int64) value;
+    float64 preResult = (float64)(wholePart % modulus) + (value - wholePart);
     return preResult; 
 }
 #else
@@ -307,7 +310,13 @@ float64 sqrt64(float64 value){
 }
 
 float32 fmodd(float32 value, uint32 modulus){
-    return (float32) fmod((double) value, (double) modulus);
+    float32 result = (float32) fmod((double) value, (double) modulus);
+    return result;
+}
+
+float64 fmodd64(float64 value, uint64 modulus){
+    float64 result = fmod(value, (double) modulus);
+    return result;
 }
 
 float64 acos64(float64 cos64){
@@ -349,12 +358,12 @@ struct vN{
 
 union dv4{
     struct{
-        uint32 x;
-        uint32 y;
-        uint32 z;
-        uint32 w;
+        int32 x;
+        int32 y;
+        int32 z;
+        int32 w;
     };
-    uint32 v[4];
+    int32 v[4];
 };
 
 union v2{
@@ -739,6 +748,7 @@ v3_64 & operator-=(v3_64 & a, const v3_64 & b){
     return a;
 }
 
+
 bool operator==(const v3 & a, const v3 & b){
     return a.x == b.x && a.y == b.y && a.z == b.z;
 }
@@ -868,6 +878,10 @@ float32 dot(v4 a, v4 b){
     return a.x*b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
+float64 dot64(v4_64 a, v4_64 b){
+    return a.x*b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+}
+
 float32 dot(v2 a, v2 b){
     return a.x*b.x + a.y * b.y;
 }
@@ -910,6 +924,10 @@ float32 length(v4 a){
     return sqrt(dot(a,a));
 }
 
+float64 length64(v4_64 a){
+    return sqrt64(dot64(a,a));
+}
+
 float32 length(v2 a){
     return sqrt(dot(a,a));
 }
@@ -917,6 +935,7 @@ float32 length(v2 a){
 float64 length64(v2_64 a){
     return sqrt64(dot64(a,a));
 }
+
 
 float32 length(dv2 a){
     return sqrt(dot(a,a));
@@ -940,6 +959,15 @@ float64 radAngle64(v2_64 a, v2_64 b){
 v4 normalize(v4 source){
     v4 result = {};
     float32 len = length(source);
+    for(int i = 0; i < ARRAYSIZE(source.v); i++){
+        result.v[i] = source.v[i] / len;
+    }
+    return result;
+}
+
+v4_64 normalize64(v4_64 source){
+    v4_64 result = {};
+    float64 len = length64(source);
     for(int i = 0; i < ARRAYSIZE(source.v); i++){
         result.v[i] = source.v[i] / len;
     }
