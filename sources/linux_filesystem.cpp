@@ -3,7 +3,7 @@
 
 #include "string.h"
 #include <stdio.h>
-#include "util_filesystem.h"
+#include "util_filesystem.cpp"
 
 #include <sys/types.h>
 #include <sys/stat.h>

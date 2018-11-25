@@ -1,7 +1,7 @@
 #ifndef UTIL_IO
 #define UTIL_IO
 
-#include "util_filesystem.h"
+#include "util_filesystem.cpp"
 #include "util_string.cpp"
 
 FileHandle getStdOut();

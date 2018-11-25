@@ -1,7 +1,7 @@
 #ifndef UTIL_CONFIG
 #define UTIL_CONFIG
 
-#include "util_filesystem.h"
+#include "util_filesystem.cpp"
 
 bool loadConfig(const char * file, bool (*lineCallback)(const char *)){
     FileContents contents = {};
