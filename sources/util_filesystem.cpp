@@ -30,7 +30,7 @@ struct DirectoryContents{
 
 bool getFileChangeTime(const char * path, LocalTime * result);
 
-bool getFileSize(const char * path, int32 * result);
+bool getFileSize(const char * path, uint32 * result);
 
 bool getNextLine(FileContents * contents, char * line, uint32 linelen){
     char format[30];

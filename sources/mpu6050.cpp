@@ -2,7 +2,8 @@
 #define MPU6050
 
 
-float mpu6050_g = 9.8f;
+float mpu6050_g = 9.8196f;
+double mpu6050_g64 = mpu6050_g;
 
 enum GyroPrecision{
     GyroPrecision_250,

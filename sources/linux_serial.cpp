@@ -92,6 +92,7 @@ bool setBaudRate(SerialHandle * target, int32 rate){
 }
 
 bool clearSerialPort(SerialHandle * target){
+    char trash;
     return tcflush(target->handle, TCIOFLUSH) != -1;
 }
 

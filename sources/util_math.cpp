@@ -532,6 +532,11 @@ v3_64 V3_64(float64 x, float64 y, float64 z){
     return res;
 }
 
+dv3_64 DV3_64(int64 x, int64 y, int64 z){
+    dv3_64 res = {x,y,z};
+    return res;
+}
+
 
 v2 V2(float32 x, float32 y){
     v2 res = {x,y};
