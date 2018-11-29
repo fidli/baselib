@@ -19,6 +19,7 @@
 #define MAX(a, b) (((a) < (b)) ? (b) : (a))
 #define ABS(a) (((a) < 0) ? -(a) : (a))
 #define KRONECKER(a, b) ((a) == (b) ? 1 : 0)
+#define SGN(a) ((a) == 0 ? 0 : ((a) > 0 ? 1 : -1))
 
 
 bool32 isOdd(const uint64 a){
@@ -579,6 +580,13 @@ v3_64 operator+(const v3_64 & a, const v3_64 & b){
     return result;
 }
 
+dv3_64 operator/=(dv3_64 & a, int64 b){
+    for(int i = 0; i < ARRAYSIZE(a.v); i++){
+        a.v[i] /= b;
+    }
+    return a;
+}
+
 
 v2 operator+(const v2 & a, const v2 & b){
     v2 result;
@@ -753,6 +761,13 @@ v3_64 & operator-=(v3_64 & a, const v3_64 & b){
     return a;
 }
 
+dv3_64 & operator-=(dv3_64 & a, const dv3_64 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] -= b.v[i];
+    }
+    return a;
+}
+
 
 bool operator==(const v3 & a, const v3 & b){
     return a.x == b.x && a.y == b.y && a.z == b.z;
@@ -895,6 +910,10 @@ float64 dot64(v2_64 a, v2_64 b){
     return a.x*b.x + a.y * b.y;
 }
 
+uint64 dot64(dv3_64 a, dv3_64 b){
+    return a.x*b.x + a.y * b.y + b.z * b.z;
+}
+
 float32 dot(dv2 a, dv2 b){
     return (float32)(a.x*b.x + a.y * b.y);
 }
@@ -919,6 +938,10 @@ float32 length(v3 a){
 
 float64 length64(v3_64 a){
     return sqrt64(dot64(a,a));
+}
+
+float64 length64(dv3_64 a){
+    return sqrt64((float64)dot64(a,a));
 }
 
 float32 length(vN a){
@@ -1016,6 +1039,15 @@ v3_64 normalize64(v3_64 source){
     return result;
 }
 
+v3_64 normalize64(dv3_64 source){
+    v3_64 result = {};
+    float64 len = length64(source);
+    for(int i = 0; i < ARRAYSIZE(source.v); i++){
+        result.v[i] = source.v[i] / len;
+    }
+    return result;
+}
+
 vN normalize(vN source){
     vN result = source;
     float32 len = length(source);
@@ -1029,6 +1061,14 @@ vN normalize(vN source){
 
 v3 hadamard(const v3 & A, const v3 & B){
     return V3(A.x * B.x, A.y * B.y, A.z * B.z);
+}
+
+dv3_64 hadamard64(const dv3_64 & A, const dv3_64 & B){
+    return DV3_64(A.x * B.x, A.y * B.y, A.z * B.z);
+}
+
+v3_64 hadamard64(const v3_64 & A, const v3_64 & B){
+    return V3_64(A.x * B.x, A.y * B.y, A.z * B.z);
 }
 
 float32 sum(const vN * A){
