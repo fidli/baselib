@@ -118,7 +118,7 @@ static float32 subSqrt(float32 value, float32 guess, float32 prec = 0.0001f){
         return (estimation + guess) / 2;
     }
     float32 newGuess = (guess + value/guess) / 2;
-    //stack overflow with recursive shittery
+    //NOTE(AK): stack overflow with too much recursive calls, this cuts off the tail when then solution is close enough
     if(aseq(guess, newGuess, prec)){
         return (guess + newGuess) / 2;
     }
@@ -135,7 +135,7 @@ static float64 subSqrt64(float64 value, float64 guess, float64 prec = 0.0001f){
         return (estimation + guess) / 2;
     }
     float64 newGuess = (guess + value/guess) / 2;
-    //stack overflow with recursive shittery
+    //NOTE(AK): stack overflow with too much recursive calls, this cuts off the tail when then solution is close enough
     if(aseq64(guess, newGuess, prec)){
         return (guess + newGuess) / 2;
     }

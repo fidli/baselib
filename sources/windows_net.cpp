@@ -188,10 +188,10 @@ bool tcpConnect(NetSocket * source, const char * ip, const char * port){
             if(!source->blocking){
                 int error = WSAGetLastError();
                 if(error == WSAEWOULDBLOCK){
-                    fd_set bullshit;
-                    FD_ZERO(&bullshit);
-                    FD_SET(source->socket, &bullshit);
-                    int selectRes = select(0, &bullshit, &bullshit, NULL, NULL);
+                    fd_set tmpSet;
+                    FD_ZERO(&tmpSet);
+                    FD_SET(source->socket, &tmpSet);
+                    int selectRes = select(0, &tmpSet, &tmpSet, NULL, NULL);
                     if(selectRes == 1){
                         ret = true;
                     }else if(selectRes == 0){

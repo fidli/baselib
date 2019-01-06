@@ -191,7 +191,8 @@ bool tcpConnect(const NetSocket * source, const char * ip, const char * port){
         if(found){
             bool ret = connect(source->socket, actual->ai_addr, actual->ai_addrlen) == 0;
             if(!ret && errno == EINPROGRESS){
-                //this branch is fucked... either the target exists, is non blocking and connection is estabilishing, OR target does not exist, timeout of 1s should resolve this
+                //NOTE(AK): this branch is yanky
+				//either the target exists, is non blocking and connection is estabilishing, OR target does not exist, timeout of 1s should resolve this
                 //MAN says:
                 /*
                 
