@@ -4,7 +4,12 @@
 
 #include "common.h"
 #include "util_time.h"
+#include "util_string.cpp"
 
+/*
+NOTE(AK):
+use watchFile() and hasFileChanged()
+*/
 
 struct FileHandle;
 
