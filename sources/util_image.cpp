@@ -7,6 +7,7 @@ enum BitmapInterpretationType{
     BitmapInterpretationType_Invalid,
     BitmapInterpretationType_GrayscaleBW01,
     BitmapInterpretationType_ARGB,
+    BitmapInterpretationType_RGB,
     BitmapInterpretationType_ABGR,
     //https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/pixfmt-yuyv.html
     BitmapInterpretationType_YUY2
@@ -86,13 +87,16 @@ bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
 bool flipY(Image * target){
     uint32 bytesize = target->info.width * target->info.height * target->info.bitsPerSample * target->info.samplesPerPixel;
     uint8 * tmp = &PUSHA(uint8, bytesize);
-    ASSERT(target->info.bitsPerSample * target->info.samplesPerPixel == 8);
-    if(target->info.bitsPerSample * target->info.samplesPerPixel != 8){
+    ASSERT((target->info.bitsPerSample * target->info.samplesPerPixel) % 8 == 0);
+    if((target->info.bitsPerSample * target->info.samplesPerPixel) % 8 != 0){
         return false;
     }
+    uint8 bytesPerPixel = (target->info.bitsPerSample * target->info.samplesPerPixel)/8;
     for(uint32 h = 0; h < target->info.height; h++){
         for(uint32 w = 0; w < target->info.width; w++){
-            tmp[w + (target->info.height - h) * target->info.width] = target->data[w + target->info.width*h];
+            for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+                tmp[w*bytesPerPixel + byteIndex + (target->info.height - h) * target->info.width * bytesPerPixel] = target->data[w*bytesPerPixel + byteIndex + target->info.width*h*bytesPerPixel];
+            }
         }
     }
     

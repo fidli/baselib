@@ -161,23 +161,39 @@ bool decodeBMP(const FileContents * source, Image * target){
     target->info.height = infoheader->height;
     ASSERT(infoheader->compression == 0);
     ASSERT(infoheader->colorPlanes == 1);
+    ASSERT(infoheader->bitsPerPixel % 8 == 0);
     //check and correct padding when removing following assert
-    ASSERT(infoheader->bitsPerPixel == 8);
-    if(infoheader->compression != 0 || infoheader->colorPlanes != 1 || infoheader->bitsPerPixel != 8){
+    if(infoheader->compression != 0 || infoheader->colorPlanes != 1 || infoheader->bitsPerPixel % 8 != 0){
         return false;
     }
     target->info.bitsPerSample = infoheader->bitsPerPixel;
     target->info.samplesPerPixel = 1;
     target->info.origin = BitmapOriginType_BottomLeft;
-    target->info.interpretation = BitmapInterpretationType_GrayscaleBW01;
+    //RGB
+    if(infoheader->compression == 0){
+        if(infoheader->bitsPerPixel == 8){
+            target->info.interpretation = BitmapInterpretationType_GrayscaleBW01;
+        }else if(infoheader->bitsPerPixel == 24){
+            target->info.interpretation = BitmapInterpretationType_RGB;
+        }else{
+            //@Incomplete
+            INV;//IMPLEMENT OTHER BITS PER PIXEl
+            return false;
+        }
+    }
+    
     target->data = &PUSHA(byte, infoheader->datasize);
     uint32 rowpitch = (target->info.width % 4 != 0 ? (target->info.width/4 + 1)*4 : target->info.width);
+    uint8 bytesPerPixel = target->info.bitsPerSample/8;
     for(uint32 h = 0; h < target->info.height; h++){
         //data are padded with 0 for 32 bit row padding
-        uint32 sourcepitch = h * rowpitch;
-        uint32 targetpitch = h * target->info.width;
+        uint32 sourcepitch = h * rowpitch * bytesPerPixel;
+        uint32 targetpitch = h * target->info.width * bytesPerPixel;
         for(uint32 w = 0; w < target->info.width; w++){
-            target->data[targetpitch + w] = (source->contents + dataOffset)[sourcepitch + w];
+            for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+                //the r g b is flipped to b g r
+                target->data[targetpitch + w*bytesPerPixel + byteIndex] = (source->contents + dataOffset)[sourcepitch + w*bytesPerPixel + (bytesPerPixel-1-byteIndex)];
+            }
             
         }
     }
@@ -214,7 +230,7 @@ bool encodeBMP(const Image * source, FileContents * target){
     infoheader->height = source->info.height;
     infoheader->colorPlanes = 1;
     infoheader->bitsPerPixel = bitsPerPixel;
-    infoheader->compression = 0;
+    infoheader->compression = 0; //RGB
     infoheader->datasize = savewidth * source->info.height * bitsPerPixel/8;
     infoheader->pixelPerMeterVertical = infoheader->pixelPerMeterHorizontal = 0;
     infoheader->colorsInPallette = 1 << infoheader->bitsPerPixel;
@@ -233,22 +249,36 @@ bool encodeBMP(const Image * source, FileContents * target){
             *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 3) = (uint8)0;
         }
     }
-    ASSERT(bitsPerPixel == 8);
+    //@Incomplete
+    //Implement other possibilities
+    ASSERT(bitsPerPixel % 8 == 0);
+    ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01 || source->info.interpretation == BitmapInterpretationType_RGB);
+    //the r g b  flipped to b g r
+    uint8 bytesPerPixel = bitsPerPixel/8;
     if(source->info.origin == BitmapOriginType_BottomLeft){
         for(uint32 h = 0; h < infoheader->height; h++){
-            for(uint32 w = 0; w < infoheader->width; w++){(target->contents + dataOffset)[h * savewidth + w] = source->data[h * infoheader->width + w]; 
+            for(uint32 w = 0; w < infoheader->width; w++){
+                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + (bytesPerPixel-1-byteIndex)] = source->data[h * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex]; 
+                }
             }
             for(uint32 w = infoheader->width; w < savewidth; w++){
-                (target->contents + dataOffset)[h * savewidth + w] = 0;
+                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
+                }
             }
         }
     }else if(source->info.origin == BitmapOriginType_TopLeft){
         for(uint32 h = 0; h < infoheader->height; h++){
             for(uint32 w = 0; w < infoheader->width; w++){
-                (target->contents + dataOffset)[h * savewidth + w] =  source->data[(infoheader->height - 1 - h) * infoheader->width + w];
+                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + (bytesPerPixel-1-byteIndex)] =  source->data[(infoheader->height - 1 - h) * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex];
+                }
             }
             for(uint32 w = infoheader->width; w < savewidth; w++){
-                (target->contents + dataOffset)[h * savewidth + w] = 0;
+                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
+                }
             }
         }
     }else{
