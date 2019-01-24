@@ -7,6 +7,7 @@ enum BitmapInterpretationType{
     BitmapInterpretationType_Invalid,
     BitmapInterpretationType_GrayscaleBW01,
     BitmapInterpretationType_ARGB,
+    BitmapInterpretationType_RGBA,
     BitmapInterpretationType_RGB,
     BitmapInterpretationType_ABGR,
     //https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/pixfmt-yuyv.html
@@ -34,11 +35,23 @@ struct Image{
 };
 
 union Color{
-    struct{
-        uint8 r;
-        uint8 g;
-        uint8 b;
-        uint8 a;
+    //NOTE(AK): different representations mean different members,
+    //keep just x,y,z,w or use functions eg red(Color * c);
+    //but there would be uselles switch
+    //@Cleanup
+    union{
+        struct{
+            uint8 r;
+            uint8 g;
+            uint8 b;
+            uint8 a;
+        };
+        struct{
+            uint8 x;
+            uint8 y;
+            uint8 z;
+            uint8 w;
+        };
     };
     uint8 channel[4];
     uint32 full;

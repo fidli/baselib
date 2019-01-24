@@ -820,11 +820,11 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
 
 
 
-uint32 scanFormatted(const char * source, const char * format, va_list ap){
+uint32 scanFormatted(int32 limit, const char * source, const char * format, va_list ap){
     uint32 formatOffset = 0;
     uint32 sourceIndex = 0;
     uint32 successfullyScanned = 0;
-    uint32 maxread = (uint32) -1;
+    uint32 maxread = (uint32) limit;
     FormatInfo info;
     bool exit = false;
     while(!exit && (info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
@@ -1114,7 +1114,15 @@ uint32 sprintf(char * target, const char * format, ...){
 uint32 sscanf(const char * target, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
-    uint32 successfullyScanned  = scanFormatted(target, format, ap);
+    uint32 successfullyScanned  = scanFormatted(-1, target, format, ap);
+    va_end(ap);
+    return successfullyScanned;
+}
+
+uint32 snscanf(const char * target, nint limit, const char * format, ...){
+    va_list ap;    
+    va_start(ap, format);
+    uint32 successfullyScanned  = scanFormatted(limit, target, format, ap);
     va_end(ap);
     return successfullyScanned;
 }

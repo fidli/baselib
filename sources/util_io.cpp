@@ -43,7 +43,7 @@ int scanf(const char * format, ...){
     int res = readConsole(buffer, 1024);
     ASSERT(res > 0);
     
-    uint32 succesfullyScanned = scanFormatted(buffer, format, ap);
+    uint32 succesfullyScanned = scanFormatted(1024, buffer, format, ap);
     va_end(ap);
     
     return succesfullyScanned;
