@@ -15,6 +15,139 @@ struct BitmapFont{
     } current;
 };
 
+struct GlyphData{
+    bool valid;
+    char glyph;
+    int32 width;
+    
+    int32 mapOffsetX;
+    int32 mapOffsetY;
+    
+    struct{
+        struct{
+            int32 x,y;
+        } A;
+        struct{
+            int32 x,y;
+        } B;
+    } AABB;
+};
+
+struct AtlasFont{
+    Image data;
+    int32 size;
+    int32 height;
+    GlyphData glyphs[256];
+};
+
+/**
+@Incomplete TODO(AK): kerning support
+*/
+bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * descriptionXMLpath){
+    
+    PUSHI;
+    FileContents fontFile = {};
+    bool r = readFile(atlasBMPPath, &fontFile);
+    ASSERT(r);
+    
+    r &= decodeBMP(&fontFile, &target->data);
+    ASSERT(r);
+    ASSERT(target->data.info.interpretation == BitmapInterpretationType_RGBA);
+    if(target->data.info.origin == BitmapOriginType_BottomLeft){
+        r &= flipY(&target->data);
+        ASSERT(r);
+    }
+    ASSERT(target->data.info.origin == BitmapOriginType_TopLeft);
+    
+    
+    
+    //load font atlas map
+    FileContents mapFile = {};
+    r = readFile(descriptionXMLpath, &mapFile);
+    ASSERT(r);
+    XMLNode * font = parseXML(&mapFile);
+    ASSERT(font);
+    
+    
+    
+    bool success = true;
+    
+    if(strncmp("Font", font->name, 4)){
+        INV;
+        success = false;
+    }else{
+        for(int32 a = 0; a < font->attributesCount && success; a++){
+            if(!strncmp("size", font->attributeNames[a], 4)){
+                if(!sscanf(font->attributeValues[a], "%d", &target->size)){
+                    INV;
+                    success = false;
+                    break;
+                }
+            }else if(!strncmp("height", font->attributeNames[a], 6)){
+                if(!sscanf(font->attributeValues[a], "%d", &target->height)){
+                    INV;
+                    success = false;
+                    break;
+                }
+            }
+        }
+    }
+    
+    for(int32 i = 0; i < font->childrenCount && success; i++){
+        XMLNode * ch = font->children[i];
+        if(!strncmp(ch->name, "Char", 4)){
+            char glyph;
+            GlyphData tmp;
+            for(int32 a = 0; a < ch->attributesCount; a++){
+                if(!strncmp("width", ch->attributeNames[a], 5)){
+                    if(!sscanf(ch->attributeValues[a], "%d", &tmp.width)){
+                        INV;
+                        success = false;
+                        break;
+                    }
+                }else if(!strncmp("offset", ch->attributeNames[a], 6)){
+                    if(sscanf(ch->attributeValues[a], "%d %d", &tmp.mapOffsetX, &tmp.mapOffsetY) != 2){
+                        INV;
+                        success = false;
+                        break;
+                    }
+                }else if(!strncmp("rect", ch->attributeNames[a], 4)){
+                    if(sscanf(ch->attributeValues[a], "%d %d %d %d", &tmp.AABB.A.x, &tmp.AABB.A.y, &tmp.AABB.B.x, &tmp.AABB.B.y) != 4){
+                        INV;
+                        success = false;
+                        break;
+                    }
+                }else if(!strncmp("code", ch->attributeNames[a], 4)){
+                    
+                    if(!strncmp("&quot;", ch->attributeValues[a], 6)){
+                        glyph = '"';
+                    }else if(!strncmp("&amp;", ch->attributeValues[a], 5)){
+                        glyph = '&';
+                    }else if(!strncmp("&lt;", ch->attributeValues[a], 4)){
+                        glyph = '<';
+                    }else if(!snscanf(ch->attributeValues[a], 1, "%c", &glyph)){
+                        INV;
+                        success = false;
+                        break;
+                    }
+                    tmp.glyph = glyph;
+                }
+            }
+            tmp.valid = true;
+            target->glyphs[glyph] = tmp;
+        }
+    }
+    //NOTE(AK): copy to persistent memory
+    //@Cleanup whet decode BMP allows use of allocator
+    Image persOrig = target->data;
+    persOrig.data = &PUSHA(byte, persOrig.info.totalSize);
+    
+    memcpy(persOrig.data, target->data.data, persOrig.info.totalSize);
+    POPI;
+    target->data = persOrig;
+    return success;
+}
+
 bool initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
     memcpy(&target->original.data, source, sizeof(Image));
     memcpy(&target->current.data, source, sizeof(Image));
@@ -30,13 +163,13 @@ bool initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
     return true;
 }
 
+//TODO(AK) scale on render instead of scaling down
 bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize, Color color = {0xFF,0xFF,0xFF,0xFF}){
     
     if(startY > (int64)target->info.height - fontSize) return false;
     if(startX > (int64)target->info.width - fontSize * strlen(asciiText)) return false;
     
     if(font->current.gridSize != fontSize){
-        //font->current.data.data = &PUSHA(byte, fontSize*16*fontSize*16);
         if(!scaleImage(&font->original.data, &font->current.data, fontSize * 16, fontSize * 16)){
             return false;
         }
