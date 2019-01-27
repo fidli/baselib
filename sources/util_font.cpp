@@ -20,16 +20,14 @@ struct GlyphData{
     char glyph;
     int32 width;
     
-    int32 mapOffsetX;
-    int32 mapOffsetY;
+    int32 marginX;
+    int32 marginY;
+    
+    int32 kerning[256];
     
     struct{
-        struct{
-            int32 x,y;
-        } A;
-        struct{
-            int32 x,y;
-        } B;
+        int32 x,y;
+        int32 width, height;
     } AABB;
 };
 
@@ -40,9 +38,7 @@ struct AtlasFont{
     GlyphData glyphs[256];
 };
 
-/**
-@Incomplete TODO(AK): kerning support
-*/
+
 bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * descriptionXMLpath){
     
     PUSHI;
@@ -58,8 +54,6 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
         ASSERT(r);
     }
     ASSERT(target->data.info.origin == BitmapOriginType_TopLeft);
-    
-    
     
     //load font atlas map
     FileContents mapFile = {};
@@ -97,7 +91,7 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
         XMLNode * ch = font->children[i];
         if(!strncmp(ch->name, "Char", 4)){
             char glyph;
-            GlyphData tmp;
+            GlyphData tmp = {};
             for(int32 a = 0; a < ch->attributesCount; a++){
                 if(!strncmp("width", ch->attributeNames[a], 5)){
                     if(!sscanf(ch->attributeValues[a], "%d", &tmp.width)){
@@ -106,13 +100,13 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                         break;
                     }
                 }else if(!strncmp("offset", ch->attributeNames[a], 6)){
-                    if(sscanf(ch->attributeValues[a], "%d %d", &tmp.mapOffsetX, &tmp.mapOffsetY) != 2){
+                    if(sscanf(ch->attributeValues[a], "%d %d", &tmp.marginX, &tmp.marginY) != 2){
                         INV;
                         success = false;
                         break;
                     }
                 }else if(!strncmp("rect", ch->attributeNames[a], 4)){
-                    if(sscanf(ch->attributeValues[a], "%d %d %d %d", &tmp.AABB.A.x, &tmp.AABB.A.y, &tmp.AABB.B.x, &tmp.AABB.B.y) != 4){
+                    if(sscanf(ch->attributeValues[a], "%d %d %d %d", &tmp.AABB.x, &tmp.AABB.y, &tmp.AABB.width, &tmp.AABB.height) != 4){
                         INV;
                         success = false;
                         break;
@@ -135,12 +129,35 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
             }
             tmp.valid = true;
             target->glyphs[glyph] = tmp;
+            for(int32 k = 0; k < ch->childrenCount; k++){
+                XMLNode * kerningChild = ch->children[k];
+                char against = 0;
+                int32 advance = 0;
+                for(int32 a = 0; a < kerningChild->attributesCount; a++){
+                    if(!strncmp("advance", kerningChild->attributeNames[a], 7)){
+                        if(!sscanf(kerningChild->attributeValues[a], "%d", &advance)){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("id", kerningChild->attributeNames[a], 2)){
+                        if(!sscanf(kerningChild->attributeValues[a], "%c", &against)){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }
+                }
+                ASSERT(against != 0);
+                ASSERT(advance != 0);
+                tmp.kerning[against] = advance;
+            }
         }
     }
     //NOTE(AK): copy to persistent memory
     //@Cleanup whet decode BMP allows use of allocator
     Image persOrig = target->data;
-    persOrig.data = &PUSHA(byte, persOrig.info.totalSize);
+    persOrig.data = &PPUSHA(byte, persOrig.info.totalSize);
     
     memcpy(persOrig.data, target->data.data, persOrig.info.totalSize);
     POPI;
@@ -163,7 +180,7 @@ bool initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
     return true;
 }
 
-//TODO(AK) scale on render instead of scaling down
+
 bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize, Color color = {0xFF,0xFF,0xFF,0xFF}){
     
     if(startY > (int64)target->info.height - fontSize) return false;

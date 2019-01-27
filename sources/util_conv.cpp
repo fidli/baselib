@@ -168,6 +168,8 @@ bool decodeBMP(const FileContents * source, Image * target){
     }
     target->info.bitsPerSample = infoheader->bitsPerPixel;
     target->info.samplesPerPixel = 1;
+    uint64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
+    target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
     target->info.origin = BitmapOriginType_BottomLeft;
     //RGB
     if(infoheader->compression == 0){
@@ -181,7 +183,7 @@ bool decodeBMP(const FileContents * source, Image * target){
             return false;
         }
         
-        target->data = &PUSHA(byte, infoheader->datasize);
+        target->data = &PUSHA(byte, target->info.totalSize);
         uint32 rowpitch = (target->info.width % 4 != 0 ? (target->info.width/4 + 1)*4 : target->info.width);
         
         uint8 bytesPerPixel = target->info.bitsPerSample/8;
@@ -191,7 +193,7 @@ bool decodeBMP(const FileContents * source, Image * target){
             uint32 targetpitch = h * target->info.width * bytesPerPixel;
             for(uint32 w = 0; w < target->info.width; w++){
                 for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
-                    //the r g b is flipped to b g r
+                    //the r g b is flipped to b g r due to whatever reason
                     target->data[targetpitch + w*bytesPerPixel + byteIndex] = (source->contents + dataOffset)[sourcepitch + w*bytesPerPixel + (bytesPerPixel-1-byteIndex)];
                 }
                 
@@ -201,16 +203,16 @@ bool decodeBMP(const FileContents * source, Image * target){
     }else if(infoheader->compression == 3){
         if(infoheader->bitsPerPixel == 32){
             ASSERT(infoheader->compression == 3);
-            uint32 redMask = *(((int32*)(infoheader+1))+0);
+            uint32 redMask = *(((uint32*)(infoheader+1))+0);
             uint32 redMaskFallShift = redMask > 0xFF ? (redMask > 0xFF00 ? (redMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            uint32 greenMask = *(((int32*)(infoheader+1))+1);
+            uint32 greenMask = *(((uint32*)(infoheader+1))+1);
             uint32 greenMaskFallShift = greenMask > 0xFF ? (greenMask > 0xFF00 ? (greenMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            uint32 blueMask = *(((int32*)(infoheader+1))+2);
+            uint32 blueMask = *(((uint32*)(infoheader+1))+2);
             uint32 blueMaskFallShift = blueMask > 0xFF ? (blueMask > 0xFF00 ? (blueMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            uint32 alfaMask = *(((int32*)(infoheader+1))+3);
+            uint32 alfaMask = *(((uint32*)(infoheader+1))+3);
             uint32 alfaMaskFallShift = alfaMask > 0xFF ? (alfaMask > 0xFF00 ? (alfaMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
             target->info.interpretation = BitmapInterpretationType_RGBA;
@@ -219,12 +221,11 @@ bool decodeBMP(const FileContents * source, Image * target){
             uint32 * pixelData = (uint32 *) target->data;
             
             //NOTE(AK): 32 bit pixels will always be 32 bit aligned
-            uint32 rowpitch = target->info.width;
             for(uint32 h = 0; h < target->info.height; h++){
-                uint32 pitch = h * rowpitch;
+                uint32 pitch = h * target->info.width;
                 for(uint32 w = 0; w < target->info.width; w++){
                     uint32 sourceData = ((uint32*)(source->contents + dataOffset))[pitch + w];
-                    pixelData[pitch + w] = 0 | (((redMask & sourceData) >> redMaskFallShift) << 24) | (((greenMask & sourceData) >> greenMaskFallShift) << 16)  | (((blueMask & sourceData) >> blueMaskFallShift) << 8) | (((alfaMask & sourceData) >> alfaMaskFallShift));
+                    pixelData[pitch + w] = 0 | (((redMask & sourceData) >> redMaskFallShift)) | (((greenMask & sourceData) >> greenMaskFallShift) << 8)  | (((blueMask & sourceData) >> blueMaskFallShift) << 16) | (((alfaMask & sourceData) >> alfaMaskFallShift) << 24);
                 }
             }
             
