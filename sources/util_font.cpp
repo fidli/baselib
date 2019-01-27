@@ -233,4 +233,22 @@ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * as
     return true;
 }
 
+int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int pt){
+    int32 width = 0;
+    int32 targetSize = pt;
+    float32 fontScale = (float32)targetSize / font->size;
+    char prevGlyph = 0;
+    for(int i = 0; i < strlen(text); i++){
+        const GlyphData * glyph = &font->glyphs[text[i]];
+        ASSERT(glyph->valid);
+        //kerning?
+        if(prevGlyph){
+            width -= (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
+        }
+        width += (int32)((float32)glyph->width * fontScale);
+    }
+    return width;
+}
+
+
 #endif
