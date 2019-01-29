@@ -10,7 +10,6 @@ struct GuiId{
 };
 
 struct {
-    GuiId lastHover;
     GuiId lastActive;
     GuiId activeDropdown;
 } context;
@@ -118,27 +117,20 @@ bool renderButton(const AtlasFont * font, const char * text, const int32 positio
     GuiId id = {positionX, positionY};
     bool result = false;
     bool isLastActive = guiEq(id, context.lastActive);
-    bool isLastHover = guiEq(id, context.lastHover);
-    bool isVisuallyHover;
+    bool isHoverNow = mouse.x >= positionX && mouse.x <= positionX + width && mouse.y >= positionY && mouse.y <= positionY + height;
+    
     if(isLastActive){
         if(mouse.buttons.leftUp){
-            if(isLastHover) result = true;
+            if(isHoverNow) result = true;
             guiInvaliate(&context.lastActive);
         }
-    }else if(isLastHover){
+    }else if(isHoverNow){
         if(mouse.buttons.leftDown) context.lastActive = id;
-    }
-    
-    if(mouse.x >= positionX && mouse.x <= positionX + width && mouse.y >= positionY && mouse.y <= positionY + height){
-        context.lastHover = id;
-        isVisuallyHover = true;
-    }else{
-        isVisuallyHover = false;
     }
     
     const Color * textColor;
     const Color * bgColor;
-    if(isLastActive && isVisuallyHover){
+    if(isLastActive && isHoverNow){
         textColor = activeTextColor;
         bgColor = activeBgColor;
     }else{
@@ -160,35 +152,26 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
     {
         isHeadLastActive = guiEq(headId, context.lastActive);
         isDropdownActive = guiEq(headId, context.activeDropdown);
-        bool isLastHover = guiEq(headId, context.lastHover);
-        if(isHeadLastActive || isDropdownActive){
+        bool isHeadHoverNow = mouse.x >= positionX && mouse.x <= positionX + width && mouse.y >= positionY && mouse.y <= positionY + height;
+        
+        if(isHeadLastActive){
             if(mouse.buttons.leftUp){
-                if(isLastHover){
+                if(isHeadHoverNow){
                     context.activeDropdown = headId;
                 }
                 guiInvaliate(&context.lastActive);
             }
-            if(mouse.buttons.leftDown){
-                //NOTE(AK): this will be set 
-                guiInvaliate(&context.activeDropdown);
-            }
+        }else{
+            if(mouse.buttons.leftDown && guiEq(headId, context.activeDropdown)) guiInvaliate(&context.activeDropdown);
         }
-        if(isLastHover && !isHeadLastActive){
+        if(isHeadHoverNow && !isHeadLastActive){
             if(mouse.buttons.leftDown) context.lastActive = headId;
         }
-        if(!isHeadLastActive && !isDropdownActive && !isLastOver && guiEq(context.activeDropdown, headId)){
-            guiInvaliate(&context.activeDropdown);
-        }
         
-        if(mouse.x >= positionX && mouse.x <= positionX + width && mouse.y >= positionY && mouse.y <= positionY + height){
-            context.over = headId;
-        }else if(isOver){
-            guiInvaliate(&context.active);
-        }
         
         const Color * textColor;
         const Color * bgColor;
-        if(isHeadActive || isDropdownActive){
+        if(isHeadLastActive){
             textColor = activeTextColor;
             bgColor = activeBgColor;
         }else{
@@ -199,9 +182,8 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
         renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor);
     }
     //end dropdown head
-    
+    bool selected = false;
     //start list members
-    *resultIndex = -1;
     if(isDropdownActive){
         for(int32 i = 0; i < listSize; i++){
             
@@ -210,30 +192,26 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
                 int32 buttonPositionX = positionX;
                 int32 buttonPositionY = positionY + (i+1)*height;
                 GuiId id = {buttonPositionX, buttonPositionY};
-                bool isActive = guiEq(id, context.active);
-                bool isOver = guiEq(id, context.over);
+                bool isLastActive = guiEq(id, context.lastActive);
                 bool result = false;
-                if(isActive){
+                bool isHoverNow = mouse.x >= buttonPositionX && mouse.x <= buttonPositionX + width && mouse.y >= buttonPositionY && mouse.y <= buttonPositionY + height;
+                
+                if(isLastActive){
                     if(mouse.buttons.leftUp){
-                        if(isOver) result = true;
-                        guiInvaliate(&context.active);
+                        if(isHoverNow) result = true;
+                        guiInvaliate(&context.lastActive);
+                        context.activeDropdown = headId;
                     }
-                }else if(isOver){
+                }else if(isHoverNow){
                     if(mouse.buttons.leftDown){
-                        context.active = id;
+                        context.lastActive = id;
                         context.activeDropdown = headId;
                     }
                 }
                 
-                if(mouse.x >= buttonPositionX && mouse.x <= buttonPositionX + width && mouse.y >= buttonPositionY && mouse.y <= buttonPositionY + height){
-                    context.over = id;
-                }else if(isOver){
-                    guiInvaliate(&context.active);
-                }
-                
                 const Color * textColor;
                 const Color * bgColor;
-                if(isActive){
+                if(isHoverNow){
                     textColor = activeTextColor;
                     bgColor = activeBgColor;
                 }else{
@@ -245,6 +223,7 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
                 
                 if(result){
                     *resultIndex = i;
+                    selected = true;
                 }
             }
             //end individual buttons
@@ -254,9 +233,10 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
         }
     }
     //end list members
-    
-    
-    return *resultIndex != -1 || isDropdownActive || isHeadActive;
+    if(selected){
+        guiInvaliate(&context.activeDropdown);
+    }
+    return selected || isDropdownActive || isHeadLastActive;
 }
 
 #endif
