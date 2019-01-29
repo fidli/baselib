@@ -12,6 +12,12 @@ struct GuiId{
 struct {
     GuiId lastActive;
     GuiId activeDropdown;
+    
+    GuiId activeInput;
+    float32 activeInputLastTimestamp;
+    float32 activeInputTimeAccumulator;
+    int32 caretPos;
+    
 } context;
 
 struct{
@@ -113,6 +119,62 @@ bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX
 }
 
 
+void renderBoxText(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * bgColor, const Color * textColor){
+    renderRect(positionX, positionY, width, height, bgColor);
+    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor);
+}
+
+bool renderInput(const AtlasFont * font, char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor){
+    GuiId id = {positionX, positionY};
+    bool result = false;
+    bool isLastActive = guiEq(id, context.lastActive);
+    int32 margin = MIN(height/10, 10);
+    bool isHoverNow = mouse.x >= positionX + margin && mouse.x <= positionX + width - margin && mouse.y >= positionY + margin && mouse.y <= positionY + height - margin;
+    
+    if(isLastActive){
+        if(mouse.buttons.leftUp){
+            if(isHoverNow){
+                result = true;
+                context.activeInput = id;
+                context.activeInputLastTimestamp = getProcessCurrentTime();
+                context.activeInputTimeAccumulator = 0;
+            }
+            guiInvaliate(&context.lastActive);
+        }
+    }else{
+        if(mouse.buttons.leftDown && guiEq(id, context.activeInput)) guiInvaliate(&context.activeInput);
+    }
+    
+    if(isHoverNow && !isLastActive){
+        if(mouse.buttons.leftDown) context.lastActive = id;
+    }
+    
+    renderRect(positionX, positionY, width, height, boxBgColor);
+    renderRect(positionX+margin, positionY+margin, width-2*margin, height-2*margin, fieldColor);
+    
+    
+    
+    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, inputTextColor);
+    
+    float32 tick = 1;
+    bool drawCaret = context.activeInputTimeAccumulator > tick;
+    if(drawCaret){
+        int32 texlen = strlen(text);
+        char * tmpbuf = &PUSHA(char, texlen+1); 
+        strncpy(tmpbuf, text, context.caretPos);
+        tmpbuf[context.caretPos] = 0;
+        int32 carretXOffset = calculateAtlasTextWidth(font, tmpbuf, 14);
+        int32 textXOffset = (width-2*margin)/2-calculateAtlasTextWidth(font, text, 14)/2;
+        POP;
+        renderRect(positionX+margin+carretXOffset+textXOffset, positionY + 2*margin, 4, height - 4*margin, inputTextColor);
+        context.activeInputTimeAccumulator -= tick;
+    }
+    context.activeInputTimeAccumulator += getProcessCurrentTime()-context.activeInputLastTimestamp;
+    context.activeInputLastTimestamp = getProcessCurrentTime();
+    
+    return result;
+}
+
 bool renderButton(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor){
     GuiId id = {positionX, positionY};
     bool result = false;
@@ -137,6 +199,7 @@ bool renderButton(const AtlasFont * font, const char * text, const int32 positio
         textColor = inactiveTextColor;
         bgColor = inactiveBgColor;
     }
+    
     renderRect(positionX, positionY, width, height, bgColor);
     renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor);
     
