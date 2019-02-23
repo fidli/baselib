@@ -39,6 +39,8 @@ struct Segment3D_64{
     v3_64 B;
 };
 
+
+
 #define Segment1D_64 v2_64
 
 bool isInBox(const Box * check, const v3 * point){

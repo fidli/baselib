@@ -115,6 +115,34 @@ static uint8 scanNumber16(const char * source, int16 * target, uint8 maxDigits =
     return i;
 }
 
+static uint8 scanNumber8(const char * source, int8 * target, uint8 maxDigits = 3){
+    if(maxDigits > 6) maxDigits = 6; //cant fit more with sign
+    uint8 i = 0;
+    bool first = true;
+    bool negative = false;
+    if(source[i] == '-'){
+        negative = true;
+        i++;
+    }
+    for(;source[i] != '\0' && i < maxDigits; i++){
+        int8 digit = (int8) source[i];
+        if(digit < 48 || digit > 57) break;
+        digit -= 48;
+        if(first){
+            first = false;
+            *target = 0;
+        }
+        *target = 10 * *target + digit; 
+    }
+    if(negative && i == 1){//only -
+        return 0; 
+    }
+    if(negative){
+        *target = -1 * *target;
+    }
+    return i;
+}
+
 static uint8 scanUnumber8(const char * source, uint8 * target, uint8 maxDigits = 3){
     if(maxDigits > 3) maxDigits = 3; //cant fit more
     uint8 i = 0;
@@ -419,7 +447,7 @@ static FormatInfo parseFormat(const char * format){
                         info.charlist.capitalLetterRangeLow = format[formatIndex];                            
                     }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
                         info.charlist.smallLetterRangeLow = format[formatIndex];                            
-                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                    }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
                         info.charlist.digitRangeLow = format[formatIndex];
                     }else{
                         INV; //implement me maybe? makes sense? i havent been in these depths for long
@@ -433,9 +461,9 @@ static FormatInfo parseFormat(const char * format){
                     }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
                         info.charlist.smallLetterRangeHigh = format[formatIndex];
                         ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
-                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                    }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
                         info.charlist.digitRangeHigh = format[formatIndex];
-                        ASSERT(info.charlist.capitalLetterRangeHigh > info.charlist.capitalLetterRangeLow);
+                        ASSERT(info.charlist.digitRangeHigh > info.charlist.digitRangeLow);
                     }else{
                         INV; //implement me maybe? makes sense?
                     }
@@ -877,7 +905,15 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                             maxDigits = info.maxlen;
                         }
                         scannedChars = scanUnumber64(source + sourceIndex, (uint64 *) targetVar, maxDigits);
-                    }else{
+                    }else if (info.typeLength == FormatTypeSize_hh){
+                        uint8 * targetVar = va_arg(ap, uint8 * );
+                        uint8 maxDigits = 3;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanUnumber8(source + sourceIndex, (uint8 *) targetVar, maxDigits);
+                    }
+                    else{
                         INV; //implement me or genuine error
                     }
                 }else if(info.type == FormatType_d){
@@ -902,7 +938,15 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                             maxDigits = info.maxlen;
                         }
                         scannedChars = scanNumber64(source + sourceIndex, (int64 *) targetVar, maxDigits);
-                    }else{
+                    }else if (info.typeLength == FormatTypeSize_hh){
+                        int8 * targetVar = va_arg(ap, int8 * );
+                        uint8 maxDigits = 3;
+                        if(info.maxlen != 0){
+                            maxDigits = info.maxlen;
+                        }
+                        scannedChars = scanNumber8(source + sourceIndex, (int8 *) targetVar, maxDigits);
+                    }
+                    else{
                         INV; //implement me or genuine error
                     }
                 }
