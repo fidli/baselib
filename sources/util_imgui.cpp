@@ -19,12 +19,18 @@ struct{
 struct GuiId{
     int32 x;
     int32 y;
+    
+    int8 z;
 };
 
 #define CARET_TICK 0.5f
 
 struct {
+    int8 minZ;
+    int8 maxZ;
+    
     GuiId lastActive;
+    GuiId lastHover;
     GuiId currentHover;
     
     GuiId activeDropdown;
@@ -45,7 +51,7 @@ static void guiInvaliate(GuiId * a){
 }
 
 static bool guiEq(const GuiId A, const GuiId B){
-    return A.x == B.x && A.y == B.y;
+    return A.x == B.x && A.y == B.y && A.z == B.z;
 }
 
 bool guiValid(const GuiId a){
@@ -54,6 +60,10 @@ bool guiValid(const GuiId a){
 
 bool guiInit(){
     guiInput = {};
+    guiInvaliate(&guiContext.lastActive);
+    guiInvaliate(&guiContext.lastHover);
+    guiInvaliate(&guiContext.activeDropdown);
+    guiInvaliate(&guiContext.activeInput);
     return true;
 }
 
@@ -62,10 +72,12 @@ void guiBegin(){
     guiContext.activeInputTimeAccumulator += currentTimestamp - guiContext.activeInputLastTimestamp;
     guiContext.activeInputLastTimestamp = currentTimestamp;
     guiInvaliate(&guiContext.currentHover);
+    guiContext.minZ = guiContext.maxZ = 0;
 }
 
 void guiEnd(){
     guiInput.mouse.buttons = {};
+    guiContext.lastHover = guiContext.currentHover;
 }
 
 bool guiIsActiveInput(){
@@ -79,7 +91,7 @@ bool guiClick(){
 
 
 
-bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color){
+bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
     glUseProgram(gl->font.program);
     glUniform1i(gl->font.samplerLocation, gl->font.atlasTextureUnit);
     glActiveTexture(GL_TEXTURE0 + gl->font.atlasTextureUnit);
@@ -105,8 +117,9 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
             advance += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
         }
         
+        float32 zOffset = -(float32)zIndex / INT8_MAX;
         //position
-        glUniform2f(gl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1);
+        glUniform3f(gl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
         //scale
         glUniform2f(gl->font.scaleLocation, fontScale * (glyph->AABB.width) * resScaleX * 2,
                     fontScale * resScaleY * (glyph->AABB.height) * 2);
@@ -131,14 +144,15 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
     return true;
 }
 
-bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color){
+bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, int32 zIndex = 0){
     glUseProgram(gl->flat.program);
     
     float32 resScaleY = 1.0f / (game->resolution.y);
     float32 resScaleX = 1.0f / (game->resolution.x);
     
     //position
-    glUniform2f(gl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1);
+    float32 zOffset = -(float32)zIndex / INT8_MAX;
+    glUniform3f(gl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(gl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
     
@@ -151,40 +165,46 @@ bool renderRect(const int32 positionX, const int32 positionY, const int32 width,
     return true;
 }
 
-bool renderTextXCentered(const AtlasFont * font, const char * text, int centerX, int startY, int pt, const Color * color){
-    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, startY, pt, color);
+bool renderTextXCentered(const AtlasFont * font, const char * text, int centerX, int startY, int pt, const Color * color, int32 zIndex = 0){
+    
+    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, startY, pt, color, zIndex);
 }
 
-bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX, int centerY, int pt, const Color * color){
-    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - font->height*pt/(2*font->size), pt, color);
+bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX, int centerY, int pt, const Color * color, int32 zOffset = 0){
+    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - font->height*pt/(2*font->size), pt, color, zOffset);
 }
 
 
-void renderBoxText(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * bgColor, const Color * textColor){
-    GuiId id = {positionX, positionY};
+void renderBoxText(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * bgColor, const Color * textColor, int8 zIndex = 0){
+    GuiId id = {positionX, positionY, zIndex};
     bool isHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
     if(isHoverNow){
-        guiContext.currentHover = id;
+        if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
+            guiContext.currentHover = id;
+        }
     }
     
-    renderRect(positionX, positionY, width, height, bgColor);
-    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor);
+    renderRect(positionX, positionY, width, height, bgColor, zIndex);
+    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor, zIndex);
 }
 
-bool renderInput(const AtlasFont * font, char * text, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor){
-    GuiId id = {positionX, positionY};
+bool renderInput(const AtlasFont * font, char * text, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, int8 zIndex = 0){
+    GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext.lastActive);
     int32 margin = MIN(height/10, 10);
     bool isHoverNow = guiInput.mouse.x >= positionX + margin && guiInput.mouse.x <= positionX + width - margin && guiInput.mouse.y >= positionY + margin && guiInput.mouse.y <= positionY + height - margin;
     if(isHoverNow){
-        guiContext.currentHover = id;
+        if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
+            guiContext.currentHover = id;
+        }
     }
     
+    bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext.lastHover);
     
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
-            if(isHoverNow){
+            if(isHoverBeforeAndNow){
                 result = true;
                 guiContext.activeInput = id;
                 guiContext.activeInputLastTimestamp = getProcessCurrentTime();
@@ -200,16 +220,16 @@ bool renderInput(const AtlasFont * font, char * text, const char * charlist, con
         if(guiInput.mouse.buttons.leftDown && guiEq(id, guiContext.activeInput)) guiInvaliate(&guiContext.activeInput);
     }
     
-    if(isHoverNow && !isLastActive){
+    if(isHoverBeforeAndNow && !isLastActive){
         if(guiInput.mouse.buttons.leftDown) guiContext.lastActive = id;
     }
     
-    renderRect(positionX, positionY, width, height, boxBgColor);
-    renderRect(positionX+margin, positionY+margin, width-2*margin, height-2*margin, fieldColor);
+    renderRect(positionX, positionY, width, height, boxBgColor, zIndex);
+    renderRect(positionX+margin, positionY+margin, width-2*margin, height-2*margin, fieldColor, zIndex);
     
     
     
-    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, inputTextColor);
+    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, inputTextColor, zIndex);
     
     //do something at all
     if(guiEq(guiContext.activeInput, id)){
@@ -228,7 +248,7 @@ bool renderInput(const AtlasFont * font, char * text, const char * charlist, con
             int32 carretXOffset = calculateAtlasTextWidth(font, tmpbuf, 14);
             int32 textXOffset = (width-2*margin)/2-calculateAtlasTextWidth(font, text, 14)/2;
             POP;
-            renderRect(positionX+margin+carretXOffset+textXOffset, positionY + 2*margin, 4, height - 4*margin, inputTextColor);
+            renderRect(positionX+margin+carretXOffset+textXOffset, positionY + 2*margin, 4, height - 4*margin, inputTextColor, zIndex);
         }
         
     }
@@ -236,22 +256,26 @@ bool renderInput(const AtlasFont * font, char * text, const char * charlist, con
     return result;
 }
 
-bool renderButton(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor){
-    GuiId id = {positionX, positionY};
+bool renderButton(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
+    GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext.lastActive);
     bool isHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
     
     if(isHoverNow){
-        guiContext.currentHover = id;
+        if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
+            guiContext.currentHover = id;
+        }
     }
+    
+    bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext.lastHover);
     
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
-            if(isHoverNow) result = true;
+            if(isHoverBeforeAndNow) result = true;
             guiInvaliate(&guiContext.lastActive);
         }
-    }else if(isHoverNow){
+    }else if(isHoverBeforeAndNow){
         if(guiInput.mouse.buttons.leftDown) guiContext.lastActive = id;
     }
     
@@ -265,17 +289,17 @@ bool renderButton(const AtlasFont * font, const char * text, const int32 positio
         bgColor = inactiveBgColor;
     }
     
-    renderRect(positionX, positionY, width, height, bgColor);
-    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor);
+    renderRect(positionX, positionY, width, height, bgColor, zIndex);
+    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor, zIndex);
     
     return result;
 }
 
 
-bool renderDropdown(const AtlasFont * font, const char * text,const char ** list, int32 listSize, int32 * resultIndex, int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor){
+bool renderDropdown(const AtlasFont * font, const char * text,const char ** list, int32 listSize, int32 * resultIndex, int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
     bool isHeadLastActive;
     bool isDropdownActive;
-    GuiId headId = {positionX, positionY};
+    GuiId headId = {positionX, positionY, zIndex};
     //start dropdown head
     {
         
@@ -284,12 +308,16 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
         bool isHeadHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
         
         if(isHeadHoverNow){
-            guiContext.currentHover = headId;
+            if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
+                guiContext.currentHover = headId;
+            }
         }
+        bool isHeadHoverBeforeAndNow = isHeadHoverNow && guiEq(headId, guiContext.lastHover);
+        
         
         if(isHeadLastActive){
             if(guiInput.mouse.buttons.leftUp){
-                if(isHeadHoverNow){
+                if(isHeadHoverBeforeAndNow){
                     guiContext.activeDropdown = headId;
                 }
                 guiInvaliate(&guiContext.lastActive);
@@ -297,7 +325,7 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
         }else{
             if(guiInput.mouse.buttons.leftDown && guiEq(headId, guiContext.activeDropdown)) guiInvaliate(&guiContext.activeDropdown);
         }
-        if(isHeadHoverNow && !isHeadLastActive){
+        if(isHeadHoverBeforeAndNow && !isHeadLastActive){
             if(guiInput.mouse.buttons.leftDown) guiContext.lastActive = headId;
         }
         
@@ -324,22 +352,25 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
             {
                 int32 buttonPositionX = positionX;
                 int32 buttonPositionY = positionY + (i+1)*height;
-                GuiId id = {buttonPositionX, buttonPositionY};
+                GuiId id = {buttonPositionX, buttonPositionY, zIndex+1};
                 bool isLastActive = guiEq(id, guiContext.lastActive);
                 bool result = false;
                 bool isHoverNow = guiInput.mouse.x >= buttonPositionX && guiInput.mouse.x <= buttonPositionX + width && guiInput.mouse.y >= buttonPositionY && guiInput.mouse.y <= buttonPositionY + height;
                 
                 if(isHoverNow){
-                    guiContext.currentHover = id;
+                    if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
+                        guiContext.currentHover = id;
+                    }
                 }
+                bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext.lastHover);
                 
                 if(isLastActive){
                     if(guiInput.mouse.buttons.leftUp){
-                        if(isHoverNow) result = true;
+                        if(isHoverBeforeAndNow) result = true;
                         guiInvaliate(&guiContext.lastActive);
                         guiContext.activeDropdown = headId;
                     }
-                }else if(isHoverNow){
+                }else if(isHoverBeforeAndNow){
                     if(guiInput.mouse.buttons.leftDown){
                         guiContext.lastActive = id;
                         guiContext.activeDropdown = headId;
@@ -355,8 +386,8 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
                     textColor = inactiveTextColor;
                     bgColor = inactiveBgColor;
                 }
-                renderRect(buttonPositionX, buttonPositionY, width, height, bgColor);
-                renderTextXYCentered(font, list[i], buttonPositionX + width/2, buttonPositionY + height/2, 14, textColor);
+                renderRect(buttonPositionX, buttonPositionY, width, height, bgColor, zIndex + 1);
+                renderTextXYCentered(font, list[i], buttonPositionX + width/2, buttonPositionY + height/2, 14, textColor, zIndex + 1);
                 
                 if(result){
                     *resultIndex = i;
