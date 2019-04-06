@@ -56,8 +56,11 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         }break;
                         default:{
                             char c = wParam;//assuming ascii character
-                            if(c >= 0x60 && c <= 0x69){//numpad
-                                c -= 0x30;
+                            if(c == (char)0x6D || c == (char)0xBD){ //minus
+                                c = '-';
+                            }
+                            if(c >= (char)0x60 && c <= (char)0x69){//numpad
+                                c -= (char)0x30;
                             }
                             bool capitals = false;
                             if(GetKeyState(0x14) & 1){//caps lock
@@ -68,8 +71,8 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             }
                             if(!capitals){
                                 //TODO(AK): Other chars
-                                if(c >= 0x41 && c <= 0x5A){//is A-Z
-                                    c += 0x20;
+                                if(c >= (char)0x41 && c <= (char)0x5A){//is A-Z
+                                    c += (char)0x20;
                                 }
                             }
                             

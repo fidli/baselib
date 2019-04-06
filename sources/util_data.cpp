@@ -21,15 +21,16 @@ struct XMLHeader{
     char encoding[20];
 };
 
+static inline bool isWhitespace(const char input){
+	return input == ' ' || input == '\t' || input == '\r' || input == '\n';
+}
+
 static void trimWhitespace(char * buffer, uint32 * readIndex, uint32 max){
-    char waste[50];
-    //skipWhitespaces
-    int trimRes = 0;
-    do{
-        trimRes = snscanf(buffer + *readIndex, max, "%50[ \r\n\t]", waste);
-        *readIndex += trimRes;
-    }while(trimRes);
-    
+	uint32 skip = 0;
+	while(isWhitespace(*(buffer + *readIndex)) && skip < max){
+		(*readIndex)++;
+		skip++;
+	}
 }
 
 

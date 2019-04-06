@@ -2,6 +2,7 @@
 #define UTIL_GRAPHICS
 
 #include "util_image.cpp"
+#include "util_math.cpp"
 
 struct Camera{
     mat4 frustumMatrix;
@@ -207,19 +208,21 @@ void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, c
     }
 }
 
+void setCameraDefaultPerspective(v2 viewport, Camera * target){
+    float32 fzNear = 0.05f;
+    float32 fzFar = 100.0f;
+    float32 fov = 90.0f;
+    float32 focalLength = 1.0f / tan((degToRad(fov) / 2.0f));
+    target->frustumMatrix.c[0] = focalLength;
+    target->frustumMatrix.c[5] = focalLength / (viewport.y /viewport.x);
+    target->frustumMatrix.c[10] = -1.0f*(fzFar + fzNear) / (fzFar - fzNear);
+    target->frustumMatrix.c[14] = (-2.0f * fzFar * fzNear) / (fzFar - fzNear);
+    target->frustumMatrix.c[11] = -1.0f;
+}
+
+
 
 /*
-void setCameraDefaultPerspective(v2 viewport, Camera * currentCamera){
-float32 fzNear = 0.05f;
-float32 fzFar = 100.0f;
-float32 fov = 90.0f;
-float32 focalLength = 1.0f / tan((degToRad(fov) / 2.0f));
-currentCamera->frustumMatrix.c[0] = focalLength;
-currentCamera->frustumMatrix.c[5] = focalLength / (viewport.y /viewport.x);
-currentCamera->frustumMatrix.c[10] = -1.0f*(fzFar + fzNear) / (fzFar - fzNear);
-currentCamera->frustumMatrix.c[14] = (-2.0f * fzFar * fzNear) / (fzFar - fzNear);
-currentCamera->frustumMatrix.c[11] = -1.0f;
-}
 
 /*
 struct meshFaceElement{

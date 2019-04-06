@@ -3,7 +3,7 @@
 
 #include "util_filesystem.cpp"
 
-bool loadConfig(const char * file, bool (*lineCallback)(const char *)){
+bool loadConfig(const char * file, bool (*lineCallback)(const char *, void ** context), void * initialContext = NULL){
     FileContents contents = {};
     if(readFile(file, &contents)){
         
@@ -14,9 +14,9 @@ bool loadConfig(const char * file, bool (*lineCallback)(const char *)){
             while(line[localOffset] == ' ' || line[localOffset] == '\t'){
                 localOffset++;
             }
-            //skip commentary
-            if(line[localOffset] == '#') continue;
-            if(!lineCallback(line+localOffset)){
+            //skip commentary or empty line
+			if(line[localOffset] == '#' || line[localOffset] == 0) continue;
+            if(!lineCallback(line+localOffset, &initialContext)){
                 POP; // read file pushes
                 return false;
             }

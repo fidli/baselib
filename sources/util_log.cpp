@@ -79,7 +79,11 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
     char format2[] = "[%02hu.%02hu.%04hu %02hu:%02hu:%02hu][%s][%c] %s\r\n";
     loggers.lt = getLocalTime();
     snprintf(loggers.formatbuffer, ARRAYSIZE(loggers.formatbuffer), format2, loggers.lt.day, loggers.lt.month, loggers.lt.year, loggers.lt.hour, loggers.lt.minute, loggers.lt.second, resourceName, (char) level, format);
+#if CRT_PRESENT
+    vsnprintf(loggers.messagebuffer, ARRAYSIZE(loggers.messagebuffer), loggers.formatbuffer, ap);
+#else
     printFormatted(ARRAYSIZE(loggers.messagebuffer), loggers.messagebuffer, loggers.formatbuffer, ap);
+#endif
     va_end(ap);
     LoggerInfo * info = NULL;
     //TODO(AK): Hash table this

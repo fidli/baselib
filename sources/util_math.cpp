@@ -3,6 +3,7 @@
 
 #ifdef PRECISE_MATH
 #include <cmath>
+#include "math.h"
 #endif
 
 #include "common.h"
@@ -194,6 +195,10 @@ float64 cos64(float64 xRad){
     return 1 - powd64(xRad,2)/2.0 + powd64(xRad,4)/24.0 - powd64(xRad,6)/720.0 + powd64(xRad,8)/40320.0 - powd64(xRad,10)/3628800.0 + powd64(xRad,12)/479001600.0 - powd64(xRad,14)/87178291200.0 + powd64(xRad,16)/20922789888000.0 - powd64(xRad,18)/6.402373705728e+15 + powd64(xRad,20)/2.43290200817664e+18;
 }
 
+float32 tan(float32 rad){
+	ASSERT(!"something better");
+	return sin(rad) / cos(rad);
+}
 
 
 float32 acos(float32 cos){
@@ -572,6 +577,14 @@ v3 operator+(const v3 & a, const v3 & b){
     return result;
 }
 
+v3 operator-(const v3 & a){
+    v3 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = -a.v[i];
+    }
+    return result;
+}
+
 v3_64 operator+(const v3_64 & a, const v3_64 & b){
     v3_64 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
@@ -639,6 +652,8 @@ dv2 operator-(const dv2 & a, const dv2 & b){
     }
     return result;
 }
+
+
 
 dv2 operator-(const dv2 & a){
     dv2 result;
@@ -1369,6 +1384,18 @@ mat4_64 quaternionToMatrix64(const v4_64 & quaternion){
     return result;
 }
 
+
+mat4 translationMatrix(const v3 offset){
+    mat4 result = {};
+    result.c[0] = 1.0f;
+    result.c[12] = offset.x;
+    result.c[5] = 1.0f;
+    result.c[13] = offset.y;
+    result.c[10] = 1.0f;
+    result.c[14] = offset.z;
+    result.c[15] = 1.0f;
+    return result;
+}
 
 mat4 rotationXMatrix(float32 radAngle){
     mat4 result = {};

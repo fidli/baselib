@@ -38,8 +38,10 @@ bool getFileChangeTime(const char * path, LocalTime * result);
 bool getFileSize(const char * path, uint32 * result);
 
 bool getNextLine(FileContents * contents, char * line, uint32 linelen){
+	int32 remains = contents->size-contents->head;
+	if(!remains) return false;
     char format[30];
-    uint32 res = snprintf(format, 30, "%%%u[^\r\n]", linelen-1);
+	uint32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, remains+1));
     if(sscanf(contents->contents + contents->head, format, line) == 1){
         contents->head += strlen(line);
         char trail = contents->contents[contents->head];

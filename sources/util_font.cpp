@@ -1,8 +1,9 @@
-#include "common.h"
-#include "util_image.cpp"
-
 #ifndef UTIL_FONT
 #define UTIL_FONT
+
+#include "common.h"
+#include "util_image.cpp"
+#include "util_conv.cpp"
 
 struct BitmapFont{
     struct {
