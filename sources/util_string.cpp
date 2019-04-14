@@ -19,7 +19,6 @@ int32 strcmp(const char * a, const char * b){
         if(a[index] == '\0')
             break;
     } 
-    
     return result;
 }
 
@@ -523,14 +522,14 @@ static FormatInfo parseFormat(const char * format){
     
     return info;
 }
-//returns printed entities, not printed characters, when needed, change
+//returns printed characters
 uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap){
     
     
     uint32 targetIndex = 0;
     uint32 formatOffset = 0;
     FormatInfo info;
-    uint32 successfullyPrinted = 0;
+	uint32 successfullyPrinted = 0; //printed entities
     while((info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
         formatOffset += info.length;
         
@@ -843,7 +842,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
     
     target[targetIndex] = '\0';
     
-    return successfullyPrinted;
+    return targetIndex;
 }
 
 
@@ -1137,10 +1136,15 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
     return successfullyScanned;
 }
 
+uint32 vsnprintf(char * target, nint limit, const char * format, va_list ap){
+	uint32 successfullyPrinted = printFormatted(limit, target, format, ap);
+	return successfullyPrinted;
+}
+
 uint32 snprintf(char * target, nint limit, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
-    uint32 successfullyPrinted = printFormatted(limit, target, format, ap);
+	uint32 successfullyPrinted = vsnprintf(target, limit, format, ap);
     va_end(ap);
     return successfullyPrinted;
 }

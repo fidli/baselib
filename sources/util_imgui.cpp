@@ -42,6 +42,10 @@ struct {
     bool caretVisible;
     char * inputData;
     const char * inputCharlist;
+	
+	char popups[10][20];
+	int32 popupCount;
+	bool popupLocked;
     
 } guiContext;
 
@@ -64,6 +68,7 @@ bool guiInit(){
     guiInvaliate(&guiContext.lastHover);
     guiInvaliate(&guiContext.activeDropdown);
     guiInvaliate(&guiContext.activeInput);
+	guiContext.popupCount = 0;
     return true;
 }
 
@@ -73,6 +78,7 @@ void guiBegin(){
     guiContext.activeInputLastTimestamp = currentTimestamp;
     guiInvaliate(&guiContext.currentHover);
     guiContext.minZ = guiContext.maxZ = 0;
+	guiContext.popupLocked = true;
 }
 
 void guiEnd(){
@@ -88,7 +94,46 @@ bool guiClick(){
     return guiValid(guiContext.currentHover);
 }
 
+void openPopup(const char * key){
+	ASSERT(guiContext.popupCount < ARRAYSIZE(guiContext.popups));
+	strncpy(guiContext.popups[guiContext.popupCount], key, 20);
+	guiContext.popupCount++;
+}
 
+bool popup(const char * key){
+	for(int32 i = 0; i < guiContext.popupCount; i++){
+		if(!strncmp(key, guiContext.popups[i], 20)){
+			return true;
+		}
+	}
+	return false;
+}
+
+bool anyPopup(){
+	return guiContext.popupCount > 0;
+}
+
+bool popupBlocking(){
+	return anyPopup() && guiContext.popupLocked;
+}
+
+void beginPopup(){
+	guiContext.popupLocked = false;
+}
+
+void endPopup(){
+	guiContext.popupLocked = true;
+}
+
+bool closePopup(const char * key){
+	if(guiContext.popupCount > 0){
+		if(!strncmp(key, guiContext.popups[guiContext.popupCount-1], 20)){
+			guiContext.popupCount--;
+			return true;
+		}
+	}
+	return false;
+}
 
 
 bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
@@ -232,7 +277,7 @@ bool renderInput(const AtlasFont * font, char * text, const char * charlist, con
     renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, inputTextColor, zIndex);
     
     //do something at all
-    if(guiEq(guiContext.activeInput, id)){
+	if(!popupBlocking() && guiEq(guiContext.activeInput, id)){
         //is time to flip
         if(guiContext.activeInputTimeAccumulator > CARET_TICK){
             guiContext.activeInputTimeAccumulator -= CARET_TICK;
@@ -272,7 +317,7 @@ bool renderButton(const AtlasFont * font, const char * text, const int32 positio
     
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
-            if(isHoverBeforeAndNow) result = true;
+			if(!popupBlocking() && isHoverBeforeAndNow) result = true;
             guiInvaliate(&guiContext.lastActive);
         }
     }else if(isHoverBeforeAndNow){
@@ -317,7 +362,7 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
         
         if(isHeadLastActive){
             if(guiInput.mouse.buttons.leftUp){
-                if(isHeadHoverBeforeAndNow){
+				if(!popupBlocking() && isHeadHoverBeforeAndNow){
                     guiContext.activeDropdown = headId;
                 }
                 guiInvaliate(&guiContext.lastActive);
@@ -366,7 +411,7 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
                 
                 if(isLastActive){
                     if(guiInput.mouse.buttons.leftUp){
-                        if(isHoverBeforeAndNow) result = true;
+						if(!popupBlocking() && isHoverBeforeAndNow) result = true;
                         guiInvaliate(&guiContext.lastActive);
                         guiContext.activeDropdown = headId;
                     }

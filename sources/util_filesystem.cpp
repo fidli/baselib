@@ -55,6 +55,38 @@ bool getNextLine(FileContents * contents, char * line, uint32 linelen){
     return false;
 }
 
+bool appendLine(FileContents * contents, char * line){
+	int32 remains = contents->size-contents->head;
+	int32 linelen = strlen(line);
+	if(remains < linelen) return false;
+	uint32 res = sprintf(contents->contents + contents->head, "%s\r\n", line);
+	contents->head += linelen + 2;
+    return res > 0;
+}
+
+bool appendLinef(FileContents * contents, char * format, ...){
+	bool result = false;
+	char * formate = &PUSHA(char, strlen(format) + 2);
+	nint res = sprintf(formate, "%s\r\n", format);
+	ASSERT(res > 0);
+	if(res > 0){
+		int32 remains = contents->size-contents->head;
+		if(remains > 0){
+			va_list ap;    
+			va_start(ap, format);
+			uint32 res = vsnprintf(contents->contents + contents->head, remains, formate, ap);
+			va_end(ap);
+			if(res > 0){
+				contents->head += res;
+				result = true;
+			}
+			
+		}
+	}
+	POP;
+	return result;	
+}
+
 bool watchFile(const char * path, FileWatchHandle * result){
     if(getFileChangeTime(path, &result->lastChangeTime)){
         strncpy(result->path, path, ARRAYSIZE(FileWatchHandle::path));
@@ -62,6 +94,15 @@ bool watchFile(const char * path, FileWatchHandle * result){
         return true;
     }
     return false;
+}
+
+bool acknowledgeWatch(FileWatchHandle * target){
+	LocalTime newTime;
+	if(getFileChangeTime(target->path, &newTime)){
+		target->lastChangeTime = newTime;
+		return true;
+	}
+	return false;
 }
 
 bool hasFileChanged(FileWatchHandle * target){
