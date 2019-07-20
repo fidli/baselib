@@ -16,12 +16,13 @@ struct Memory{
     uint16 temp2StackIndex;
     
 };
+Memory mem;
 
 #define TEMP_MEM_STACK_SIZE 4096
 #define TEMP2_MEM_STACK_SIZE 32
 #define EFFECTIVE_TEMP_MEM_SIZE (TEMP_MEM - TEMP2_MEM_STACK_SIZE * sizeof(mem.temp2Offsets)  - TEMP_MEM_STACK_SIZE * sizeof(mem.tempOffsets))
 
-Memory mem;
+
 void initMemory(void * memoryStart){
     mem.persistent = memoryStart;
     mem.stack = (void *) ((byte *) mem.persistent + PERSISTENT_MEM);

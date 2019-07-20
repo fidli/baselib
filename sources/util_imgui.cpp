@@ -202,7 +202,7 @@ bool renderRect(const int32 positionX, const int32 positionY, const int32 width,
     glUniform2f(gl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
     
     //color
-    glUniform4f(gl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
+    glUniform4f(gl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
     
     //draw it
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -451,6 +451,8 @@ bool renderDropdown(const AtlasFont * font, const char * text,const char ** list
     }
     return selected || isDropdownActive || isHeadLastActive;
 }
+
+
 
 #endif
 

@@ -12,6 +12,8 @@ struct DoubleLinkedList{
 	uint32 size;
 	DoubleLinkedListElement ** elements;
 	DoubleLinkedListElement * head;
+	DoubleLinkedListElement * first;
+	
 	
 	DoubleLinkedListElement * slots;
 	uint32 slotsUsed;
@@ -49,7 +51,9 @@ bool findInDoubleLinkedList(DoubleLinkedList * target, const char * key, void **
 	DoubleLinkedListElement * current = target->head;
 	do{
 		if(!strncmp(key, current->key, 20)){
-			*data = current->data;
+			if(data != NULL){
+				*data = current->data;
+			}
 			target->head = current;
 			return true;
 		}else{
@@ -69,6 +73,7 @@ bool insertIntoDoubleLinkedList(DoubleLinkedList * target, const char * key, voi
 		slot->next = slot;
 		slot->previous = slot;
 		target->head = slot;
+		target->first = slot;
 	}else{
 		slot->next = target->head->next;
 		slot->previous = target->head;

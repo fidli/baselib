@@ -1,5 +1,4 @@
-#ifndef UTIL_MATH
-#define UTIL_MATH
+#pragma once
 
 #ifdef PRECISE_MATH
 #include <cmath>
@@ -21,7 +20,6 @@
 #define ABS(a) (((a) < 0) ? -(a) : (a))
 #define KRONECKER(a, b) ((a) == (b) ? 1 : 0)
 #define SGN(a) ((a) == 0 ? 0 : ((a) > 0 ? 1 : -1))
-
 
 bool32 isOdd(const uint64 a){
     return (a & (uint64) 1);
@@ -1462,7 +1460,3 @@ mat4_64 rotationYMatrix64(float64 radAngle){
     result.c[15] = 1.0f;
     return result;
 }
-
-
-
-#endif

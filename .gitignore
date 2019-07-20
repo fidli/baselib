@@ -1,0 +1,5 @@
+build/
+skeletons/*/build/
+skeletons/*/baselib/
+issues/*/build/
+issues/*/baselib/

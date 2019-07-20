@@ -1,5 +1,4 @@
-#ifndef COMMON_H
-#define COMMON_H
+#pragma once
 
 #ifdef RELEASE
 #define ASSERT 
@@ -26,5 +25,3 @@
 #define INT32_MAX 0x7FFFFFFF;
 #define INT8_MAX 0x7F;
 
-
-#endif
