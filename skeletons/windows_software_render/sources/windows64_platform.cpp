@@ -49,7 +49,9 @@ extern "C"{
 
 #include "util_image.cpp"
 #include "util_conv.cpp"
+#include "util_log.cpp"
 
+#include "platform/windows_io.cpp"
 
 
 #define FRAME_TIME 0.033f
@@ -164,7 +166,7 @@ main(LPWSTR * argvW, int argc){
     
     if(!memory)
 	{
-        ASSERT(false);
+        ASSERT(!"Failed to init memory");
         return 0;
     }
     initMemory(memoryStart);
@@ -172,7 +174,14 @@ main(LPWSTR * argvW, int argc){
     context->hInstance = GetModuleHandle(NULL);
     context->keepRunning = true;
     context->renderer.drawBitmapData = {};
-    
+    bool initLogSuccess = initTime() && initIo();
+	if(!initLogSuccess)
+	{
+		ASSERT(!"Failed to init logging");
+		return 0;
+	}
+	
+	LOG(default, privileges, "Dropping privileges");
     bool privilegesSuccess = false;
 	// NOTE(fidli): Dropping privileges
 	{
@@ -192,22 +201,27 @@ main(LPWSTR * argvW, int argc){
 				if(AdjustTokenPrivileges(processToken, TRUE, priv, NULL, NULL, NULL) == 0)
 				{
 					result = GetLastError();
+					LOGE(default, privileges, "Failed to disable a privlege. Err: %d", result);
 				}
 			}
 			else
 			{
 				result = GetLastError();
+				LOGE(default, privileges, "Failed to obtain a token. Err: %d", result);
 			}
 			POP;
 		}
 		else
 		{
 			result = GetLastError();
+			LOGE(default, privileges, "Failed to sopen a token. Err: %d", result);
 		}
 		CloseHandle(processToken);
 		privilegesSuccess = result == ERROR_SUCCESS;
+		LOG(default, privileges, "Dropping privileges success: %d", privilegesSuccess);
 	}
 	
+	LOG(default, args, "Parsing CLI args");
 	char ** argv = &PPUSHA(char *, argc);
 	char ** argvUTF8 = &PPUSHA(char *, argc);
     bool argvSuccess = false;
@@ -226,14 +240,16 @@ main(LPWSTR * argvW, int argc){
 			argv[i] = &PPUSHA(char, toAlloc);
 			if(convUTF8toAscii((byte *)argvUTF8[i], toAlloc, &argv[i], &finalLen) != 0)
 			{
-				//printf("Error: argument is not fully ascii compatible - those characters were replaced by '_'. Please use simple ASCII parameter values\n");
+				LOGW(default, args, "Argument is not fully ascii compatible - those characters were replaced by '_'. Please use simple ASCII parameter values");
 			}
 		}
 		argvSuccess = success;
+		LOG(default, args, "Parsing CLI args success: %d", argvSuccess);
     }
     
 	// NOTE(fidli): creating window & rendering target
 	bool windowSuccess = false;
+	LOG(default, drawingContext, "Creating drawing context");
 	{
 		context->renderingTarget.info.bitsPerSample = 8;
 		context->renderingTarget.info.samplesPerPixel = 4;
@@ -253,15 +269,23 @@ main(LPWSTR * argvW, int argc){
 											 CW_USEDEFAULT, CW_USEDEFAULT,CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, context->hInstance, NULL);
 			windowSuccess = context->window != NULL;
 		}
+		else
+		{
+			LOGE(default, drawingContext, "Failed to register window class");
+		}
+		LOG(default, drawingContext, "Creating drawing context success: %d", windowSuccess);
 	}
-   
-    bool initSuccess = initTime();
+	LOG(default, setup, "Initing modules");
+    bool initSuccess = true;
+	LOG(default, setup, "Initing modules success: %d", initSuccess);
     
     HMODULE domainLib = 0;
     FileWatchHandle domainLibWatch;
     
+	LOG(default, hotload, "Watching domain.dll");
 	// NOTE(fidli): hotloading
     bool watchSuccess = watchFile("domain.dll", &domainLibWatch);
+	LOG(default, hotload, "Watching domain.dll success: %d", watchSuccess);
     
 	// NOTE(fidli): all initialisation was a success
     if(initSuccess && watchSuccess && windowSuccess	&& argvSuccess && privilegesSuccess && memory)
@@ -342,11 +366,11 @@ main(LPWSTR * argvW, int argc){
     }
 	else
 	{
+		LOGE(default, setup, "Not everything set-up correctly");
         ASSERT(false);
     }
     
     if (!VirtualFree(memoryStart, 0, MEM_RELEASE)) {
-        //more like log it
         ASSERT(!"Failed to free memory");
     }
     

@@ -8,6 +8,6 @@ pushd build
 
 
 rem CANNOT USE SOME C++ FEATURES, std lib is ripped off (https://hero.handmade.network/forums/code-discussion/t/94)
-call cl.exe /nologo /W2 /WX /EHa- /GS- /GR- /Od /Zi /FS /I %BASELIB% /I %LIBDIR% /Fdplatform64.pdb /Feplatform64.exe %FILES%  /link /INCREMENTAL:NO /NODEFAULTLIB /SUBSYSTEM:CONSOLE %LIBS%
+call cl.exe /nologo /W2 /WX /EHa- /GS- /GR- /Od /Zi /FS /I %BASELIB% /I %LIBDIR% /Fd"platform64.pdb" /Feplatform64.exe %FILES%  /link /INCREMENTAL:NO /NODEFAULTLIB /SUBSYSTEM:CONSOLE %LIBS%
 
 POPD

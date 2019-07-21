@@ -1,5 +1,4 @@
-#ifndef UTIL_LOG_H
-#define UTIL_LOG_H
+#pragma once
 
 #include "util_string.cpp"
 #include "util_io.cpp"
@@ -109,10 +108,9 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
             }
         }
     }else{
-        //ASSERT
+		// NOTE(fidli): logger with name loggerName not found
+        // ASSERT
         *(int *)0 = 0;
     }
     
 }
-
-#endif
