@@ -103,7 +103,7 @@ bool readDirectory(const char * path, DirectoryContents * target){
     do{
         //strcmp & copy
         if((result.cFileName[0] != '.' && result.cFileName[1] != 0) && (result.cFileName[0] != '.' && result.cFileName[1] != '.' && result.cFileName[2] != 0)){
-            target->files[target->count] = &PUSHS(char, 255);
+            target->files[target->count] = &PUSHA(char, 255);
             uint16 i = 0;
             for(; result.cFileName[i] != 0; i++){
                 if(i == 255) return false;

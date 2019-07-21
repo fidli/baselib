@@ -209,7 +209,7 @@ main(LPWSTR * argvW, int argc){
 				result = GetLastError();
 				LOGE(default, privileges, "Failed to obtain a token. Err: %d", result);
 			}
-			POP;
+			//POP;
 		}
 		else
 		{

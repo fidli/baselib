@@ -69,7 +69,7 @@ void loadAudio(const WCHAR * path, Audio * target){
         totalSize += currentSize;
         current->size = currentSize;
         
-        current->data = &PUSHS(byte, currentSize);
+        current->data = &PUSHA(byte, currentSize);
         
         for(int i = 0; i < currentSize; i++){
             current->data[i] = data[i];

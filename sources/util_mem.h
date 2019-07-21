@@ -1,104 +1,122 @@
-#ifndef UTIL_MEM_H
-#define UTIL_MEM_H
+#pragma once 
 
+struct PersistentStackAllocator{
+	void * mem_start;
+	uint64 offset;
+	uint64 effectiveSize;
+};
+
+inline
+void * allocate(PersistentStackAllocator * allocator, uint64 bytes)
+{
+		void * result = ((byte *)allocator->mem_start) + allocator->offset + bytes;
+		allocator->offset += bytes;
+		ASSERT(allocator->offset < allocator->effectiveSize);
+		return result;
+}
+
+struct StackAllocator{
+    void * mem_start;
+    uint64 * offsets;
+    uint32 stackIndex;
+	uint32 stackSize;
+	
+    uint16 * bulkStackOffsets;
+    uint16 bulkStackIndex;
+	uint16 bulkStackSize;
+	
+	uint64 effectiveSize;
+};
+
+inline
+void * allocate(StackAllocator * allocator, uint64 bytes)
+{
+	void * result = ((byte *) allocator->mem_start) + allocator->offsets[allocator->stackIndex];
+	allocator->offsets[allocator->stackIndex+1] = bytes + allocator->offsets[allocator->stackIndex];
+	allocator->stackIndex++;
+	ASSERT(allocator->offsets[allocator->stackIndex] < allocator->effectiveSize);
+	ASSERT(allocator->stackIndex < allocator->stackSize);
+	return result;
+}
+
+inline
+void deallocate(StackAllocator * allocator)
+{
+	// NOTE(fidli): do not underflow the stack mark
+	ASSERT(allocator->bulkStackIndex == 0 || allocator->stackIndex > allocator->bulkStackOffsets[allocator->bulkStackIndex-1]);
+	ASSERT(allocator->stackIndex != 0);
+	allocator->stackIndex--;
+}
+
+inline
+void markAllocation(StackAllocator * allocator)
+{
+	allocator->bulkStackOffsets[allocator->bulkStackIndex+1] = allocator->stackIndex;
+	allocator->bulkStackIndex++;
+	ASSERT(allocator->bulkStackIndex < allocator->bulkStackSize); 
+}
+
+inline
+void deallocateMark(StackAllocator * allocator)
+{
+	allocator->stackIndex = allocator->bulkStackOffsets[allocator->bulkStackIndex];
+	allocator->bulkStackIndex--;
+	if(allocator->bulkStackIndex < 0)
+	{
+		allocator->bulkStackIndex = 0;
+		allocator->bulkStackOffsets[0] = 0;
+	}
+}
+
+inline
+void deallocateAll(StackAllocator * allocator)
+{
+	allocator->offsets[0] = 0;
+    allocator->bulkStackOffsets[0] = 0;
+    allocator->stackIndex = 0;
+    allocator->bulkStackIndex = 0;
+}
 
 struct Memory{
-    void * persistent;
-    void * stack;
-    void * temp;
-    //persistent stack
-    uint64 stackOffset;
-    //temp stacks
-    uint64 * tempOffsets;
-    uint32 tempStackIndex;
-    //temp indexStacks
-    uint16 * temp2Offsets;
-    uint16 temp2StackIndex;
-    
+    PersistentStackAllocator persistent;
+    StackAllocator temp;   
 };
 Memory mem;
 
 #define TEMP_MEM_STACK_SIZE 4096
-#define TEMP2_MEM_STACK_SIZE 32
-#define EFFECTIVE_TEMP_MEM_SIZE (TEMP_MEM - TEMP2_MEM_STACK_SIZE * sizeof(mem.temp2Offsets)  - TEMP_MEM_STACK_SIZE * sizeof(mem.tempOffsets))
+#define TEMP_MEM_BULK_STACK_SIZE 32
+#define METADATA_SIZE (TEMP_MEM_BULK_STACK_SIZE * sizeof(*mem.temp.bulkStackOffsets) + TEMP_MEM_STACK_SIZE * sizeof(*mem.temp.offsets))
 
 
 void initMemory(void * memoryStart){
-    mem.persistent = memoryStart;
-    mem.stack = (void *) ((byte *) mem.persistent + PERSISTENT_MEM);
+    mem.persistent.mem_start = memoryStart;
+    mem.temp.mem_start = (void *) ((byte *) mem.persistent.mem_start + PERSISTENT_MEM + METADATA_SIZE);
     
+    mem.temp.offsets = (uint64 *) ((byte *) mem.persistent.mem_start + PERSISTENT_MEM);
+    mem.temp.bulkStackOffsets = (uint16 *) ((byte *) mem.temp.offsets + TEMP_MEM_STACK_SIZE*sizeof(*mem.temp.offsets));
     
-    mem.tempOffsets = (uint64 *) ((byte *) mem.persistent + PERSISTENT_MEM + STACK_MEM);
-    mem.temp2Offsets = (uint16 *) (mem.tempOffsets + TEMP_MEM_STACK_SIZE);
-    mem.temp = (void *) (mem.temp2Offsets + TEMP2_MEM_STACK_SIZE);
-    ASSERT(EFFECTIVE_TEMP_MEM_SIZE < TEMP_MEM);
-    mem.tempOffsets[0] = 0;
-    mem.temp2Offsets[0] = 0;
-    mem.tempStackIndex = 0;
-    mem.temp2StackIndex = 0;
+    ASSERT(METADATA_SIZE < TEMP_MEM);
+	mem.persistent.effectiveSize = PERSISTENT_MEM;
+	mem.temp.effectiveSize = TEMP_MEM - METADATA_SIZE;
+	mem.temp.bulkStackSize = TEMP_MEM_BULK_STACK_SIZE;
+	mem.temp.stackSize = TEMP_MEM_STACK_SIZE;
+    
+	deallocateAll(&mem.temp);
+	
 }
 
-#define PUSH(strct)  \
-*((strct *)(((byte *) mem.temp) + mem.tempOffsets[mem.tempStackIndex])); \
-mem.tempOffsets[mem.tempStackIndex+1] = sizeof(strct) + mem.tempOffsets[mem.tempStackIndex]; \
-mem.tempStackIndex++; \
-ASSERT(mem.tempOffsets[mem.tempStackIndex] < EFFECTIVE_TEMP_MEM_SIZE); ASSERT(mem.tempStackIndex < TEMP_MEM_STACK_SIZE); \
+#define PUSH(strct) *((strct *) allocate(&mem.temp, sizeof(strct)));
 
+#define PUSHA(strct, size) *((strct *) allocate(&mem.temp, (size) * sizeof(strct)));
 
+#define PUSHI markAllocation(&mem.temp);
 
-#define PUSHS(strct, size) \
-*((strct *)(((byte *) mem.temp) + mem.tempOffsets[mem.tempStackIndex])); \
-mem.tempOffsets[mem.tempStackIndex+1] = (size) + mem.tempOffsets[mem.tempStackIndex]; \
-mem.tempStackIndex++;  \
-ASSERT(mem.tempOffsets[mem.tempStackIndex] < EFFECTIVE_TEMP_MEM_SIZE); ASSERT(mem.tempStackIndex < TEMP_MEM_STACK_SIZE); \
+#define POPI  deallocateMark(&mem.temp);
 
+#define FLUSH deallocateAll(&mem.temp);
 
-#define PUSHA(strct, size)  \
-*((strct *)(((byte *) mem.temp) + mem.tempOffsets[mem.tempStackIndex])); \
-mem.tempOffsets[mem.tempStackIndex+1] = (sizeof(strct) * (size)) + mem.tempOffsets[mem.tempStackIndex]; \
-mem.tempStackIndex++; \
-ASSERT(mem.tempOffsets[mem.tempStackIndex] < EFFECTIVE_TEMP_MEM_SIZE); ASSERT(mem.tempStackIndex < TEMP_MEM_STACK_SIZE); \
+#define POP deallocate(&mem.temp);
 
-#define PUSHI  \
-mem.temp2Offsets[mem.temp2StackIndex+1] = mem.tempStackIndex; \
-mem.temp2StackIndex++; \
-ASSERT(mem.temp2StackIndex < TEMP2_MEM_STACK_SIZE); \
+#define PPUSH(strct) *((strct *) allocate(&mem.persistent, sizeof(strct)));
 
-#define POPI  \
-mem.tempStackIndex = mem.temp2Offsets[mem.temp2StackIndex]; \
-mem.temp2StackIndex--; \
-if(mem.temp2StackIndex < 0) { \
-    mem.temp2StackIndex = 0; \
-    mem.temp2Offsets[0] = 0; \
-} \
-
-#define FLUSH \
-mem.tempOffsets[0] = 0; \
-mem.tempStackIndex = 0; \
-mem.temp2Offsets[0] = 0; \
-mem.temp2StackIndex = 0; \
-
-#define POP \
-ASSERT(mem.tempStackIndex != 0); \
-mem.tempStackIndex--; \
-
-
-#define PPUSH(strct)  \
-*((strct *)(((byte *) mem.stack) + mem.stackOffset)); \
-mem.stackOffset += sizeof(strct); \
-ASSERT(mem.stackOffset < STACK_MEM); \
-
-
-#define PPUSHS(strct, size)  \
-*((strct *)(((byte *) mem.stack) + mem.stackOffset)); \
-mem.stackOffset += size; \
-ASSERT(mem.stackOffset < STACK_MEM); \
-
-
-#define PPUSHA(strct, size)  \
-*((strct *)(((byte *) mem.stack) + mem.stackOffset)); \
-mem.stackOffset += (size) * sizeof(strct); \
-ASSERT(mem.stackOffset < STACK_MEM); \
-
-
-#endif
+#define PPUSHA(strct, size) *((strct *) allocate(&mem.persistent, (size) * sizeof(strct)));
