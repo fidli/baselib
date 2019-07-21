@@ -64,13 +64,9 @@ struct Loggers{
 
 static Loggers loggers;
 
-#define xstr(a) str(a)
-#define str(a) #a
-
-#define LOGE(loggerName, resourceName, message, ...) log(xstr(loggerName), LogLevel_Error, xstr(resourceName), (message), __VA_ARGS__);
-#define LOGW(loggerName, resourceName, message, ...) log(xstr(loggerName), LogLevel_Warning, xstr(resourceName), (message), __VA_ARGS__);
-#define LOG(loggerName, resourceName, message, ...) log(xstr(loggerName), LogLevel_Notice, xstr(resourceName), (message), __VA_ARGS__);
-
+#define LOGE(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Error, STRINGIFY(resourceName), (message), __VA_ARGS__);
+#define LOGW(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Warning, STRINGIFY(resourceName), (message), __VA_ARGS__);
+#define LOG(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Notice, STRINGIFY(resourceName), (message), __VA_ARGS__);
 
 void log(char * loggerName, LogLevel level, char * resourceName, char * format, ...){
     va_list ap;    

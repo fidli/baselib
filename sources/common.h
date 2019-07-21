@@ -25,3 +25,7 @@
 #define INT32_MAX 0x7FFFFFFF;
 #define INT8_MAX 0x7F;
 
+#define STRINGIFY(a) str(a)
+#define str(a) #a
+#define cncat(a, b) a ## b
+#define CONCAT(a, b) cncat(a, b)

@@ -11,8 +11,12 @@ void * allocate(PersistentStackAllocator * allocator, uint64 bytes)
 {
 		void * result = ((byte *)allocator->mem_start) + allocator->offset + bytes;
 		allocator->offset += bytes;
-		ASSERT(allocator->offset < allocator->effectiveSize);
-		return result;
+		if(allocator->offset < allocator->effectiveSize)
+		{
+			return result;
+		}
+		INV;
+		return NULL;
 }
 
 struct StackAllocator{
@@ -34,9 +38,12 @@ void * allocate(StackAllocator * allocator, uint64 bytes)
 	void * result = ((byte *) allocator->mem_start) + allocator->offsets[allocator->stackIndex];
 	allocator->offsets[allocator->stackIndex+1] = bytes + allocator->offsets[allocator->stackIndex];
 	allocator->stackIndex++;
-	ASSERT(allocator->offsets[allocator->stackIndex] < allocator->effectiveSize);
-	ASSERT(allocator->stackIndex < allocator->stackSize);
-	return result;
+	if((allocator->offsets[allocator->stackIndex] < allocator->effectiveSize) && (allocator->stackIndex < allocator->stackSize));
+	{
+		return result;
+	}
+	INV;
+	return NULL;
 }
 
 inline
@@ -77,11 +84,31 @@ void deallocateAll(StackAllocator * allocator)
     allocator->bulkStackIndex = 0;
 }
 
+class ScopeAllocation
+{
+	private:
+		StackAllocator * allocator_;
+	public:
+		ScopeAllocation(StackAllocator * allocator)
+		{
+			allocator_ = allocator;
+			
+		}
+	
+		~ScopeAllocation()
+		{
+			deallocate(allocator_);
+		}
+};
+
+// NOTE(fidli): more like list of allocators, but this is in every app
 struct Memory{
     PersistentStackAllocator persistent;
     StackAllocator temp;   
 };
 Memory mem;
+
+
 
 #define TEMP_MEM_STACK_SIZE 4096
 #define TEMP_MEM_BULK_STACK_SIZE 32
@@ -108,6 +135,8 @@ void initMemory(void * memoryStart){
 #define PUSH(strct) *((strct *) allocate(&mem.temp, sizeof(strct)));
 
 #define PUSHA(strct, size) *((strct *) allocate(&mem.temp, (size) * sizeof(strct)));
+
+#define PUSHA_SCOPE(strct, size) *((strct *) allocate(&mem.temp, (size) * sizeof(strct))); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&mem.temp);
 
 #define PUSHI markAllocation(&mem.temp);
 

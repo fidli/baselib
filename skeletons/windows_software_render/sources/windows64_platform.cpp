@@ -191,7 +191,7 @@ main(LPWSTR * argvW, int argc){
 		{
 			DWORD privsize = 0;
 			GetTokenInformation(processToken, TokenPrivileges, NULL, 0, &privsize);
-			TOKEN_PRIVILEGES * priv = (TOKEN_PRIVILEGES *) &PUSHA(byte, privsize);
+			TOKEN_PRIVILEGES * priv = (TOKEN_PRIVILEGES *) &PUSHA_SCOPE(byte, privsize);
 			if(GetTokenInformation(processToken, TokenPrivileges, priv , privsize, &privsize))
 			{
 				for(DWORD i = 0; i < priv->PrivilegeCount; ++i )
@@ -209,7 +209,6 @@ main(LPWSTR * argvW, int argc){
 				result = GetLastError();
 				LOGE(default, privileges, "Failed to obtain a token. Err: %d", result);
 			}
-			//POP;
 		}
 		else
 		{
