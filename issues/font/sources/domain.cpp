@@ -50,6 +50,31 @@ extern "C"{
 #include "platform/windows_filesystem.cpp"
 #include "platform/windows_time.cpp"
 
+struct OpenTypeFont
+{
+    struct
+    {
+        uint16 segCountX2;
+        uint16 segCount;
+        uint16 searchRange;
+        uint16 entrySelector;
+        uint16 rangeShift;
+        uint16 * endCode;
+        uint16 * startCode;
+        int16 * idDelta;
+        uint16 * idRangeOffset;
+        uint16 * glyphIdArray;
+    } cmap;
+};
+
+uint16 searchGlyphIndex(OpenTypeFont * font, char * utf8Code)
+{
+    return font->cmap.glyphIdArray[0];
+    for(int segmentIndex = 0; segmentIndex < font->cmap.segCount; segmentIndex++)
+    {
+    }
+}
+
 EXPORT_FUNCTION void init(Memory & platformMem)
 {
 	mem = platformMem;
@@ -58,6 +83,7 @@ EXPORT_FUNCTION void init(Memory & platformMem)
     FileContents fileContents = {};
     readFile("C:\\Windows\\Fonts\\SourceSansPro-Regular.otf", &fileContents);
     // PARse
+    OpenTypeFont font;
     if(!strncmp(fileContents.contents, "ttcf", 4))
     {
         //NOTE(fidli): this is font collection
@@ -65,23 +91,63 @@ EXPORT_FUNCTION void init(Memory & platformMem)
     }
     else if(!strncmp(fileContents.contents, "OTTO", 4))
     {
-        uint16 numTables = *((uint16*)(fileContents.contents + 4));
-        uint32 tableOffset = 12;
+        skipBytes(&fileContents, 4);
+        uint16 numTables = readUint16(&fileContents);
+        skipBytes(&fileContents, 6);
         for(int tableIndex = 0; tableIndex < numTables; tableIndex++)
         {
-            char * tableHead = fileContents.contents + tableOffset;
-            char * dataStart = tableHead + 16;
-            uint32 tableLength = *((uint32*)(tableHead + 12));
+            char * tableTag = fileContents.contents + fileContents.head;
+            skipBytes(&fileContents, 8);
+            uint32 tableOffset = readUint32(&fileContents);
+            uint32 tableLength = readUint32(&fileContents);
+            if(!strncmp("cmap", tableTag, 4))
+            {
+                FileContents tableContents = fileContents;
+                tableContents.contents += tableOffset;
+                tableContents.head = 0;
+                tableContents.size = tableLength;
 
-            tableOffset += tableLength + 16;
+                skipBytes(&tableContents, 2);
+                uint16 numSubtables = readUint16(&tableContents);
+                for(int subtableIndex = 0; subtableIndex < numSubtables; subtableIndex++)
+                {
+                    uint16 platformId = readUint16(&tableContents);
+                    uint16 encodingId = readUint16(&tableContents);
+                    uint32 subtableOffset = readUint32(&tableContents);
+                    if(platformId == 3 && encodingId == 1)
+                    {
+                        // NOTE(fidli): using format 4 of table
+                        FileContents subtableContents = tableContents;
+                        subtableContents.contents += subtableOffset;
+                        subtableContents.head = 0;
+                        
+                        uint16 format = readUint16(&subtableContents);
+                        ASSERT(format == 4);
+                        subtableContents.size = readUint16(&subtableContents);
+                        skipBytes(&subtableContents, 2);
+                        font.cmap.segCountX2 = readUint16(&subtableContents);
+                        // https://docs.microsoft.com/en-us/typography/opentype/spec/cmap
+                        // NOTE(fidli): this is character code -> glyph index
+                        font.cmap.segCount = font.cmap.segCountX2 / 2;
+                        skipBytes(&subtableContents, 6);
+                        font.cmap.endCode = CAST(uint16 *, subtableContents.contents + subtableContents.head);
+                        skipBytes(&subtableContents, font.cmap.segCountX2 + 2);
+                        font.cmap.startCode = CAST(uint16 *, subtableContents.contents + subtableContents.head);
+                        skipBytes(&subtableContents, font.cmap.segCountX2*3);
+                        font.cmap.glyphIdArray = CAST(uint16 *, subtableContents.contents + subtableContents.head);
+                        
+                    }
+                }
+            }
         }
     }
+    uint16 glyphIndex = searchGlyphIndex(&font, "I");
 }
 
 EXPORT_FUNCTION void input(const Input * input)
 {
-
 }
+
 
 EXPORT_FUNCTION void iteration(float32 dt)
 {

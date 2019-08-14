@@ -29,3 +29,6 @@
 #define str(a) #a
 #define cncat(a, b) a ## b
 #define CONCAT(a, b) cncat(a, b)
+
+#define CAST(type, what) ((type)(what))
+
