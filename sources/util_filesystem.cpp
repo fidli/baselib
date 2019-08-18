@@ -137,6 +137,13 @@ void skipBytes(FileContents * contents, int32 amount)
     contents->head += amount;
 }
 
+uint8 readUint8(FileContents * contents)
+{
+    uint16 result = CAST(uint8, *(contents->contents + contents->head));
+    contents->head += 1;
+    return result;
+}
+
 uint16 readUint16(FileContents * contents)
 {
     uint16 result = ((CAST(uint16, *(contents->contents + contents->head)) << 8) & 0xFF00) | ((CAST(uint16, *(contents->contents + 1 + contents->head)) & 0x00FF));

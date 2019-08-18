@@ -213,7 +213,7 @@ main(LPWSTR * argvW, int argc){
 		else
 		{
 			result = GetLastError();
-			LOGE(default, privileges, "Failed to sopen a token. Err: %d", result);
+			LOGE(default, privileges, "Failed to open a token. Err: %d", result);
 		}
 		CloseHandle(processToken);
 		privilegesSuccess = result == ERROR_SUCCESS;

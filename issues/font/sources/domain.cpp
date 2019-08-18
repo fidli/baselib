@@ -135,8 +135,51 @@ EXPORT_FUNCTION void init(Memory & platformMem)
                         font.cmap.startCode = CAST(uint16 *, subtableContents.contents + subtableContents.head);
                         skipBytes(&subtableContents, font.cmap.segCountX2*3);
                         font.cmap.glyphIdArray = CAST(uint16 *, subtableContents.contents + subtableContents.head);
-                        
                     }
+                }
+            }
+            else if(!strncmp("hhea", tableTag, 4))
+            {
+                
+            }
+            // TODO(fidli): dont need this? toss it
+            else if(!strncmp("CFF", tableTag, 3))
+            {
+                FileContents tableContents = fileContents;
+                tableContents.contents += tableOffset;
+                tableContents.head = 0;
+                tableContents.size = tableLength;
+
+                // TODO(fidli): skip these?
+                {
+                    uint8 majorVer = readUint8(&tableContents);
+                    uint8 minorVer = readUint8(&tableContents);
+                    uint8 headerSize = readUint8(&tableContents);
+                    uint8 offsetSize = readUint8(&tableContents);
+                }
+                
+                // NOTE(fidli): Name table
+                {
+                    uint16 count = readUint16(&tableContents);
+                    // TODO(fidli): skip these?
+                    uint8 offsetSize = readUint8(&tableContents);
+                    char * offsets = tableContents.contents + tableContents.head;
+                    skipBytes(&tableContents, offsetSize * (count+1));
+                    char * data = tableContents.contents + tableContents.head;
+                    ASSERT(count == 1);
+                    ASSERT(offsetSize == 1);
+                    skipBytes(&tableContents, offsets[1]-1);
+                }
+                // NOTE(fidli): Top DICT table
+                {
+                    uint16 count = readUint16(&tableContents);
+                    // TODO(fidli): skip these?
+                    uint8 offsetSize = readUint8(&tableContents);
+                    char * offsets = tableContents.contents + tableContents.head;
+                    skipBytes(&tableContents, offsetSize * (count+1));
+                    char * data = tableContents.contents + tableContents.head;
+                    ASSERT(count == 1);
+                    ASSERT(offsetSize == 1);
                 }
             }
         }
