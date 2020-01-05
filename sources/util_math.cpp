@@ -63,15 +63,21 @@ bool aseqr64(float64 test, float64 fixedpoint, float64 delta = 0.000005f){
 #ifndef PRECISE_MATH
 
 float32 ceil(float32 value){
-    float32 result = (float32)(uint64) ABS(value);
-    if(result != value){
+    int64 i = CAST(int64, value);
+    float32 result = CAST(float32, i);
+    if(result != value && value >= 0){
         result++;
     }
-    return (value < 0) ? -result : result;
+    return result;
 }
 
 float32 floor(float32 value){
-    return (float32)(int32) value;
+    int64 i = CAST(int64, value);
+    float32 result = CAST(float32, i);
+    if(result != value && value <= 0){
+        result--;
+    }
+    return result;
     
 }
 
