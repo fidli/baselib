@@ -4,6 +4,11 @@
 #include "util_graphics.cpp"
 #include "util_font.cpp"
 
+struct GuiElementStyle{
+    int32 padding;
+    int32 margin;
+};
+
 struct GuiStyle{
     struct {
         Color fgColor;
@@ -13,17 +18,19 @@ struct GuiStyle{
         Color fgColor;
         Color bgColor;
     } passive;
+    GuiElementStyle button;
+    GuiElementStyle container;
     AtlasFont font;
     int32 pt;
 };
 
 enum GuiJustify{
-    GuiJustify_Default,
-
     GuiJustify_Left,
     GuiJustify_Middle,
     GuiJustify_Right,
-    
+   
+    GuiJustify_Default,
+ 
     GuiJustifyCount
 };
 
@@ -45,6 +52,7 @@ struct GuiContainer{
     int32 height;
     int8 zIndex;
     GuiJustify defaultJustify;
+    GuiElementStyle elementStyle;
 };
 
 struct{
@@ -68,7 +76,7 @@ struct GuiId{
 
 #define CARET_TICK 0.5f
 
-struct {
+struct GuiContext{
     int8 minZ;
     int8 maxZ;
     
@@ -93,7 +101,9 @@ struct {
     GuiContainer defaultContainer;
     int32 width;
     int32 height;
-} guiContext;
+};
+
+GuiContext * guiContext;
 
 static void guiInvaliate(GuiId * a){
     a->x = -1;
@@ -110,77 +120,82 @@ bool guiValid(const GuiId a){
 
 bool guiInit(){
     guiInput = {};
-    guiInvaliate(&guiContext.lastActive);
-    guiInvaliate(&guiContext.lastHover);
-    guiInvaliate(&guiContext.activeDropdown);
-    guiInvaliate(&guiContext.activeInput);
-	guiContext.popupCount = 0;
+    guiContext = &PPUSH(GuiContext);
+    *guiContext = {};
+    guiInvaliate(&guiContext->lastActive);
+    guiInvaliate(&guiContext->lastHover);
+    guiInvaliate(&guiContext->activeDropdown);
+    guiInvaliate(&guiContext->activeInput);
+	guiContext->popupCount = 0;
     return true;
 }
 
 void guiBegin(int32 width, int32 height){
     float64 currentTimestamp = getProcessCurrentTime();
-    guiContext.activeInputTimeAccumulator += currentTimestamp - guiContext.activeInputLastTimestamp;
-    guiContext.activeInputLastTimestamp = currentTimestamp;
-    guiInvaliate(&guiContext.currentHover);
-    guiContext.minZ = guiContext.maxZ = 0;
-	guiContext.popupLocked = true;
-    guiContext.defaultContainer = {};
-    guiContext.defaultContainer.width = guiContext.width = width;
-    guiContext.defaultContainer.height = guiContext.height = height;
-    guiContext.defaultContainer.defaultJustify = GuiJustify_Left;
+    guiContext->activeInputTimeAccumulator += currentTimestamp - guiContext->activeInputLastTimestamp;
+    guiContext->activeInputLastTimestamp = currentTimestamp;
+    guiInvaliate(&guiContext->currentHover);
+    guiContext->minZ = guiContext->maxZ = 0;
+	guiContext->popupLocked = true;
+    guiContext->defaultContainer = {};
+    guiContext->defaultContainer.width = guiContext->width = width;
+    guiContext->defaultContainer.height = guiContext->height = height;
+    guiContext->defaultContainer.defaultJustify = GuiJustify_Left;
 }
 
 void guiEnd(){
     guiInput.mouse.buttons = {};
-    guiContext.lastHover = guiContext.currentHover;
+    guiContext->lastHover = guiContext->currentHover;
 }
 
-GuiContainer guiAddContainer(const GuiContainer * parent, GuiJustify defaultJustify = GuiJustify_Left){
-    GuiContainer result = {};
+GuiContainer * guiAddContainer(const GuiContainer * parent, const GuiStyle * style, GuiJustify defaultJustify = GuiJustify_Left){
+    GuiContainer * result = &PUSH(GuiContainer);
+    memset(CAST(void*, result), 0, sizeof(GuiContainer));
+    result->elementStyle = style->container;
     if(!parent){
-        parent = &guiContext.defaultContainer;
+        parent = &guiContext->defaultContainer;
     }
-    result.width = parent->width - parent->widthUsed;
-    result.height = parent->height - parent->heightUsed;
-    result.startX = parent->startX + parent->widthUsed;
-    result.startY = parent->startY + parent->heightUsed;    
+    result->width = parent->width - parent->widthUsed - 2*(result->elementStyle.margin + result->elementStyle.padding);
+    result->height = parent->height - parent->heightUsed - 2*(result->elementStyle.margin - result->elementStyle.padding);
+    // parent margin padding right, element padding and margin left
+    result->startX = parent->startX + parent->widthUsed + result->elementStyle.margin + result->elementStyle.padding + parent->elementStyle.margin + parent->elementStyle.padding;
+    result->startY = parent->startY + parent->heightUsed + result->elementStyle.margin + result->elementStyle.padding + parent->elementStyle.margin + parent->elementStyle.padding;    
 
-    result.cursor[GuiJustify_Left].x = parent->startX + parent->widthUsed;
-    result.cursor[GuiJustify_Left].y = parent->startY + parent->heightUsed;
+    result->cursor[GuiJustify_Left].x = result->startX;
+    result->cursor[GuiJustify_Left].y = result->startY;
             
-    result.cursor[GuiJustify_Middle].x = parent->startX + parent->widthUsed + result.width/2;
-    result.cursor[GuiJustify_Middle].y = parent->startX + parent->widthUsed + result.width/2;
+    result->cursor[GuiJustify_Middle].x = result->startX + result->width/2;
+    result->cursor[GuiJustify_Middle].y = result->startY;
 
-    result.cursor[GuiJustify_Right].x = parent->startX + parent->width;
-    result.cursor[GuiJustify_Right].y = parent->startX + parent->width;
+    result->cursor[GuiJustify_Right].x = result->startX + result->width;
+    result->cursor[GuiJustify_Right].y = result->startY;
     
-    for(int32 i = 0; i < ARRAYSIZE(result.cursor); i++){
-        result.defaultCursor[i].x = result.cursor[i].x;
-        result.defaultCursor[i].y = result.cursor[i].y;
+    for(int32 i = 0; i < ARRAYSIZE(result->cursor); i++){
+        result->defaultCursor[i].x = result->cursor[i].x;
+        result->defaultCursor[i].y = result->cursor[i].y;
     }
-    result.zIndex = parent->zIndex;
-    result.defaultJustify = defaultJustify;
+    result->zIndex = parent->zIndex;
+    result->defaultJustify = defaultJustify;
     return result;
 }
 
 bool guiIsActiveInput(){
-    return guiValid(guiContext.activeInput);
+    return guiValid(guiContext->activeInput);
 }
 
 bool guiClick(){
-    return guiValid(guiContext.currentHover);
+    return guiValid(guiContext->currentHover);
 }
 
 void guiOpenPopup(const char * key){
-	ASSERT(guiContext.popupCount < ARRAYSIZE(guiContext.popups));
-	strncpy(guiContext.popups[guiContext.popupCount], key, 20);
-	guiContext.popupCount++;
+	ASSERT(guiContext->popupCount < ARRAYSIZE(guiContext->popups));
+	strncpy(guiContext->popups[guiContext->popupCount], key, 20);
+	guiContext->popupCount++;
 }
 
 bool guiPopup(const char * key){
-	for(int32 i = 0; i < guiContext.popupCount; i++){
-		if(!strncmp(key, guiContext.popups[i], 20)){
+	for(int32 i = 0; i < guiContext->popupCount; i++){
+		if(!strncmp(key, guiContext->popups[i], 20)){
 			return true;
 		}
 	}
@@ -188,28 +203,28 @@ bool guiPopup(const char * key){
 }
 
 bool guiAnyPopup(){
-	return guiContext.popupCount > 0;
+	return guiContext->popupCount > 0;
 }
 
 bool guiPopupBlocking(){
-	return guiAnyPopup() && guiContext.popupLocked;
+	return guiAnyPopup() && guiContext->popupLocked;
 }
 
-GuiContainer guiBeginPopup(){
-    GuiContainer result = guiAddContainer(NULL);
-    result.zIndex = 10;
-	guiContext.popupLocked = false;
+GuiContainer * guiBeginPopup(const GuiStyle * style){
+    GuiContainer * result = guiAddContainer(NULL, style);
+    result->zIndex = 10;
+	guiContext->popupLocked = false;
     return result;
 }
 
 void guiEndPopup(){
-	guiContext.popupLocked = true;
+	guiContext->popupLocked = true;
 }
 
 bool guiClosePopup(const char * key){
-	if(guiContext.popupCount > 0){
-		if(!strncmp(key, guiContext.popups[guiContext.popupCount-1], 20)){
-			guiContext.popupCount--;
+	if(guiContext->popupCount > 0){
+		if(!strncmp(key, guiContext->popups[guiContext->popupCount-1], 20)){
+			guiContext->popupCount--;
 			return true;
 		}
 	}
@@ -233,6 +248,7 @@ struct RenderElementInfo{
 };
 
 static void recalculateParentUsage(GuiContainer * container){
+    // TODO(fidli): check that this considers padding/margin as well
     if(container->parent){
         GuiContainer * parent = container->parent;
         int32 thisMaxX = container->widthUsed + container->startX;
@@ -249,7 +265,7 @@ static void recalculateParentUsage(GuiContainer * container){
 
 static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle * style, const char * text, GuiJustify justify, RenderElementInfo * info){
     if(!*container){
-        *container = &guiContext.defaultContainer;
+        *container = &guiContext->defaultContainer;
     }
     if(justify == GuiJustify_Default){
         justify = (*container)->defaultJustify;
@@ -382,8 +398,8 @@ static void renderBoxText(const AtlasFont * font, const char * text, const int32
     GuiId id = {positionX, positionY, zIndex};
     bool isHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
     if(isHoverNow){
-        if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
-            guiContext.currentHover = id;
+        if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
+            guiContext->currentHover = id;
         }
     }
     
@@ -394,37 +410,37 @@ static void renderBoxText(const AtlasFont * font, const char * text, const int32
 static bool renderInput(const AtlasFont * font, char * text, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, int8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
-    bool isLastActive = guiEq(id, guiContext.lastActive);
+    bool isLastActive = guiEq(id, guiContext->lastActive);
     int32 margin = MIN(height/10, 10);
     bool isHoverNow = guiInput.mouse.x >= positionX + margin && guiInput.mouse.x <= positionX + width - margin && guiInput.mouse.y >= positionY + margin && guiInput.mouse.y <= positionY + height - margin;
     if(isHoverNow){
-        if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
-            guiContext.currentHover = id;
+        if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
+            guiContext->currentHover = id;
         }
     }
     
-    bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext.lastHover);
+    bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
     
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
             if(isHoverBeforeAndNow){
                 result = true;
-                guiContext.activeInput = id;
-                guiContext.activeInputLastTimestamp = getProcessCurrentTime();
-                guiContext.activeInputTimeAccumulator = 0;
-                guiContext.caretVisible = true;
-                guiContext.caretPos = 0;
-                guiContext.inputData = text;
-                guiContext.inputCharlist = charlist;
+                guiContext->activeInput = id;
+                guiContext->activeInputLastTimestamp = getProcessCurrentTime();
+                guiContext->activeInputTimeAccumulator = 0;
+                guiContext->caretVisible = true;
+                guiContext->caretPos = 0;
+                guiContext->inputData = text;
+                guiContext->inputCharlist = charlist;
             }
-            guiInvaliate(&guiContext.lastActive);
+            guiInvaliate(&guiContext->lastActive);
         }
     }else{
-        if(guiInput.mouse.buttons.leftDown && guiEq(id, guiContext.activeInput)) guiInvaliate(&guiContext.activeInput);
+        if(guiInput.mouse.buttons.leftDown && guiEq(id, guiContext->activeInput)) guiInvaliate(&guiContext->activeInput);
     }
     
     if(isHoverBeforeAndNow && !isLastActive){
-        if(guiInput.mouse.buttons.leftDown) guiContext.lastActive = id;
+        if(guiInput.mouse.buttons.leftDown) guiContext->lastActive = id;
     }
     
     renderRect(positionX, positionY, width, height, boxBgColor, zIndex);
@@ -435,19 +451,19 @@ static bool renderInput(const AtlasFont * font, char * text, const char * charli
     renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, inputTextColor, zIndex);
     
     //do something at all
-	if(!guiPopupBlocking() && guiEq(guiContext.activeInput, id)){
+	if(!guiPopupBlocking() && guiEq(guiContext->activeInput, id)){
         //is time to flip
-        if(guiContext.activeInputTimeAccumulator > CARET_TICK){
-            guiContext.activeInputTimeAccumulator -= CARET_TICK;
-            guiContext.caretVisible = !guiContext.caretVisible;
+        if(guiContext->activeInputTimeAccumulator > CARET_TICK){
+            guiContext->activeInputTimeAccumulator -= CARET_TICK;
+            guiContext->caretVisible = !guiContext->caretVisible;
         }
         int32 texlen = strlen(text);
-        if(guiContext.caretPos > texlen) guiContext.caretPos = texlen;
+        if(guiContext->caretPos > texlen) guiContext->caretPos = texlen;
         //draw for now?
-        if(guiContext.caretVisible){
+        if(guiContext->caretVisible){
             char * tmpbuf = &PUSHA(char, texlen+1); 
-            strncpy(tmpbuf, text, guiContext.caretPos);
-            tmpbuf[guiContext.caretPos] = 0;
+            strncpy(tmpbuf, text, guiContext->caretPos);
+            tmpbuf[guiContext->caretPos] = 0;
             int32 carretXOffset = calculateAtlasTextWidth(font, tmpbuf, 14);
             int32 textXOffset = (width-2*margin)/2-calculateAtlasTextWidth(font, text, 14)/2;
             POP;
@@ -462,24 +478,24 @@ static bool renderInput(const AtlasFont * font, char * text, const char * charli
 static bool renderButton(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
-    bool isLastActive = guiEq(id, guiContext.lastActive);
+    bool isLastActive = guiEq(id, guiContext->lastActive);
     bool isHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
     
     if(isHoverNow){
-        if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
-            guiContext.currentHover = id;
+        if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
+            guiContext->currentHover = id;
         }
     }
     
-    bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext.lastHover);
+    bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
     
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
 			if(!guiPopupBlocking() && isHoverBeforeAndNow) result = true;
-            guiInvaliate(&guiContext.lastActive);
+            guiInvaliate(&guiContext->lastActive);
         }
     }else if(isHoverBeforeAndNow){
-        if(guiInput.mouse.buttons.leftDown) guiContext.lastActive = id;
+        if(guiInput.mouse.buttons.leftDown) guiContext->lastActive = id;
     }
     
     const Color * textColor;
@@ -506,30 +522,30 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
     //start dropdown head
     {
         
-        isHeadLastActive = guiEq(headId, guiContext.lastActive);
-        isDropdownActive = guiEq(headId, guiContext.activeDropdown);
+        isHeadLastActive = guiEq(headId, guiContext->lastActive);
+        isDropdownActive = guiEq(headId, guiContext->activeDropdown);
         bool isHeadHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
         
         if(isHeadHoverNow){
-            if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
-                guiContext.currentHover = headId;
+            if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
+                guiContext->currentHover = headId;
             }
         }
-        bool isHeadHoverBeforeAndNow = isHeadHoverNow && guiEq(headId, guiContext.lastHover);
+        bool isHeadHoverBeforeAndNow = isHeadHoverNow && guiEq(headId, guiContext->lastHover);
         
         
         if(isHeadLastActive){
             if(guiInput.mouse.buttons.leftUp){
 				if(!guiPopupBlocking() && isHeadHoverBeforeAndNow){
-                    guiContext.activeDropdown = headId;
+                    guiContext->activeDropdown = headId;
                 }
-                guiInvaliate(&guiContext.lastActive);
+                guiInvaliate(&guiContext->lastActive);
             }
         }else{
-            if(guiInput.mouse.buttons.leftDown && guiEq(headId, guiContext.activeDropdown)) guiInvaliate(&guiContext.activeDropdown);
+            if(guiInput.mouse.buttons.leftDown && guiEq(headId, guiContext->activeDropdown)) guiInvaliate(&guiContext->activeDropdown);
         }
         if(isHeadHoverBeforeAndNow && !isHeadLastActive){
-            if(guiInput.mouse.buttons.leftDown) guiContext.lastActive = headId;
+            if(guiInput.mouse.buttons.leftDown) guiContext->lastActive = headId;
         }
         
         
@@ -556,27 +572,27 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
                 int32 buttonPositionX = positionX;
                 int32 buttonPositionY = positionY + (i+1)*height;
                 GuiId id = {buttonPositionX, buttonPositionY, zIndex+1};
-                bool isLastActive = guiEq(id, guiContext.lastActive);
+                bool isLastActive = guiEq(id, guiContext->lastActive);
                 bool result = false;
                 bool isHoverNow = guiInput.mouse.x >= buttonPositionX && guiInput.mouse.x <= buttonPositionX + width && guiInput.mouse.y >= buttonPositionY && guiInput.mouse.y <= buttonPositionY + height;
                 
                 if(isHoverNow){
-                    if(!guiValid(guiContext.currentHover) || guiContext.currentHover.z < zIndex){
-                        guiContext.currentHover = id;
+                    if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
+                        guiContext->currentHover = id;
                     }
                 }
-                bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext.lastHover);
+                bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
                 
                 if(isLastActive){
                     if(guiInput.mouse.buttons.leftUp){
 						if(!guiPopupBlocking() && isHoverBeforeAndNow) result = true;
-                        guiInvaliate(&guiContext.lastActive);
-                        guiContext.activeDropdown = headId;
+                        guiInvaliate(&guiContext->lastActive);
+                        guiContext->activeDropdown = headId;
                     }
                 }else if(isHoverBeforeAndNow){
                     if(guiInput.mouse.buttons.leftDown){
-                        guiContext.lastActive = id;
-                        guiContext.activeDropdown = headId;
+                        guiContext->lastActive = id;
+                        guiContext->activeDropdown = headId;
                     }
                 }
                 
@@ -600,12 +616,12 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
             //end individual buttons
         }
         if(guiInput.mouse.buttons.leftUp){
-            guiContext.activeDropdown = headId;
+            guiContext->activeDropdown = headId;
         }
     }
     //end list members
     if(selected){
-        guiInvaliate(&guiContext.activeDropdown);
+        guiInvaliate(&guiContext->activeDropdown);
     }
     return selected || isDropdownActive || isHeadLastActive;
 }
@@ -619,13 +635,13 @@ void guiRenderText(GuiContainer * container, const GuiStyle * style, const char 
 void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const char * text, const GuiJustify justify = GuiJustify_Default){
     RenderElementInfo rei;
     calculateAndAdvanceCursor(&container, style, text, justify, &rei);
-    return renderBoxText(&style->font, text, rei.startX, rei.startY, rei.renderWidth, style->pt, &style->passive.fgColor, &style->passive.bgColor, container->zIndex);
+    return renderBoxText(&style->font, text, rei.startX, rei.startY, rei.renderWidth, style->pt, &style->passive.bgColor, &style->passive.fgColor, container->zIndex);
 }
 
 bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const char * text, const GuiJustify justify = GuiJustify_Default){
     RenderElementInfo rei;
     calculateAndAdvanceCursor(&container, style, text, justify, &rei);
-    return renderButton(&style->font, text, rei.startX, rei.startY, rei.renderWidth, style->pt, &style->passive.fgColor, &style->passive.bgColor, &style->active.fgColor, &style->active.bgColor, container->zIndex);
+    return renderButton(&style->font, text, rei.startX, rei.startY, rei.renderWidth, style->pt, &style->passive.bgColor, &style->passive.fgColor, &style->active.bgColor, &style->active.fgColor, container->zIndex);
 }
 
 bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * data, const char * dictionary, const GuiJustify justify = GuiJustify_Default){

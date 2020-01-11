@@ -21,13 +21,13 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         case WM_KEYDOWN:{
             //first hit
             if(~lParam & (1<<30)){
-                if(guiValid(guiContext.activeInput)){
+                if(guiValid(guiContext->activeInput)){
                     switch (wParam){
                         case 0x25:{// left arrow
-                            if(guiContext.caretPos > 0) guiContext.caretPos--;
+                            if(guiContext->caretPos > 0) guiContext->caretPos--;
                         }break;
                         case 0x27:{ //right arrow
-                            guiContext.caretPos++;
+                            guiContext->caretPos++;
                         }break;
                         case 0x10:{ //shift
                             //is handled by get key state
@@ -37,22 +37,22 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         }break;
                         case 0x08:{ //backspace
                             //assuming this fits
-                            int32 textlen = strlen(guiContext.inputData);
-                            for(int32 i = guiContext.caretPos-1; i < textlen; i++){
-                                guiContext.inputData[i] = guiContext.inputData[i+1];
+                            int32 textlen = strlen(guiContext->inputData);
+                            for(int32 i = guiContext->caretPos-1; i < textlen; i++){
+                                guiContext->inputData[i] = guiContext->inputData[i+1];
                             } 
-                            guiContext.inputData[textlen-1] = 0;
-                            if(guiContext.caretPos > 0){
-                                guiContext.caretPos--;
+                            guiContext->inputData[textlen-1] = 0;
+                            if(guiContext->caretPos > 0){
+                                guiContext->caretPos--;
                             }
                         }break;
                         case 0x2E:{ //delete
                             //assuming this fits
-                            int32 textlen = strlen(guiContext.inputData);
-                            for(int32 i = guiContext.caretPos; i < textlen; i++){
-                                guiContext.inputData[i] = guiContext.inputData[i+1];
+                            int32 textlen = strlen(guiContext->inputData);
+                            for(int32 i = guiContext->caretPos; i < textlen; i++){
+                                guiContext->inputData[i] = guiContext->inputData[i+1];
                             } 
-                            guiContext.inputData[textlen-1] = 0;
+                            guiContext->inputData[textlen-1] = 0;
                         }break;
                         default:{
                             char c = wParam;//assuming ascii character
@@ -77,9 +77,9 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             }
                             
                             bool isValid = true;
-                            if(guiContext.inputCharlist != NULL){
+                            if(guiContext->inputCharlist != NULL){
                                 //start parse format
-                                const char * format = guiContext.inputCharlist;
+                                const char * format = guiContext->inputCharlist;
                                 bool inverted = false;
                                 int32 formatIndex = 0;
                                 if(format[formatIndex] == '^'){
@@ -200,12 +200,12 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             }
                             if(isValid){
                                 //assuming this fits
-                                int32 textlen = strlen(guiContext.inputData);
-                                for(int32 i = textlen; i > guiContext.caretPos; i--){
-                                    guiContext.inputData[i] = guiContext.inputData[i-1];
+                                int32 textlen = strlen(guiContext->inputData);
+                                for(int32 i = textlen; i > guiContext->caretPos; i--){
+                                    guiContext->inputData[i] = guiContext->inputData[i-1];
                                 } 
-                                guiContext.inputData[guiContext.caretPos] = c;
-                                guiContext.caretPos++;
+                                guiContext->inputData[guiContext->caretPos] = c;
+                                guiContext->caretPos++;
                             }
                         }break;
                         
