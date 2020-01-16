@@ -38,6 +38,7 @@ int32 strncmp(const char * a, const char * b, nint maxlen){
     return result;
 }
 
+
 char * strncpy(char * target, const char * source, nint limit){
     uint32 i = 0;
     do{
@@ -66,6 +67,21 @@ nint strlen(const char * source){
         length++;
     }
     return length;
+}
+
+const char * strstr(const char * data, const char * searchFor){
+    int32 searchLen = strlen(searchFor);
+    int32 dataLen = strlen(data);
+    if(searchLen > dataLen){
+        return NULL;
+    }
+    // TODO(fidli): more efficient way?
+    for(int32 i = 0; i < dataLen - searchLen; i++){
+        if(!strncmp(data + i, searchFor, searchLen)){
+            return data + i;
+        }
+    }
+    return NULL;
 }
 
 char * strcat(char * first, const char * second){

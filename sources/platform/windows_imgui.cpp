@@ -21,8 +21,37 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         case WM_KEYDOWN:{
             //first hit
             if(~lParam & (1<<30)){
+                switch (wParam){
+                    case 0x09:{// tab
+                        if(GetKeyState(0x10) & (1 << 15)){//shift
+                            guiSelectPreviousInput();
+                        }else{
+                            guiSelectNextInput();
+                        }
+                        return;
+                    }break;
+                }
+                if(guiAnyInputSelected()){
+                    switch (wParam){
+                        case 0x1B:{// escape
+                            guiDeselectInput();
+                        }break;
+                        case 0x0D:{// enter
+                            guiActivateSelection();
+                        }break;
+                    }
+                } else if(guiAnyPopup()){
+                    switch (wParam){
+                        case 0x1B:{// escape
+                            guiClosePopup(NULL);
+                        }break;
+                    }
+                }
                 if(guiValid(guiContext->activeInput)){
                     switch (wParam){
+                        case 0x28: // down arrow
+                        case 0x26:{ // up arrow
+                        }break;
                         case 0x25:{// left arrow
                             if(guiContext->caretPos > 0) guiContext->caretPos--;
                         }break;
@@ -34,6 +63,14 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         }break;
                         case 0x14:{ //caps lock
                             //is handled by get key state
+                        }break;
+                        case 0x0D:{
+                            //enter
+                            if(guiAnyInputSelected()){ // NOTE(fidli): this must be the input
+                                guiSelectNextInput();
+                            }else{
+                                guiDeselectInput();
+                            }
                         }break;
                         case 0x08:{ //backspace
                             //assuming this fits
@@ -92,8 +129,8 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                                 char smallLetterRangeHigh = 0;
                                 char capitalLetterRangeLow = 0;
                                 char capitalLetterRangeHigh = 0;
-                                const char * charlist[4];
-                                uint8 charlistLengths[4];
+                                const char* charlist[4] = {};
+                                uint8 charlistLengths[4] = {};
                                 uint8 charlistCount = 0;
                                 
                                 uint8 charlistLen = 0;
