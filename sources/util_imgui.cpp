@@ -456,8 +456,8 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
     
     
     int32 advance = 0;
-    float32 resScaleY = 1.0f / (game->resolution.y);
-    float32 resScaleX = 1.0f / (game->resolution.x);
+    float32 resScaleY = 1.0f / (guiContext->height);
+    float32 resScaleX = 1.0f / (guiContext->width);
     int32 targetSize = pt;
     float32 fontScale = (float32)targetSize / platform->font.size;
     //fontScale = 1;
@@ -509,8 +509,8 @@ bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX
 static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
     glUseProgram(gl->flat.program);
     
-    float32 resScaleY = 1.0f / (game->resolution.y);
-    float32 resScaleX = 1.0f / (game->resolution.x);
+    float32 resScaleY = 1.0f / (guiContext->height);
+    float32 resScaleX = 1.0f / (guiContext->width);
     
     //position
     float32 zOffset = -(float32)zIndex / INT8_MAX;
@@ -530,8 +530,8 @@ static bool renderRect(const int32 positionX, const int32 positionY, const int32
 static bool renderWireRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
     glUseProgram(gl->flat.program);
     
-    float32 resScaleY = 1.0f / (game->resolution.y);
-    float32 resScaleX = 1.0f / (game->resolution.x);
+    float32 resScaleY = 1.0f / (guiContext->height);
+    float32 resScaleX = 1.0f / (guiContext->width);
     
     //position
     float32 zOffset = -(float32)zIndex / INT8_MAX;

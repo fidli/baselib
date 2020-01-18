@@ -4,8 +4,8 @@
 #include "util_imgui.cpp"
 
 
-void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
-    
+bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
+    bool inputHandled = false;    
     switch(message)
     {
         case WM_MOUSEMOVE:{
@@ -14,9 +14,11 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         }break;
         case WM_LBUTTONUP:{
             guiInput.mouse.buttons.leftUp = true;
+            inputHandled = guiAnyPopup();
         }break;
         case WM_LBUTTONDOWN:{
             guiInput.mouse.buttons.leftDown = true;
+            inputHandled = guiAnyPopup();
         }break;
         case WM_KEYDOWN:{
             //first hit
@@ -28,22 +30,27 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         }else{
                             guiSelectNextInput();
                         }
-                        return;
+                        inputHandled = true;
+                        return inputHandled;
                     }break;
                 }
                 if(guiAnyInputSelected()){
                     switch (wParam){
                         case 0x1B:{// escape
                             guiDeselectInput();
+                            inputHandled = true;
                         }break;
                         case 0x0D:{// enter
                             guiActivateSelection();
+                            inputHandled = true;
                         }break;
+                        
                     }
                 } else if(guiAnyPopup()){
                     switch (wParam){
                         case 0x1B:{// escape
                             guiClosePopup(NULL);
+                            inputHandled = true;
                         }break;
                     }
                 }
@@ -245,13 +252,13 @@ void guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                                 guiContext->caretPos++;
                             }
                         }break;
-                        
                     }
+                    inputHandled = true;
                 }
             };
         }break;
     }
-    
+    return inputHandled;
 }
 
 #endif
