@@ -86,9 +86,52 @@ bool insertIntoDoubleLinkedList(DoubleLinkedList * target, const char * key, voi
 	return true;
 }
 
-
-
-
- 
+bool removeFromDoubleLinkedList(DoubleLinkedList * target, DoubleLinkedListElement * toDelete){
+    ASSERT(target->slotsUsed > 0);
+    ASSERT(CAST(char *, toDelete) >= CAST(char *, target->slots) && CAST(char *, toDelete) <= CAST(char *, target->slots)+ (target->slotsUsed-1)*sizeof(DoubleLinkedListElement));
+    for(int32 i = 0; i < target->slotsUsed; i++){
+        DoubleLinkedListElement * e = &target->slots[i];
+        if(e->previous == toDelete){
+            e->previous = toDelete->previous;
+        }
+        if(e->next == toDelete){
+            e->next = toDelete->next;
+        }
+    }
+    if(target->head == toDelete){
+        if(target->first == toDelete){
+            target->head = toDelete->next;
+        }else{
+            target->head = toDelete->previous;
+        }
+    }
+    if(target->first == toDelete){
+        target->first = toDelete->next;
+    }
+    if(target->slotsUsed > 1){
+        memcpy(CAST(void *, toDelete), CAST(void *, toDelete+1), CAST(char *, &target->slots[target->slotsUsed]) - CAST(char *, toDelete+1));
+        target->slotsUsed--;
+        for(int32 i = 0; i < target->slotsUsed; i++){
+            DoubleLinkedListElement * e = &target->slots[i];
+            if(e->previous >= toDelete){
+                e->previous--;
+            }
+            if(e->next >= toDelete){
+                e->next--;
+            }
+        }
+        if(target->first >= toDelete){
+            target->first--;
+        }
+        if(target->head >= toDelete){
+            target->head--;
+        }
+    }else{
+        target->slotsUsed = 0;
+        target->head = NULL;
+        target->first = NULL;
+    }
+    return true;
+}
 
 #endif
