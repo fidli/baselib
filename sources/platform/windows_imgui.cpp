@@ -19,6 +19,8 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         case WM_LBUTTONDOWN:{
             guiInput.mouse.buttons.leftDown = true;
             inputHandled = guiAnyPopup();
+            // NOTE(fidli): any input gets re-selected potentially
+            guiDeselectInput();
         }break;
         case WM_KEYDOWN:{
             //first hit
@@ -56,6 +58,10 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                 }
                 if(guiValid(guiContext->activeInput)){
                     switch (wParam){
+                        case 0x1B: {// escape
+                            guiDeselectInput();
+                            inputHandled = true;
+                        }break;
                         case 0x28: // down arrow
                         case 0x26:{ // up arrow
                         }break;

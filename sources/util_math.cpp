@@ -787,6 +787,13 @@ dv3_64 & operator-=(dv3_64 & a, const dv3_64 & b){
     return a;
 }
 
+bool operator==(const dv2 & a, const dv2 & b){
+    return a.x == b.x && a.y == b.y;
+}
+
+bool operator!=(const dv2 & a, const dv2 & b){
+    return !(a == b);
+}
 
 bool operator==(const v3 & a, const v3 & b){
     return a.x == b.x && a.y == b.y && a.z == b.z;

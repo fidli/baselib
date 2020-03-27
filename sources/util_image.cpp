@@ -122,6 +122,7 @@ bool flipY(Image * target){
         case BitmapOriginType_BottomLeft:{
             target->info.origin = BitmapOriginType_TopLeft;
         }break;
+        case BitmapOriginType_Invalid:
         default:{
             INV;
         }break;

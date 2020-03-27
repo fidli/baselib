@@ -97,6 +97,8 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
                 case LogTarget_Console:{
                     printf("%1024s", loggers.messagebuffer);
                 }break;
+                case LogTarget_Count:
+                case LogTarget_Invalid:
                 default:{
                     //ASSERT
                     *(int *)0 = 0;

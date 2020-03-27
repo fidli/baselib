@@ -61,7 +61,7 @@ char * strcpy(char * target, const char * source){
     return target;
 }
 
-nint strlen(const char * source){
+    nint strlen(const char * source){
     nint length = 0;
     while(source[length] != '\0'){
         length++;
@@ -849,6 +849,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                     successfullyPrinted++;
                 }
             }break;
+            case FormatType_Invalid:
             default:{
                 INV; //implement me or genuine errer
                 return -1;
@@ -1040,6 +1041,9 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                         }
                         if(negative) *targetVar *= -1;
                     }break;
+                    case FormatTypeSize_h:
+                    case FormatTypeSize_hh:
+                    case FormatTypeSize_ll:
                     default:{
                         INV;
                     };
@@ -1140,6 +1144,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                     exit = true;
                 }
             }break;
+            case FormatType_Invalid:
             default:{
                 INV; //implement me or genuine error
             }break;
