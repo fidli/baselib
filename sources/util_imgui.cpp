@@ -71,6 +71,11 @@ struct GuiContainer{
     GuiElementStyle elementStyle;
 };
 
+struct GuiBool{
+    bool set;
+    bool value;
+};
+
 struct{
     struct{
         int32 x;
@@ -154,6 +159,10 @@ void guiDeselectInput(){
 
 bool guiAnyInputSelected(){
     return guiContext->selection.isActive;
+}
+
+bool guiAnyInputActive(){
+    return guiValid(guiContext->activeInput);
 }
 
 void guiActivateSelection(){
@@ -846,6 +855,40 @@ bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const cha
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
     return renderButton(&style->font, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+}
+
+void guiSetCheckboxValue(GuiBool * target, bool newValue){
+    target->set = true;
+    target->value = newValue;
+}
+
+bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool * checked, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
+    RenderElementInfo rei;
+    const GuiElementStyle * elementStyleActive = &style->button.active;
+    const GuiElementStyle * elementStylePassive = &style->button.passive;
+    if(overrideStyleActive != NULL){
+        elementStyleActive = overrideStyleActive;
+    }
+    if(overrideStylePassive != NULL){
+        elementStylePassive = overrideStylePassive;
+    }
+    char text[2] = {};
+    if(checked->set){
+        if(checked->value){
+            text[0] = 'Y';
+        }else{
+            text[0] = 'n';
+        }
+    }else{
+        text[0] = ' ';
+    }
+    calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
+    bool r = renderButton(&style->font, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    if(r){
+        checked->set = true;
+        checked->value = !checked->value;
+    }
+    return r;
 }
 
 bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * data, const char * dictionary, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
