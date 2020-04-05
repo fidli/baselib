@@ -330,7 +330,7 @@ bool guiPopupBlocking(){
 
 GuiContainer * guiBeginPopup(const GuiStyle * style, int32 width, int32 height){
     GuiContainer * result = guiAddContainer(NULL, style, guiContext->width/2 - width/2, guiContext->height/2 - height/2, width, height);
-    result->zIndex = 10;
+    result->zIndex = 10 + guiContext->popupCount;
     Color black;
     black.full = 0xA0000000;
     renderRect(0, 0, guiContext->width, guiContext->height, &black, result->zIndex-0.5f);
@@ -472,9 +472,11 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
     //fontScale = 1;
     char prevGlyph = 0;
     for(int i = 0; i < strlen(text); i++){
-        GlyphData * glyph = &platform->font.glyphs[text[i]];
+        GlyphData * glyph = &platform->font.glyphs[CAST(uint8, text[i])];
         ASSERT(glyph->valid);
-        
+        if(!glyph->valid){
+            continue;
+        }
         
         int32 positionX = startX + advance + (int32)((float32)glyph->marginX*fontScale);
         int32 positionY = startY + (int32)((float32)glyph->marginY*fontScale);

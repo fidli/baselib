@@ -240,7 +240,7 @@ int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int pt)
     float32 fontScale = (float32)targetSize / font->size;
     char prevGlyph = 0;
     for(int i = 0; i < strlen(text); i++){
-        const GlyphData * glyph = &font->glyphs[text[i]];
+        const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
         ASSERT(glyph->valid);
         //kerning?
         if(prevGlyph){

@@ -1,9 +1,19 @@
 #pragma once
 
+#include "util_time.h"
+#ifndef RELEASE
 #include "util_string.cpp"
 #include "util_io.cpp"
-#include "util_time.h"
+#else
+#include "math_macros.h"
+uint32 snprintf(char * target, nint limit, const char * format, ...);
+uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap);
+int printf(const char * format, ...);
 
+uint8 numlen(int64 number);
+float64 powd64(float64 base, int16 power);
+float32 powd(float32 base, int16 power);
+#endif
 //NOTE(AK):
 /*
 
