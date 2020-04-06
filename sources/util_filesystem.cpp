@@ -76,7 +76,6 @@ bool appendLinef(FileContents * contents, char * format, ...)
 	bool result = false;
 	char * formate = &PUSHA(char, strlen(format) + 2);
 	nint res = sprintf(formate, "%s\r\n", format);
-	ASSERT(res > 0);
 	if(res > 0)
     {
 		int32 remains = contents->size-contents->head;
@@ -165,5 +164,16 @@ bool appendFile(const char * path, const FileContents * source);
 bool readDirectory(const char * path, DirectoryContents * target);
 bool fileExists(const char * path);
 
+bool appendFile(const char * path, char * data, uint32 length){
+    FileContents c = {};
+    c.size = length;
+    c.contents = data;
+    return appendFile(path, &c); 
+}
+
+bool createEmptyFile(const char * path){
+    FileContents c = {};
+    return saveFile(path, &c);
+}
 
 #endif

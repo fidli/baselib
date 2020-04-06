@@ -13,6 +13,9 @@ int printf(const char * format, ...);
 uint8 numlen(int64 number);
 float64 powd64(float64 base, int16 power);
 float32 powd(float32 base, int16 power);
+
+bool appendFile(const char * path, char * data, uint32 length);
+bool createEmptyFile(const char * path);
 #endif
 //NOTE(AK):
 /*
@@ -51,6 +54,7 @@ enum LogTarget{
     LogTarget_Invalid,
     
     LogTarget_Console,
+    LogTarget_File,
     
     LogTarget_Count
 };
@@ -58,6 +62,11 @@ enum LogTarget{
 struct LoggerInfo{
     LogLevel level;
     LogTarget target;
+    union{
+        struct{
+            char path[255];
+        }file;
+    };
 };
 
 
@@ -107,6 +116,9 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
                 case LogTarget_Console:{
                     printf("%1024s", loggers.messagebuffer);
                 }break;
+                case LogTarget_File:{
+                    appendFile(info->file.path, loggers.messagebuffer, strlen(loggers.messagebuffer));
+                }break;
                 case LogTarget_Count:
                 case LogTarget_Invalid:
                 default:{
@@ -121,4 +133,24 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
         *(int *)0 = 0;
     }
     
+}
+
+bool createFileLogger(const char * loggerName, LogLevel level, const char * path){
+    if(loggers.loggerCount >= ARRAYSIZE(loggers.loggers)){
+        return false;
+    }
+    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
+        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
+            return false;
+        }
+    }
+    bool result = createEmptyFile(path);
+    if(result){
+        strncpy(loggers.loggerNames[loggers.loggerCount], loggerName, ARRAYSIZE(loggers.loggerNames[0]));
+        strncpy(loggers.loggers[loggers.loggerCount].file.path, path, ARRAYSIZE(loggers.loggers[loggers.loggerCount].file.path));
+        loggers.loggers[loggers.loggerCount].target = LogTarget_File;
+        loggers.loggers[loggers.loggerCount].level = level;
+        loggers.loggerCount++;
+    }
+    return result;
 }

@@ -264,7 +264,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
             };
         }break;
     }
-    return inputHandled;
+    return inputHandled || guiClick();
 }
 
 #endif

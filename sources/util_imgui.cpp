@@ -3,6 +3,7 @@
 
 #include "util_graphics.cpp"
 #include "util_font.cpp"
+#include "util_sort.cpp"
 
 struct GuiElementStyle{
     struct {
@@ -131,7 +132,9 @@ struct GuiContext{
         int32 elementIndex;
         int32 inputsRendered;
         bool activate;
-    } selection; 
+    } selection;
+    bool mouseInContainer;
+    bool escapeClick;
 };
 
 GuiContext * guiContext;
@@ -150,6 +153,9 @@ bool guiValid(const GuiId a){
 }
 
 void guiDeselectInput(){
+    if(guiValid(guiContext->activeInput) || guiValid(guiContext->activeDropdown)){
+        guiContext->escapeClick = true;
+    }
     guiContext->selection.elementIndex = -1;
     guiInvalidate(&guiContext->activeInput);
     guiInvalidate(&guiContext->activeDropdown);
@@ -204,6 +210,8 @@ bool guiInit(){
 	guiContext->popupCount = 0;
     guiDeselectInput();
     guiContext->selection.activate = false;
+    guiContext->mouseInContainer = false;
+    guiContext->escapeClick = false;
     return true;
 }
 
@@ -220,32 +228,6 @@ void guiBegin(int32 width, int32 height){
     guiContext->defaultContainer.defaultJustify = GuiJustify_Left;
     guiContext->addedContainersCount = 0;
     guiContext->selection.inputsRendered = 0;
-}
-
-static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex);
-void guiEnd(){
-    guiInput.mouse.buttons = {};
-    guiContext->lastHover = guiContext->currentHover;
-    for(int32 i = 0; i < guiContext->addedContainersCount; i++){
-        GuiContainer * container = guiContext->addedContainers[i];
-        int32 w = container->widthUsed;
-        int32 h = container->heightUsed;
-        if(container->bgWidth){
-            w = container->bgWidth;
-        }
-        if(container->bgHeight){
-            h = container->bgHeight;
-        }
-        renderRect(container->startX, container->startY, w, h, &container->elementStyle.bgColor, container->zIndex-0.5f);
-    }
-    if(guiContext->selection.isActive){
-        if(guiContext->selection.elementIndex >= guiContext->selection.inputsRendered){
-            guiContext->selection.elementIndex = 0;
-        }else if(guiContext->selection.elementIndex < 0){
-            guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1;
-        }
-        guiContext->selection.activate = false;
-    }
 }
 
 GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, int32 posX, int32 posY, int32 width = 0, int32 height = 0, const GuiElementStyle * overrideStyle = NULL){
@@ -295,13 +277,48 @@ GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, in
     return result;
 }
 
+static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex);
+void guiEnd(){
+    guiInput.mouse.buttons = {};
+    guiContext->lastHover = guiContext->currentHover;
+    guiContext->mouseInContainer = false;
+    guiContext->escapeClick = false;
+    if(guiContext->popupCount){
+        Color black;
+        black.full = 0xA0000000;
+        GuiElementStyle style;
+        style.bgColor = black;
+        GuiContainer * membrane = guiAddContainer(NULL, NULL, 0, 0, guiContext->width, guiContext->height, &style);
+        membrane->zIndex = 100;
+    }
+    insertSort(CAST(byte*, guiContext->addedContainers), sizeof(GuiContainer), guiContext->addedContainersCount, [](void * a, void * b) -> int8 { return CAST(GuiContainer *, a)->zIndex <= CAST(GuiContainer *, b)->zIndex; });
+    for(int32 i = 0; i < guiContext->addedContainersCount; i++){
+        GuiContainer * container = guiContext->addedContainers[i];
+        int32 w = container->widthUsed;
+        int32 h = container->heightUsed;
+        if(container->bgWidth){
+            w = container->bgWidth;
+        }
+        if(container->bgHeight){
+            h = container->bgHeight;
+        }
+        guiContext->mouseInContainer |= guiInput.mouse.x >= container->startX && guiInput.mouse.x < container->startX + w && guiInput.mouse.y >= container->startY && guiInput.mouse.y < container->startY + h;
+        renderRect(container->startX, container->startY, w, h, &container->elementStyle.bgColor, container->zIndex-0.5f);
+    } 
+    if(guiContext->selection.isActive){
+        if(guiContext->selection.elementIndex >= guiContext->selection.inputsRendered){
+            guiContext->selection.elementIndex = 0;
+        }else if(guiContext->selection.elementIndex < 0){
+            guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1;
+        }
+        guiContext->selection.activate = false;
+    }
+}
+
 bool guiIsActiveInput(){
     return guiValid(guiContext->activeInput);
 }
 
-bool guiClick(){
-    return guiValid(guiContext->currentHover);
-}
 
 void guiOpenPopup(const char * key){
 	ASSERT(guiContext->popupCount < ARRAYSIZE(guiContext->popups));
@@ -328,12 +345,20 @@ bool guiPopupBlocking(){
 	return guiAnyPopup() && guiContext->popupLocked;
 }
 
-GuiContainer * guiBeginPopup(const GuiStyle * style, int32 width, int32 height){
+bool guiClick(){
+    return guiValid(guiContext->currentHover) || guiPopupBlocking() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown)) || guiContext->escapeClick;
+}
+
+GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 width, int32 height){
+    int32 i = 0;
+	for(; i < guiContext->popupCount; i++){
+		if(!strncmp(key, guiContext->popups[i], 20)){
+            break;
+		}
+	}
+    ASSERT(i < guiContext->popupCount);
     GuiContainer * result = guiAddContainer(NULL, style, guiContext->width/2 - width/2, guiContext->height/2 - height/2, width, height);
-    result->zIndex = 10 + guiContext->popupCount;
-    Color black;
-    black.full = 0xA0000000;
-    renderRect(0, 0, guiContext->width, guiContext->height, &black, result->zIndex-0.5f);
+    result->zIndex = 100 + i + 1;
 	guiContext->popupLocked = false;
     return result;
 }
@@ -688,7 +713,7 @@ static bool renderButton(const AtlasFont * font, const char * text, const int32 
     
     const Color * textColor;
     const Color * bgColor;
-    if(isLastActive && isHoverNow){
+    if(isLastActive && isHoverNow && !guiContext->popupLocked){
         textColor = activeTextColor;
         bgColor = activeBgColor;
     }else{
