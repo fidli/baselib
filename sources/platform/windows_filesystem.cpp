@@ -151,4 +151,13 @@ bool moveFile(const char * oldPath, const char * newPath){
     return MoveFile(oldPath, newPath) != 0;
 }
 
+bool createDirectory(const char * path){
+    bool r = CreateDirectory(path, NULL);
+    if(!r){
+        r = GetLastError() == 183; // already exists
+        // TODO(fidli): some dirs do not exist on the way - create them before
+    }
+    return r;
+}
+
 #endif
