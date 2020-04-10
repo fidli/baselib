@@ -143,11 +143,12 @@ bool getFileChangeTime(const char * path, LocalTime * result){
     return false;
 }
 
+bool deleteFile(const char * path){
+    return DeleteFile(path) != 0;
+}
 
-
-
-
-
-
+bool moveFile(const char * oldPath, const char * newPath){
+    return MoveFile(oldPath, newPath) != 0;
+}
 
 #endif

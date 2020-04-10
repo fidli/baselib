@@ -34,11 +34,16 @@ struct GlyphData{
 
 struct AtlasFont{
     Image data;
-    int32 size;
-    int32 height;
+    int32 pixelSize;
+    int32 lineHeight;
+    int32 base;
     GlyphData glyphs[256];
 };
 
+int32 platformGetDpi();
+int32 ptToPx(float32 pt){
+    return CAST(int32, (pt * CAST(float32, platformGetDpi())) / 72.0f);
+}
 
 bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * descriptionXMLpath){
     
@@ -67,69 +72,104 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
     
     bool success = true;
     
-    if(strncmp("Font", font->name, 4)){
+    if(strncmp("font", font->name, 4)){
         INV;
         success = false;
     }else{
-        for(int32 a = 0; a < font->attributesCount && success; a++){
-            if(!strncmp("size", font->attributeNames[a], 4)){
-                if(!sscanf(font->attributeValues[a], "%d", &target->size)){
-                    INV;
-                    success = false;
-                    break;
-                }
-            }else if(!strncmp("height", font->attributeNames[a], 6)){
-                if(!sscanf(font->attributeValues[a], "%d", &target->height)){
-                    INV;
-                    success = false;
-                    break;
-                }
-            }
-        }
     }
     
     for(int32 i = 0; i < font->childrenCount && success; i++){
         XMLNode * ch = font->children[i];
-        if(!strncmp(ch->name, "Char", 4)){
-            char glyph;
-            GlyphData tmp = {};
-            for(int32 a = 0; a < ch->attributesCount; a++){
-                if(!strncmp("width", ch->attributeNames[a], 5)){
-                    if(!sscanf(ch->attributeValues[a], "%d", &tmp.width)){
+        if(!strncmp(ch->name, "info", 4)){
+            for(int32 a = 0; a < ch->attributesCount && success; a++){
+                if(!strncmp("size", ch->attributeNames[a], 4)){
+                    if(!sscanf(ch->attributeValues[a], "%d", &target->pixelSize)){
                         INV;
                         success = false;
                         break;
                     }
-                }else if(!strncmp("offset", ch->attributeNames[a], 6)){
-                    if(sscanf(ch->attributeValues[a], "%d %d", &tmp.marginX, &tmp.marginY) != 2){
-                        INV;
-                        success = false;
-                        break;
-                    }
-                }else if(!strncmp("rect", ch->attributeNames[a], 4)){
-                    if(sscanf(ch->attributeValues[a], "%d %d %d %d", &tmp.AABB.x, &tmp.AABB.y, &tmp.AABB.width, &tmp.AABB.height) != 4){
-                        INV;
-                        success = false;
-                        break;
-                    }
-                }else if(!strncmp("code", ch->attributeNames[a], 4)){
-                    
-                    if(!strncmp("&quot;", ch->attributeValues[a], 6)){
-                        glyph = '"';
-                    }else if(!strncmp("&amp;", ch->attributeValues[a], 5)){
-                        glyph = '&';
-                    }else if(!strncmp("&lt;", ch->attributeValues[a], 4)){
-                        glyph = '<';
-                    }else if(!snscanf(ch->attributeValues[a], 1, "%c", &glyph)){
-                        INV;
-                        success = false;
-                        break;
-                    }
-                    tmp.glyph = glyph;
                 }
             }
-            tmp.valid = true;
-            target->glyphs[glyph] = tmp;
+        }else if(!strncmp(ch->name, "common", 6)){
+            for(int32 a = 0; a < ch->attributesCount && success; a++){
+                if(!strncmp("lineHeight", ch->attributeNames[a], 6)){
+                    if(!sscanf(ch->attributeValues[a], "%d", &target->lineHeight)){
+                        INV;
+                        success = false;
+                        break;
+                    }
+                }
+                if(!strncmp("base", ch->attributeNames[a], 6)){
+                    if(!sscanf(ch->attributeValues[a], "%d", &target->base)){
+                        INV;
+                        success = false;
+                        break;
+                    }
+                }
+            }
+        }else if(!strncmp(ch->name, "char", 4)){
+            for(int32 j = 0; j < ch->childrenCount && success; j++){
+                XMLNode * chr = ch->children[j];
+                char glyph;
+                GlyphData tmp = {};
+                for(int32 a = 0; a < chr->attributesCount; a++){
+                    if(!strncmp("width", chr->attributeNames[a], 5)){
+                        if(!sscanf(chr->attributeValues[a], "%d", &tmp.AABB.width)){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("xoffset", chr->attributeNames[a], 7)){
+                        if(sscanf(chr->attributeValues[a], "%d", &tmp.marginX) != 1){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("yoffset", chr->attributeNames[a], 7)){
+                        if(sscanf(chr->attributeValues[a], "%d", &tmp.marginY) != 1){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("xadvance", chr->attributeNames[a], 8)){
+                        if(sscanf(chr->attributeValues[a], "%d", &tmp.width) != 1){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("x", chr->attributeNames[a], 1)){
+                        if(sscanf(chr->attributeValues[a], "%d", &tmp.AABB.x) != 1){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("y", chr->attributeNames[a], 1)){
+                        if(sscanf(chr->attributeValues[a], "%d", &tmp.AABB.y) != 1){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("height", chr->attributeNames[a], 6)){
+                        if(sscanf(chr->attributeValues[a], "%d", &tmp.AABB.height) != 1){
+                            INV;
+                            success = false;
+                            break;
+                        }
+                    }else if(!strncmp("id", chr->attributeNames[a], 2)){
+                        if(sscanf(chr->attributeValues[a], "%hhu", &glyph)){
+                            tmp.glyph = glyph;
+                        }else{
+                            success = false;
+                            break;
+                            INV;
+                        }
+                    }
+                }
+                tmp.valid = true;
+                ASSERT(tmp.AABB.width != 0);
+                ASSERT(tmp.AABB.height != 0);
+                target->glyphs[glyph] = tmp;
+            /*
             for(int32 k = 0; k < ch->childrenCount; k++){
                 XMLNode * kerningChild = ch->children[k];
                 char against = 0;
@@ -152,6 +192,7 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                 ASSERT(against != 0);
                 ASSERT(advance != 0);
                 tmp.kerning[against] = advance;
+            }*/
             }
         }
     }
@@ -236,8 +277,8 @@ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * as
 
 int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int pt){
     int32 width = 0;
-    int32 targetSize = pt;
-    float32 fontScale = (float32)targetSize / font->size;
+    int32 targetSize = ptToPx(CAST(float32, pt));
+    float32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
     for(int i = 0; i < strlen(text); i++){
         const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];

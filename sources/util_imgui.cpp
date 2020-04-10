@@ -119,6 +119,12 @@ struct GuiContext{
 	char popups[10][20];
 	int32 popupCount;
 	bool popupLocked;
+
+    char messagePopups[10][20];
+    int32 messagePopupCount;
+    char messagePopupTitles[10][50];
+    char messagePopupMessages[10][255];
+    GuiStyle * messagePopupStyles[10];
     
     GuiContainer defaultContainer;
     int32 width;
@@ -277,43 +283,6 @@ GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, in
     return result;
 }
 
-static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex);
-void guiEnd(){
-    guiInput.mouse.buttons = {};
-    guiContext->lastHover = guiContext->currentHover;
-    guiContext->mouseInContainer = false;
-    guiContext->escapeClick = false;
-    if(guiContext->popupCount){
-        Color black;
-        black.full = 0xA0000000;
-        GuiElementStyle style;
-        style.bgColor = black;
-        GuiContainer * membrane = guiAddContainer(NULL, NULL, 0, 0, guiContext->width, guiContext->height, &style);
-        membrane->zIndex = 100;
-    }
-    insertSort(CAST(byte*, guiContext->addedContainers), sizeof(GuiContainer), guiContext->addedContainersCount, [](void * a, void * b) -> int8 { return CAST(GuiContainer *, a)->zIndex <= CAST(GuiContainer *, b)->zIndex; });
-    for(int32 i = 0; i < guiContext->addedContainersCount; i++){
-        GuiContainer * container = guiContext->addedContainers[i];
-        int32 w = container->widthUsed;
-        int32 h = container->heightUsed;
-        if(container->bgWidth){
-            w = container->bgWidth;
-        }
-        if(container->bgHeight){
-            h = container->bgHeight;
-        }
-        guiContext->mouseInContainer |= guiInput.mouse.x >= container->startX && guiInput.mouse.x < container->startX + w && guiInput.mouse.y >= container->startY && guiInput.mouse.y < container->startY + h;
-        renderRect(container->startX, container->startY, w, h, &container->elementStyle.bgColor, container->zIndex-0.5f);
-    } 
-    if(guiContext->selection.isActive){
-        if(guiContext->selection.elementIndex >= guiContext->selection.inputsRendered){
-            guiContext->selection.elementIndex = 0;
-        }else if(guiContext->selection.elementIndex < 0){
-            guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1;
-        }
-        guiContext->selection.activate = false;
-    }
-}
 
 bool guiIsActiveInput(){
     return guiValid(guiContext->activeInput);
@@ -327,6 +296,7 @@ void guiOpenPopup(const char * key){
     guiDeselectInput();
     guiContext->selection.inputsRendered = 0;
 }
+
 
 bool guiIsPopupOpened(const char * key){
 	for(int32 i = 0; i < guiContext->popupCount; i++){
@@ -367,19 +337,26 @@ void guiEndPopup(){
 	guiContext->popupLocked = true;
 }
 
-bool guiClosePopup(const char * key){
+bool guiClosePopup(const char * key = NULL){
 	if(guiContext->popupCount > 0){
         if(key != NULL){
             if(!strncmp(key, guiContext->popups[guiContext->popupCount-1], 20)){
                 guiContext->popupCount--;
                 guiDeselectInput();
                 guiContext->selection.inputsRendered = 0;
+                if(guiContext->messagePopupCount > 0){
+                    ASSERT(!strncmp(key, guiContext->messagePopupTitles[guiContext->messagePopupCount-1], 20));
+                    guiContext->messagePopupCount--;
+                }
                 return true;
             }
         }else{
                 guiDeselectInput();
                 guiContext->selection.inputsRendered = 0;
                 guiContext->popupCount--;
+                if(guiContext->messagePopupCount > 0){
+                    guiContext->messagePopupCount--;
+                }
                 return true;
         }
 	}
@@ -426,7 +403,7 @@ static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle 
         justify = (*container)->defaultJustify;
     }
     int32 textWidth = MAX(calculateAtlasTextWidth(&style->font, text, style->pt), elementStyle->minWidth);
-    int32 textHeight = MAX(style->font.height*style->pt/style->font.size, elementStyle->minHeight);
+    int32 textHeight = MAX(CAST(int32, style->font.lineHeight*ptToPx(CAST(float32, style->pt))/style->font.pixelSize), elementStyle->minHeight);
     int32 startX = (*container)->cursor[justify].x;
     int32 startY = (*container)->cursor[justify].y;
     int32 advanceX = textWidth + elementStyle->margin.r + elementStyle->margin.l + elementStyle->padding.l + elementStyle->padding.r;
@@ -492,9 +469,8 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
     int32 advance = 0;
     float32 resScaleY = 1.0f / (guiContext->height);
     float32 resScaleX = 1.0f / (guiContext->width);
-    int32 targetSize = pt;
-    float32 fontScale = (float32)targetSize / platform->font.size;
-    //fontScale = 1;
+    int32 targetSize = ptToPx(CAST(float32, pt));
+    float32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
     for(int i = 0; i < strlen(text); i++){
         GlyphData * glyph = &platform->font.glyphs[CAST(uint8, text[i])];
@@ -539,7 +515,7 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
 }
 
 bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX, int centerY, int pt, const Color * color, int32 zOffset = 0){
-    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - font->height*pt/(2*font->size), pt, color, zOffset);
+    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - CAST(int32, ((CAST(float32, ptToPx(CAST(float32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, color, zOffset);
 }
 
 static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
@@ -946,6 +922,68 @@ bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * 
     return renderDropdown(&style->font, searchtext, fullList, listSize, resultIndex, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->bgColor, container->zIndex);
 }
 
-#endif
+void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * message){
+    guiOpenPopup(title);
+    
+	ASSERT(guiContext->messagePopupCount < ARRAYSIZE(guiContext->messagePopups));
+	strncpy(guiContext->messagePopupTitles[guiContext->messagePopupCount], title, 50);
+	strncpy(guiContext->messagePopupMessages[guiContext->messagePopupCount], message, 255);
+	guiContext->messagePopupStyles[guiContext->messagePopupCount] = style;
+    guiContext->messagePopupCount++;
+}
 
+void guiEnd(){
+    // messages
+    bool close = false;
+    for(int32 i = 0; i < guiContext->messagePopupCount; i++){
+        if(guiIsPopupOpened(guiContext->messagePopupTitles[i])){
+            GuiStyle * style = guiContext->messagePopupStyles[i];
+            GuiContainer * popupContainer = guiBeginPopup(guiContext->messagePopupTitles[i], style, 500, 200);
+                
+            guiRenderBoxText(popupContainer, style, guiContext->messagePopupTitles[i], NULL, GuiJustify_Middle);
+            guiEndline(popupContainer, style);
+            guiRenderBoxText(popupContainer, style, guiContext->messagePopupMessages[i], NULL, GuiJustify_Middle);
+            guiEndline(popupContainer, style);
+            if(guiRenderButton(popupContainer, style, "Ok :(", NULL, NULL, GuiJustify_Middle)){
+                guiClosePopup();
+            }
+            guiEndPopup();
+        }
+    }
+    guiInput.mouse.buttons = {};
+    guiContext->lastHover = guiContext->currentHover;
+    guiContext->mouseInContainer = false;
+    guiContext->escapeClick = false;
+    if(guiContext->popupCount){
+        Color black;
+        black.full = 0xA0000000;
+        GuiElementStyle style;
+        style.bgColor = black;
+        GuiContainer * membrane = guiAddContainer(NULL, NULL, 0, 0, guiContext->width, guiContext->height, &style);
+        membrane->zIndex = 100;
+    }
+    insertSort(CAST(byte*, guiContext->addedContainers), sizeof(GuiContainer), guiContext->addedContainersCount, [](void * a, void * b) -> int8 { return CAST(GuiContainer *, a)->zIndex <= CAST(GuiContainer *, b)->zIndex; });
+    for(int32 i = 0; i < guiContext->addedContainersCount; i++){
+        GuiContainer * container = guiContext->addedContainers[i];
+        int32 w = container->widthUsed;
+        int32 h = container->heightUsed;
+        if(container->bgWidth){
+            w = container->bgWidth;
+        }
+        if(container->bgHeight){
+            h = container->bgHeight;
+        }
+        guiContext->mouseInContainer |= guiInput.mouse.x >= container->startX && guiInput.mouse.x < container->startX + w && guiInput.mouse.y >= container->startY && guiInput.mouse.y < container->startY + h;
+        renderRect(container->startX, container->startY, w, h, &container->elementStyle.bgColor, container->zIndex-0.5f);
+    } 
+    if(guiContext->selection.isActive){
+        if(guiContext->selection.elementIndex >= guiContext->selection.inputsRendered){
+            guiContext->selection.elementIndex = 0;
+        }else if(guiContext->selection.elementIndex < 0){
+            guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1;
+        }
+        guiContext->selection.activate = false;
+    }
+}
+#endif
 
