@@ -311,12 +311,12 @@ bool guiAnyPopup(){
 	return guiContext->popupCount > 0;
 }
 
-bool guiPopupBlocking(){
-	return guiAnyPopup() && guiContext->popupLocked;
+bool guiPopupRendering(){
+	return guiAnyPopup() && !guiContext->popupLocked;
 }
 
 bool guiClick(){
-    return guiValid(guiContext->currentHover) || guiPopupBlocking() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown)) || guiContext->escapeClick;
+    return guiValid(guiContext->currentHover) || guiPopupRendering() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown)) || guiContext->escapeClick;
 }
 
 GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 width, int32 height){
@@ -634,7 +634,7 @@ static bool renderInput(const AtlasFont * font, char * text, const char * charli
     renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, inputTextColor, zIndex);
     
     //do something at all
-	if(!guiPopupBlocking() && guiEq(guiContext->activeInput, id)){
+	if(guiEq(guiContext->activeInput, id)){
         //is time to flip
         if(guiContext->activeInputTimeAccumulator > CARET_TICK){
             guiContext->activeInputTimeAccumulator -= CARET_TICK;
@@ -673,10 +673,11 @@ static bool renderButton(const AtlasFont * font, const char * text, const int32 
     }
     
     bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
-    
+    bool isBlockedByPopup = guiAnyPopup() & guiContext->popupLocked;
+
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
-			if(!guiPopupBlocking() && isHoverBeforeAndNow) result = true;
+			if(!isBlockedByPopup && isHoverBeforeAndNow) result = true;
             guiInvalidate(&guiContext->lastActive);
         }
     }else if(isHoverBeforeAndNow){
@@ -689,7 +690,7 @@ static bool renderButton(const AtlasFont * font, const char * text, const int32 
     
     const Color * textColor;
     const Color * bgColor;
-    if(isLastActive && isHoverNow && !guiContext->popupLocked){
+    if(isLastActive && isHoverNow && !isBlockedByPopup){
         textColor = activeTextColor;
         bgColor = activeBgColor;
     }else{
@@ -725,11 +726,12 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
             }
         }
         bool isHeadHoverBeforeAndNow = isHeadHoverNow && guiEq(headId, guiContext->lastHover);
+        bool isBlockedByPopup = guiAnyPopup() & guiContext->popupLocked;
         
         
         if(isHeadLastActive){
             if(guiInput.mouse.buttons.leftUp){
-				if(!guiPopupBlocking() && isHeadHoverBeforeAndNow){
+				if(!isBlockedByPopup && isHeadHoverBeforeAndNow){
                     guiContext->activeDropdown = headId;
                 }
                 guiInvalidate(&guiContext->lastActive);
@@ -779,10 +781,11 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
                     }
                 }
                 bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
-                
+                bool isBlockedByPopup = guiAnyPopup() & guiContext->popupLocked;
+
                 if(isLastActive){
                     if(guiInput.mouse.buttons.leftUp){
-						if(!guiPopupBlocking() && isHoverBeforeAndNow) result = true;
+						if(!isBlockedByPopup && isHoverBeforeAndNow) result = true;
                         guiInvalidate(&guiContext->lastActive);
                         guiContext->activeDropdown = headId;
                     }
