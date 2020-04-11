@@ -61,6 +61,33 @@ bool getNextLine(FileContents * contents, char * line, uint32 linelen)
     return false;
 }
 
+bool ungetLine(FileContents * contents){
+    if(contents->head == 0){
+        return false;
+    }
+    if(contents->contents[contents->head-1] == '\n'){
+        contents->head--;
+    }
+    if(contents->head == 0){
+        return true;
+    }
+    if(contents->contents[contents->head-1] == '\r'){
+        contents->head--;
+    }
+    if(contents->head == 0){
+        return true;
+    }
+    int64 newHead = contents->head;
+    while(newHead > 0 && contents->contents[newHead] != '\n'){
+        newHead--;
+    }
+    if(newHead != 0){
+       newHead++;
+    }
+    contents->head = newHead;
+    return true;
+}
+
 bool appendLine(FileContents * contents, char * line)
 {
 	int32 remains = contents->size-contents->head;

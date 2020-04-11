@@ -76,7 +76,7 @@ const char * strstr(const char * data, const char * searchFor){
         return NULL;
     }
     // TODO(fidli): more efficient way?
-    for(int32 i = 0; i < dataLen - searchLen; i++){
+    for(int32 i = 0; i <= dataLen - searchLen; i++){
         if(!strncmp(data + i, searchFor, searchLen)){
             return data + i;
         }
