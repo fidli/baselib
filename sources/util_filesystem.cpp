@@ -190,6 +190,8 @@ bool saveFile(const char * path, const FileContents * source);
 bool appendFile(const char * path, const FileContents * source);
 bool readDirectory(const char * path, DirectoryContents * target);
 bool fileExists(const char * path);
+bool pathExists(const char * path);
+bool dirExists(const char * path);
 bool deleteFile(const char * path);
 bool moveFile(const char * oldPath, const char * newPath);
 bool createDirectory(const char *path);

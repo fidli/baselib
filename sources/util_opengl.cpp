@@ -1,9 +1,6 @@
 #ifndef OPENGL_CPP
 #define OPENGL_CPP
 
-#include "glew\include\GL\glew.h"
-#include <gl\gl.h>
-
 bool loadAndCompileShaders(const char * vertexShaderPath, const char * fragmentShaderPath, GLint * vertexShader, GLint * fragmentShader, GLint * program){
     
     FileContents vertexContents = {};

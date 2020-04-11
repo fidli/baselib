@@ -24,11 +24,12 @@
 #define SWAP(a, b) { auto tmp = a; a = b; b = a;}
 
 #ifdef RELEASE
+#pragma message("RELEASE MODE")
 #include "util_log.cpp"
-#define ASSERT(expression) if(!(expression)) {LOGE(default, common, "ASSERT failed on line %d file %s\n", __LINE__, __FILE__);}
+#define ASSERT(expression) if(!(expression)) {LOGE(default, assertion, "ASSERT failed on %u in file %s", __LINE__, __FILE__);}
 #else
 #ifndef ASSERT
-#define ASSERT(expression) if(!(expression)) {/*LOGE(default, common, "ASSERT failed on line %d file %s\n", __LINE__, __FILE__);*/*(int *)0 = 0;}
+#define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
 #endif
 #endif
 

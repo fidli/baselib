@@ -3,8 +3,6 @@
 
 #include "util_filesystem.cpp"
 
-
-
 struct FileHandle{
     HANDLE handle;
 };
@@ -37,6 +35,16 @@ bool readFile(const char * path, FileContents * target){
 bool fileExists(const char * path){
     DWORD res = GetFileAttributes(path); 
     return res != INVALID_FILE_ATTRIBUTES && !(res & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+bool pathExists(const char * path){
+    DWORD res = GetFileAttributes(path); 
+    return res != INVALID_FILE_ATTRIBUTES;
+}
+
+bool dirExists(const char * path){
+    DWORD res = GetFileAttributes(path); 
+    return res != INVALID_FILE_ATTRIBUTES && (res & FILE_ATTRIBUTE_DIRECTORY);
 }
 
 bool writeFile(FileHandle * target, const FileContents * source){

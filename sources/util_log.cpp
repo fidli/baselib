@@ -45,9 +45,9 @@ LOGW(console, render, "Rendered only part of text '%s', canvas is too small", te
 */
 
 enum LogLevel{
-    LogLevel_Error = (int)'E',
-    LogLevel_Warning = (int)'W',
-    LogLevel_Notice = (int)'N'
+    LogLevel_Error,
+    LogLevel_Warning,
+    LogLevel_Notice
 };
 
 enum LogTarget{
@@ -87,12 +87,14 @@ static Loggers loggers;
 #define LOGW(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Warning, STRINGIFY(resourceName), (message), __VA_ARGS__);
 #define LOG(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Notice, STRINGIFY(resourceName), (message), __VA_ARGS__);
 
+char map[3] = {'E', 'W', 'N'};
+
 void log(char * loggerName, LogLevel level, char * resourceName, char * format, ...){
     va_list ap;    
     va_start(ap, format);
     char format2[] = "[%02hu.%02hu.%04hu %02hu:%02hu:%02hu][%s][%c] %s\r\n";
     loggers.lt = getLocalTime();
-    snprintf(loggers.formatbuffer, ARRAYSIZE(loggers.formatbuffer), format2, loggers.lt.day, loggers.lt.month, loggers.lt.year, loggers.lt.hour, loggers.lt.minute, loggers.lt.second, resourceName, (char) level, format);
+    snprintf(loggers.formatbuffer, ARRAYSIZE(loggers.formatbuffer), format2, loggers.lt.day, loggers.lt.month, loggers.lt.year, loggers.lt.hour, loggers.lt.minute, loggers.lt.second, resourceName, map[CAST(int32, level)], format);
 #if CRT_PRESENT
     vsnprintf(loggers.messagebuffer, ARRAYSIZE(loggers.messagebuffer), loggers.formatbuffer, ap);
 #else
@@ -111,7 +113,7 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
         printf("%1024s", loggers.messagebuffer);
         return;
     }else if(info){
-        if(info->level <= level){
+        if(info->level >= level){
             switch(info->target){
                 case LogTarget_Console:{
                     printf("%1024s", loggers.messagebuffer);
@@ -122,15 +124,19 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
                 case LogTarget_Count:
                 case LogTarget_Invalid:
                 default:{
+#ifndef RELEASE
                     //ASSERT
                     *(int *)0 = 0;
+#endif
                 }break;
             }
         }
     }else{
 		// NOTE(fidli): logger with name loggerName not found
-        // ASSERT
+#ifndef RELEASE
+        //ASSERT
         *(int *)0 = 0;
+#endif
     }
     
 }

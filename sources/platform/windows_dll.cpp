@@ -5,7 +5,7 @@
 
 #define DEFINEDLLFUNC(RP,NM, ...) \
 typedef RP(CALLBACK * NM##FuncType)(__VA_ARGS__); \
-static NM##FuncType NM = NULL;
+NM##FuncType NM;
 
 #define OBTAINDLLFUNC(HNDL, FNC) \
 FNC = (FNC##FuncType) GetProcAddress(HNDL, #FNC)
