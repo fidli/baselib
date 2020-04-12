@@ -332,8 +332,13 @@ enum FormatType{
 };
 
 struct FormatInfo{
-    bool dryRun;
-    uint32 maxlen;
+    struct {
+        bool dryRun;
+    } scan;
+    struct {
+        bool varLen;
+    } print;
+    uint32 width;
     FormatType type;
     FormatTypeSize typeLength;
     union{
@@ -361,6 +366,7 @@ struct FormatInfo{
     uint32 length;
     bool padding0;
     bool forceSign;
+    bool leftJustify;
 };
 
 
@@ -388,14 +394,17 @@ static FormatInfo parseFormat(const char * format){
             info.length = formatIndex;
             return info;
         }
-        info.dryRun = false;
-        info.maxlen = -1;
+        info.scan.dryRun = false;
+        info.print.varLen = false;
+        info.width = -1;
         info.typeLength = FormatTypeSize_Default;
         info.padding0 = false;
-        while(format[formatIndex] == '*' || format[formatIndex] == '+' || format[formatIndex] == '0'){
+        info.leftJustify = false;
+        while(format[formatIndex] == '*' || format[formatIndex] == '+' || format[formatIndex] == '0' || format[formatIndex] == '-'){
             
             if(format[formatIndex] == '*'){
-                info.dryRun = true;
+                info.scan.dryRun = true;
+                info.print.varLen = true;
             }
             if(format[formatIndex] == '+'){
                 info.forceSign = true;
@@ -403,10 +412,13 @@ static FormatInfo parseFormat(const char * format){
             if(format[formatIndex] == '0'){
                 info.padding0 = true;
             }
+            if(format[formatIndex] == '-'){
+                info.leftJustify = true;
+            }
             formatIndex++;
         }
         if(isDigit19(format[formatIndex])){
-            formatIndex += scanUnumber(&format[formatIndex], &info.maxlen);
+            formatIndex += scanUnumber(&format[formatIndex], &info.width);
         }
         
         if(format[formatIndex] == 'h'){
@@ -435,7 +447,7 @@ static FormatInfo parseFormat(const char * format){
             formatIndex++;
         }else if(format[formatIndex] == 'c'){
             info.type = FormatType_c;
-            info.maxlen = 1;
+            info.width = 1;
             formatIndex++;
         }else if(format[formatIndex] == 's'){
             info.type = FormatType_s;
@@ -520,7 +532,7 @@ static FormatInfo parseFormat(const char * format){
             }
             info.real.defaultPrecision = !setPrecision;
         }else{
-            INV; //implement me or genuine errer
+            //INV; //implement me or genuine errer
         } 
         
     }else{
@@ -538,7 +550,15 @@ static FormatInfo parseFormat(const char * format){
     
     return info;
 }
+
 //returns printed characters
+int32 printPrepend(char * target, char value, int32 len){
+    if(len > 0){
+        memset(target, value, len);
+        return len;
+    }
+    return 0;
+}
 uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap){
     
     
@@ -548,135 +568,53 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
 	uint32 successfullyPrinted = 0; //printed entities
     while((info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
         formatOffset += info.length;
-        
+        if(info.print.varLen){
+            int32 len = va_arg(ap, int32);
+            info.width = len;
+        }
+        uint32 previousTargetIndex = targetIndex;
         switch(info.type){
             case FormatType_c:
             case FormatType_s:{
                 char * source;
+                int32 toPrint = info.width;
                 if(info.type == FormatType_c){
+                    toPrint = 1;
                     source = &va_arg(ap, char);
                 }else{
                     source = va_arg(ap, char*);
-                }
-                //set proper max length to avoid buffer overflow
-                ASSERT(info.maxlen != 0); 
-                uint32 i = 0;
-                for(; targetIndex + i < maxprint && i < info.maxlen && source[i] != '\0'; i++){
-                    if(!info.dryRun){
-                        target[targetIndex + i] = source[i];
+                    if(!info.leftJustify){
+                        toPrint = strlen(source);
                     }
                 }
-                if(!info.dryRun){
-                    targetIndex += i;
+                if(!info.leftJustify){
+                    targetIndex += printPrepend(target + targetIndex, ' ', info.width - toPrint);
                 }
+                //set proper max length to avoid buffer overflow
+                uint32 i = 0;
+                for(; targetIndex + i < maxprint && i < toPrint && source[i] != '\0'; i++){
+                    target[targetIndex + i] = source[i];
+                }
+                targetIndex += i;
                 successfullyPrinted++;
             }break;
             case FormatType_d:
             case FormatType_u:{
-                ASSERT(!info.dryRun);
+                uint64 absValue;
+                bool negative = false;
                 if(info.type == FormatType_u){
                     if(info.typeLength == FormatTypeSize_Default){
                         uint32 source = va_arg(ap, uint32);
-                        uint8 maxDigits = 10;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
-                        }
-                        
-                        if(info.forceSign && source != 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);;
-                        successfullyPrinted++;
+                        absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
                         uint16 source = va_arg(ap, uint16);
-                        uint8 maxDigits = 5;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
-                        }
-                        if(info.forceSign && source != 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);
-                        successfullyPrinted++;
+                        absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
                         uint8 source = va_arg(ap, uint8);
-                        uint8 maxDigits = 3;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
-                        }
-                        if(info.forceSign && source != 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);
-                        successfullyPrinted++;
+                        absValue = source;
                     }else if(info.typeLength == FormatTypeSize_ll){
                         uint64 source = va_arg(ap, uint64);
-                        uint8 maxDigits = 20;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
-                        }
-                        
-                        if(info.forceSign && source != 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);
-                        successfullyPrinted++;
+                        absValue = source;
                     }else{
                         INV; //implement me or genuine error
                         return -1;
@@ -684,123 +622,67 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 }else if(info.type == FormatType_d){
                     if(info.typeLength == FormatTypeSize_Default){
                         int32 source = va_arg(ap, int32);
-                        uint8 maxDigits = 10;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
+                        if(source < 0){
+                            source *= -1;
+                            negative = true;
                         }
-                        if(info.forceSign && source > 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);
-                        successfullyPrinted++;
+                        absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
                         int16 source = va_arg(ap, int16);
-                        uint8 maxDigits = 5;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
+                        if(source < 0){
+                            source *= -1;
+                            negative = true;
                         }
-                        if(info.forceSign && source > 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);
-                        successfullyPrinted++;
+                        absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        int16 source = va_arg(ap, int8);
-                        uint8 maxDigits = 3;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
+                        int8 source = va_arg(ap, int8);
+                        if(source < 0){
+                            source *= -1;
+                            negative = true;
                         }
-                        if(info.forceSign && source > 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);
-                        successfullyPrinted++;
+                        absValue = source;
                     }else if(info.typeLength == FormatTypeSize_ll){
                         int64 source = va_arg(ap, int64);
-                        uint8 maxDigits = 20;
-                        int8 prepend = 0;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
-                            prepend = info.maxlen;
+                        if(source < 0){
+                            source *= -1;
+                            negative = true;
                         }
-                        if(info.forceSign && source > 0){
-                            target[targetIndex++] = '+';
-                            prepend--;
-                        }
-                        uint8 digitsWouldBePrinted = numlen(source);
-                        prepend -= digitsWouldBePrinted;
-                        if(info.padding0){
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = '0';
-                            }
-                        }else{
-                            for(int8 pi = 0; pi < prepend; pi++){
-                                target[targetIndex++] = ' ';
-                            }
-                        }
-                        targetIndex += printDigits(target + targetIndex, source);
-                        successfullyPrinted++;
+                        absValue = source;
                     }else{
                         INV; //implement me or genuine error
                         return -1;
                     }
                 }
+                
+                if(!info.leftJustify || info.padding0){
+                    int8 prependLen = info.width - numlen(absValue);
+                    if(info.forceSign || negative){
+                        prependLen--;
+                    }
+                    if(info.padding0){
+                        targetIndex += printPrepend(target + targetIndex, '0', prependLen);
+                    }else{
+                        targetIndex += printPrepend(target + targetIndex, ' ', prependLen);
+                    }
+                }
+                if(info.forceSign && !negative){
+                    target[targetIndex++] = '+';
+                }else if(negative){
+                    target[targetIndex++] = '-';
+                }
+                targetIndex += printDigits(target + targetIndex, absValue);
+                successfullyPrinted++;
             }break;
             case FormatType_charlist:{
                 ASSERT(!"doesnt make sense, maybe is immediate?");
                 return -1;
             }break;
             case FormatType_immediate:{
-                if(!info.dryRun){
-                    uint32 i = 0;
-                    for(;i < info.immediate.length; i++){
-                        target[targetIndex + i] = info.immediate.start[i];
-                    }
-                    targetIndex += i;
+                uint32 i = 0;
+                for(;i < info.immediate.length; i++){
+                    target[targetIndex + i] = info.immediate.start[i];
                 }
-                
+                targetIndex += i;
                 //successfullyPrinted++;
             }break;
             case FormatType_f:{
@@ -809,29 +691,28 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 float64 source = (float64)va_arg(ap, float64);
                 int64 wholePart = (int64) source;
                 
-                int64 slots = info.maxlen;
                 uint8 numlength = numlen(ABS(wholePart));
+                bool negative = source < 0;
                 
-                if(numlength + info.real.precision + 1 <= slots){
-                    if(info.forceSign && source >= 0){
+                if(numlength + info.real.precision + 1 <= info.width){
+                    if(!info.leftJustify || info.padding0){
+                        int8 prependLen = info.width - numlength;
+                        if(info.forceSign || negative){
+                            prependLen--;
+                        }
+                        if(info.padding0){
+                            targetIndex += printPrepend(target + targetIndex, '0', prependLen);
+                        }else{
+                            targetIndex += printPrepend(target + targetIndex, ' ', prependLen);
+                        }
+                    }
+                    if(info.forceSign && !negative){
                         target[targetIndex] = '+';
                         targetIndex++;
-                    }
-                    if(source < 0){
+                    }else if(negative){
                         target[targetIndex] = '-';
                         targetIndex++;
                     }
-                    
-                    int8 prependLen = slots - 1 - info.real.precision - numlength;
-                    
-                    for(int8 i = 0; i < prependLen; i++){
-                        if(info.padding0){
-                            target[targetIndex++] = '0';
-                        }else{
-                            target[targetIndex++] = ' ';
-                        }
-                    }
-                    
                     targetIndex += printDigits(target + targetIndex, ABS(wholePart));
                     
                     target[targetIndex] = delim;
@@ -840,7 +721,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                     uint8 precision = info.real.precision;
                     
                     int64 decimalPart = ABS((int64)((source - wholePart) * powd64(10, precision)));
-                    prependLen = precision - numlen(decimalPart);
+                    int32 prependLen = precision - numlen(decimalPart);
                     for(int i = 0; i < prependLen; i++){
                         target[targetIndex] = '0';
                         targetIndex++;
@@ -854,6 +735,12 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 INV; //implement me or genuine errer
                 return -1;
             }break;
+        }
+        uint32 printedCharacters = targetIndex - previousTargetIndex;  
+        if((info.leftJustify && info.width != (uint32)-1) && printedCharacters < info.width){
+            for(int32 i = 0; i < info.width - printedCharacters; i++){
+                target[targetIndex++] = ' ';
+            }
         }
     }
     
@@ -881,51 +768,51 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
             case FormatType_s:{
                 char * targetVar = va_arg(ap, char *);
                 //set proper max length to avoid buffer overflow
-                ASSERT(info.maxlen != 0); 
+                ASSERT(info.width != 0); 
                 bool first = true;
                 uint32 i = 0;
-                for(; sourceIndex < maxread && i < info.maxlen; sourceIndex++, i++){
+                for(; sourceIndex < maxread && i < info.width; sourceIndex++, i++){
                     if(first) first = false;
-                    if(!info.dryRun)
+                    if(!info.scan.dryRun)
                         *(targetVar+i) = source[sourceIndex];
                     
                 }
                 if(!first)
                     successfullyScanned++;
                 if(info.type == FormatType_s)
-                    if(!info.dryRun)
+                    if(!info.scan.dryRun)
                     targetVar[i] = '\0';
             }break;
             case FormatType_d:
             case FormatType_u:{
-                ASSERT(!info.dryRun);
+                ASSERT(!info.scan.dryRun);
                 if(info.type == FormatType_u){
                     if(info.typeLength == FormatTypeSize_Default){
                         uint32 * targetVar = va_arg(ap, uint32 * );
                         uint8 maxDigits = 10;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanUnumber(source + sourceIndex, (uint32 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_h){
                         uint16 * targetVar = va_arg(ap, uint16 * );
                         uint8 maxDigits = 5;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanUnumber16(source + sourceIndex, (uint16 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_ll){
                         uint64 * targetVar = va_arg(ap, uint64 * );
                         uint8 maxDigits = 20;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanUnumber64(source + sourceIndex, (uint64 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_hh){
                         uint8 * targetVar = va_arg(ap, uint8 * );
                         uint8 maxDigits = 3;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanUnumber8(source + sourceIndex, (uint8 *) targetVar, maxDigits);
                     }
@@ -936,29 +823,29 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                     if(info.typeLength == FormatTypeSize_Default){
                         int32 * targetVar = va_arg(ap, int32 * );
                         uint8 maxDigits = 11;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanNumber(source + sourceIndex, (int32 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_h){
                         int16 * targetVar = va_arg(ap, int16 * );
                         uint8 maxDigits = 6;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanNumber16(source + sourceIndex, (int16 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_ll){
                         int64 * targetVar = va_arg(ap, int64 * );
                         uint8 maxDigits = 20;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanNumber64(source + sourceIndex, (int64 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_hh){
                         int8 * targetVar = va_arg(ap, int8 * );
                         uint8 maxDigits = 3;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         scannedChars = scanNumber8(source + sourceIndex, (int8 *) targetVar, maxDigits);
                     }
@@ -982,8 +869,8 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                         float32 * targetVar = va_arg(ap, float32 *);
                         
                         uint8 maxDigits = 7;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         int32 wholePart = 0;
                         scannedChars = scanNumber(source + sourceIndex, &wholePart, maxDigits);
@@ -1013,8 +900,8 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                     case FormatTypeSize_l:{
                         float64 * targetVar = va_arg(ap, float64 *);
                         uint8 maxDigits = 15;
-                        if(info.maxlen != 0){
-                            maxDigits = info.maxlen;
+                        if(info.width != 0){
+                            maxDigits = info.width;
                         }
                         int64 wholePart = 0;
                         scannedChars = scanNumber64(source + sourceIndex, &wholePart, maxDigits);
@@ -1057,36 +944,36 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                 char * targetVar = va_arg(ap, char *);
                 bool scanned = false;
                 uint32 i = 0;
-                for(; sourceIndex < maxread && i < info.maxlen && source[sourceIndex] != '\0'; sourceIndex++, i++){
+                for(; sourceIndex < maxread && i < info.width && source[sourceIndex] != '\0'; sourceIndex++, i++){
                     if(info.charlist.digitRangeLow != '\0'){
                         if(source[sourceIndex] >= info.charlist.digitRangeLow && source[sourceIndex] <= info.charlist.digitRangeHigh && !info.charlist.inverted){
-                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                             scanned = true;
                             continue;               
                         }else if((source[sourceIndex] < info.charlist.digitRangeLow && source[sourceIndex] > info.charlist.digitRangeHigh) && info.charlist.inverted){
-                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                             scanned = true;
                             continue;                            
                         }
                     }
                     if(info.charlist.capitalLetterRangeLow != '\0'){
                         if(source[sourceIndex] >= info.charlist.capitalLetterRangeLow && source[sourceIndex] <= info.charlist.capitalLetterRangeHigh && !info.charlist.inverted){
-                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                             scanned = true;
                             continue;               
                         }else if((source[sourceIndex] < info.charlist.capitalLetterRangeLow && source[sourceIndex] > info.charlist.capitalLetterRangeHigh) && info.charlist.inverted){
-                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                             scanned = true;
                             continue;                            
                         }
                     }
                     if(info.charlist.smallLetterRangeLow != '\0'){
                         if(source[sourceIndex] >= info.charlist.smallLetterRangeLow && source[sourceIndex] <= info.charlist.smallLetterRangeHigh && !info.charlist.inverted){
-                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                             scanned = true;
                             continue;               
                         }else if((source[sourceIndex] < info.charlist.smallLetterRangeLow || source[sourceIndex] > info.charlist.smallLetterRangeHigh) && info.charlist.inverted){
-                            if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                            if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                             scanned = true;
                             continue;                            
                         }                        
@@ -1108,10 +995,10 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                     
                     
                     if(!info.charlist.inverted && found){
-                        if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                        if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                         scanned = true;
                     }else if(info.charlist.inverted && !found){
-                        if(!info.dryRun) targetVar[i] = source[sourceIndex];
+                        if(!info.scan.dryRun) targetVar[i] = source[sourceIndex];
                         scanned = true;
                     }
                     
@@ -1125,8 +1012,8 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                 }
                 if(scanned)
                     successfullyScanned++;
-                if(!info.dryRun){ 
-                    if(i == info.maxlen){
+                if(!info.scan.dryRun){ 
+                    if(i == info.width){
                         targetVar[i-1] = '\0';
                     }else{
                         targetVar[i] = '\0';

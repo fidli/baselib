@@ -236,7 +236,7 @@ void guiBegin(int32 width, int32 height){
     guiContext->selection.inputsRendered = 0;
 }
 
-GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, int32 posX, int32 posY, int32 width = 0, int32 height = 0, const GuiElementStyle * overrideStyle = NULL){
+GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, int32 posX, int32 posY, int32 width = 0, int32 height = 0, const GuiElementStyle * overrideStyle = NULL, GuiJustify defaultJustify = GuiJustify_Default){
     GuiContainer * result = &PUSH(GuiContainer);
     memset(CAST(void*, result), 0, sizeof(GuiContainer));
     if(!overrideStyle){
@@ -263,21 +263,25 @@ GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, in
     result->startX = posX;
     result->startY = posY;
 
-    result->cursor[GuiJustify_Left].x = result->startX;
-    result->cursor[GuiJustify_Left].y = result->startY;
+    result->cursor[GuiJustify_Left].x = result->startX + result->elementStyle.padding.l;
+    result->cursor[GuiJustify_Left].y = result->startY + result->elementStyle.padding.t;
             
     result->cursor[GuiJustify_Middle].x = result->startX + result->width/2;
-    result->cursor[GuiJustify_Middle].y = result->startY;
+    result->cursor[GuiJustify_Middle].y = result->startY + result->elementStyle.padding.t;
 
-    result->cursor[GuiJustify_Right].x = result->startX + result->width;
-    result->cursor[GuiJustify_Right].y = result->startY;
+    result->cursor[GuiJustify_Right].x = result->startX + result->width + result->elementStyle.padding.l;
+    result->cursor[GuiJustify_Right].y = result->startY + result->elementStyle.padding.t;
     
     for(int32 i = 0; i < ARRAYSIZE(result->cursor); i++){
         result->defaultCursor[i].x = result->cursor[i].x;
         result->defaultCursor[i].y = result->cursor[i].y;
     }
     result->zIndex = parent->zIndex+1;
-    result->defaultJustify = GuiJustify_Left;
+    if(defaultJustify == GuiJustify_Default){
+        result->defaultJustify = GuiJustify_Left;
+    }else{
+        result->defaultJustify = defaultJustify;
+    }
     guiContext->addedContainers[guiContext->addedContainersCount++] = result;
     ASSERT(guiContext->addedContainersCount <= ARRAYSIZE(guiContext->addedContainers));
     return result;
@@ -561,19 +565,6 @@ static bool renderWireRect(const int32 positionX, const int32 positionY, const i
     return true;
 }
 
-static void renderBoxText(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * bgColor, const Color * textColor, int8 zIndex = 0){
-    GuiId id = {positionX, positionY, zIndex};
-    bool isHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
-    if(isHoverNow){
-        if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
-            guiContext->currentHover = id;
-        }
-    }
-    
-    renderRect(positionX, positionY, width, height, bgColor, zIndex);
-    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor, zIndex);
-}
-
 static bool renderInput(const AtlasFont * font, char * text, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, int8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
@@ -836,7 +827,7 @@ void guiRenderText(GuiContainer * container, const GuiStyle * style, const char 
         elementStyle = overrideStyle;
     }
     calculateAndAdvanceCursor(&container, style, elementStyle, text, justify, &rei);
-    renderText(&style->font, text, rei.startX+style->text.padding.l, rei.startY+style->text.padding.t, style->pt, &elementStyle->fgColor, container->zIndex);
+    renderText(&style->font, text, rei.startX+elementStyle->padding.l, rei.startY+elementStyle->padding.t, style->pt, &elementStyle->fgColor, container->zIndex);
 }
 
 void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
@@ -846,7 +837,8 @@ void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const ch
         elementStyle = overrideStyle;
     }
     calculateAndAdvanceCursor(&container, style, elementStyle, text, justify, &rei);
-    return renderBoxText(&style->font, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStyle->bgColor, &elementStyle->fgColor, container->zIndex);
+    renderRect(rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStyle->bgColor, container->zIndex);
+    renderText(&style->font, text, rei.startX+elementStyle->padding.l, rei.startY+elementStyle->padding.t, style->pt, &elementStyle->fgColor, container->zIndex);
 }
 
 bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){

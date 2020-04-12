@@ -140,7 +140,7 @@ void initMemory(void * memoryStart){
 
 #define PUSHI markAllocation(&mem.temp);
 
-#define POPI  deallocateMark(&mem.temp);
+#define POPI deallocateMark(&mem.temp);
 
 #define FLUSH deallocateAll(&mem.temp);
 

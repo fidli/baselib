@@ -26,7 +26,7 @@
 #ifdef RELEASE
 #pragma message("RELEASE MODE")
 #include "util_log.cpp"
-#define ASSERT(expression) if(!(expression)) {LOGE(default, assertion, "ASSERT failed on %u in file %s", __LINE__, __FILE__);}
+#define ASSERT(expression) if(!(expression)) {LOGE(default, assertion, "ASSERT(%s) failed. In %s() in file %s:%u", #expression, __func__, __FILE__, __LINE__);}
 #else
 #ifndef ASSERT
 #define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
