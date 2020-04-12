@@ -20,16 +20,16 @@ void static inline swap4(int32 * source, int32 * destination){
     
 }
 
-//cmp 1 if a > b
+//positive if a > b
 //0 if a == b
-//-1 if a < b
+//negative if a < b
 void insertSort(byte * target, const uint16 elemsize, int64 arraySize, int8 (*cmp)(void * a, void * b)){
     for(uint32 i = 1; i < arraySize; i++){
         uint32 s = i;
         uint32 t = i;
         do{
             t--;
-            if(cmp(target + s*elemsize, target + t*elemsize) == -1){
+            if(cmp(target + s*elemsize, target + t*elemsize) < 0){
                 swap(target + s*elemsize, target + t*elemsize, elemsize);
                 s--;
             }else{
