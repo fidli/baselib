@@ -92,7 +92,7 @@ void constructProfileStatsTreeRec(ProfileEntry * parent, ProfileStats * stats, i
             stat->totalTime = entry->timeSpentTotal;
             stat->totalCount = entry->callCountTotal;
             stat->avgTime = stat->totalTime/stat->totalCount;
-            if(parent){
+            if(parent && parent->timeSpentTotal > 0.0001){
                 stat->percOfParent = entry->timeSpentTotal/parent->timeSpentTotal * 100;
             }else{
                 stat->percOfParent = 0;

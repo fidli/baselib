@@ -577,7 +577,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
             case FormatType_c:
             case FormatType_s:{
                 char * source;
-                int32 toPrint = info.width;
+                int32 toPrint = 0x7FFFFFFF;
                 if(info.type == FormatType_c){
                     toPrint = 1;
                     source = &va_arg(ap, char);

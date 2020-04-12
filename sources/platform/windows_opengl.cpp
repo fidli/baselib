@@ -35,6 +35,7 @@ DEFINEDLLFUNC(void, glEnableVertexAttribArray, GLuint);
 DEFINEDLLFUNC(void, glVertexAttribPointer, GLuint, GLint, GLenum, bool, GLsizei, const void *);
 DEFINEDLLFUNC(void, glDeleteShader, GLuint);
 DEFINEDLLFUNC(void, glDeleteProgram, GLuint);
+DEFINEDLLFUNC(bool, wglSwapIntervalEXT, int);
 
 DEFINEDLLFUNC(GLint, glGetUniformLocation, GLuint, const char *);
 DEFINEDLLFUNC(void, glUniform1i, GLint, GLint);
@@ -68,6 +69,7 @@ bool initGl(){
         OBTAINGLFUNC(opengl, glVertexAttribPointer);
         OBTAINGLFUNC(opengl, glDeleteShader);
         OBTAINGLFUNC(opengl, glDeleteProgram);
+        OBTAINGLFUNC(opengl, wglSwapIntervalEXT);
 
         OBTAINGLFUNC(opengl, glGetUniformLocation);
         OBTAINGLFUNC(opengl, glUniform1i);

@@ -372,7 +372,7 @@ void guiEndline(GuiContainer * container, GuiStyle * style){
     ASSERT(style);
     for(int32 i = 0; i < ARRAYSIZE(container->cursor); i++){
         container->cursor[i].x = container->defaultCursor[i].x;
-        container->cursor[i].y = container->defaultCursor[i].y + container->heightUsed;
+        container->cursor[i].y = container->defaultCursor[i].y + container->heightUsed + style->text.padding.b + style->text.margin.b + style->text.margin.t;
     }
 }
 
@@ -442,8 +442,8 @@ static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle 
     // adjust parent
     recalculateParentUsage(*container);
     // set render element info
-    info->startX = startX;
-    info->startY = startY;
+    info->startX = startX + elementStyle->margin.l;
+    info->startY = startY + elementStyle->margin.r;
     info->renderWidth = textWidth + elementStyle->padding.l + elementStyle->padding.r;
     info->renderHeight = textHeight + elementStyle->padding.t + elementStyle->padding.b;
 }
@@ -649,7 +649,7 @@ static bool renderInput(const AtlasFont * font, char * text, const char * charli
     return result;
 }
 
-static bool renderButton(const AtlasFont * font, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
+static bool renderButton(const AtlasFont * font, int32 pt, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext->lastActive);
@@ -693,7 +693,7 @@ static bool renderButton(const AtlasFont * font, const char * text, const int32 
     if(isSelected){
         renderWireRect(positionX, positionY, width, height, textColor, zIndex);
     }
-    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor, zIndex);
+    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, pt, textColor, zIndex);
     
     return result;
 }
@@ -852,7 +852,7 @@ bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const cha
         elementStylePassive = overrideStylePassive;
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
-    return renderButton(&style->font, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    return renderButton(&style->font, style->pt, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 void guiSetCheckboxValue(GuiBool * target, bool newValue){
@@ -881,7 +881,7 @@ bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool
         text[0] = ' ';
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
-    bool r = renderButton(&style->font, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    bool r = renderButton(&style->font, style->pt, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
     if(r){
         checked->set = true;
         checked->value = !checked->value;
