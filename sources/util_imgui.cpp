@@ -668,11 +668,15 @@ static bool renderButton(const AtlasFont * font, int32 pt, const char * text, co
 
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
-			if(!isBlockedByPopup && isHoverBeforeAndNow) result = true;
+			if(!isBlockedByPopup && isHoverBeforeAndNow){
+                result = true;
+            }
             guiInvalidate(&guiContext->lastActive);
         }
     }else if(isHoverBeforeAndNow){
-        if(guiInput.mouse.buttons.leftDown) guiContext->lastActive = id;
+        if(guiInput.mouse.buttons.leftDown){
+            guiContext->lastActive = id;
+        }
     }
 
     if(wasSubmitted){
@@ -699,10 +703,11 @@ static bool renderButton(const AtlasFont * font, int32 pt, const char * text, co
 }
 
 
-static bool renderDropdown(const AtlasFont * font, const char * text,const char ** list, int32 listSize, int32 * resultIndex, int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
+static bool renderDropdown(const AtlasFont * font, char * text, const char ** list, int32 listSize, int32 * resultIndex, int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
     bool isHeadLastActive;
     bool isDropdownActive;
     GuiId headId = {positionX, positionY, zIndex};
+    bool isBlockedByPopup = guiAnyPopup() & guiContext->popupLocked;
     //start dropdown head
     {
         
@@ -710,6 +715,7 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
         isDropdownActive = guiEq(headId, guiContext->activeDropdown);
         bool isHeadHoverNow = guiInput.mouse.x >= positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y >= positionY && guiInput.mouse.y <= positionY + height;
         bool isHeadSelected = registerInputAndIsSelected();
+        bool wasHeadSubmitted = isHeadSelected && guiContext->selection.activate;
 
         if(isHeadHoverNow){
             if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
@@ -717,7 +723,6 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
             }
         }
         bool isHeadHoverBeforeAndNow = isHeadHoverNow && guiEq(headId, guiContext->lastHover);
-        bool isBlockedByPopup = guiAnyPopup() & guiContext->popupLocked;
         
         
         if(isHeadLastActive){
@@ -728,27 +733,33 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
                 guiInvalidate(&guiContext->lastActive);
             }
         }else{
-            if(guiInput.mouse.buttons.leftDown && guiEq(headId, guiContext->activeDropdown)) guiInvalidate(&guiContext->activeDropdown);
+            if(guiInput.mouse.buttons.leftDown && guiEq(headId, guiContext->activeDropdown)){
+               guiInvalidate(&guiContext->activeDropdown);
+            }
         }
         if(isHeadHoverBeforeAndNow && !isHeadLastActive){
-            if(guiInput.mouse.buttons.leftDown) guiContext->lastActive = headId;
+            if(guiInput.mouse.buttons.leftDown){
+                guiContext->lastActive = headId;
+            }
         }
-        
+        if(wasHeadSubmitted){
+            guiContext->activeDropdown = headId;
+        }
         
         const Color * textColor;
         const Color * bgColor;
-        if(isHeadLastActive){
+        if(isHeadLastActive && isHeadHoverNow && !isBlockedByPopup){
             textColor = activeTextColor;
             bgColor = activeBgColor;
         }else{
             textColor = inactiveTextColor;
             bgColor = inactiveBgColor;
         }
-        renderRect(positionX, positionY, width, height, bgColor);
+        renderRect(positionX, positionY, width, height, bgColor, zIndex);
         if(isHeadSelected){
             renderWireRect(positionX, positionY, width, height, textColor, zIndex);
         }
-        renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor);
+        renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor, zIndex);
     }
     //end dropdown head
     bool selected = false;
@@ -765,18 +776,20 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
                 bool result = false;
                 bool isHoverNow = guiInput.mouse.x >= buttonPositionX && guiInput.mouse.x <= buttonPositionX + width && guiInput.mouse.y >= buttonPositionY && guiInput.mouse.y <= buttonPositionY + height;
                 bool isSelected = registerInputAndIsSelected();
+                bool wasSubmitted = isSelected && guiContext->selection.activate;
                 
                 if(isHoverNow){
-                    if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
+                    if(!guiValid(guiContext->currentHover)){
                         guiContext->currentHover = id;
                     }
                 }
                 bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
-                bool isBlockedByPopup = guiAnyPopup() & guiContext->popupLocked;
 
                 if(isLastActive){
                     if(guiInput.mouse.buttons.leftUp){
-						if(!isBlockedByPopup && isHoverBeforeAndNow) result = true;
+						if(!isBlockedByPopup && isHoverBeforeAndNow){
+                            result = true;
+                        }
                         guiInvalidate(&guiContext->lastActive);
                         guiContext->activeDropdown = headId;
                     }
@@ -789,7 +802,7 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
                 
                 const Color * textColor;
                 const Color * bgColor;
-                if(isHoverNow){
+                if(isHoverNow && !isBlockedByPopup){
                     textColor = activeTextColor;
                     bgColor = activeBgColor;
                 }else{
@@ -798,12 +811,13 @@ static bool renderDropdown(const AtlasFont * font, const char * text,const char 
                 }
                 renderRect(buttonPositionX, buttonPositionY, width, height, bgColor, CAST(float, zIndex + 1));
                 if(isSelected){
-                    renderWireRect(buttonPositionX, buttonPositionY, width, height, textColor, zIndex);
+                    renderWireRect(buttonPositionX, buttonPositionY, width, height, textColor, zIndex + 1.0f);
                 }
                 renderTextXYCentered(font, list[i], buttonPositionX + width/2, buttonPositionY + height/2, 14, textColor, zIndex + 1);
                 
                 if(result){
                     *resultIndex = i;
+                    strcpy(text, list[i]); 
                     selected = true;
                 }
             }
@@ -914,7 +928,7 @@ bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * 
         elementStylePassive = overrideStylePassive;
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, searchtext, justify, &rei);
-    return renderDropdown(&style->font, searchtext, fullList, listSize, resultIndex, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->bgColor, container->zIndex);
+    return renderDropdown(&style->font, searchtext, fullList, listSize, resultIndex, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * message){
