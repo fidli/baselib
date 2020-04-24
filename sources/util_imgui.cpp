@@ -1,5 +1,50 @@
 #ifndef UTIL_IMGUI_CPP
 #define UTIL_IMGUI_CPP
+bool isInit = false;
+
+struct GuiGL{
+    struct{
+        GLint vertexShader;
+        GLint fragmentShader;
+        GLint program;
+        
+        GLint scaleLocation;
+        GLint positionLocation;
+        GLint overlayColorLocation;
+        GLint samplerLocation;
+        GLint textureOffsetLocation;
+        GLint textureScaleLocation;
+        
+        GLuint texture;
+    } font;
+    struct{
+        GLint vertexShader;
+        GLint fragmentShader;
+        GLint program;
+        
+        GLint scaleLocation;
+        GLint positionLocation;
+        GLint overlayColorLocation;
+    } flat;
+    GLuint quad;
+};
+
+GuiGL * guiGl;
+
+static inline void initFontShader(){
+    guiGl->font.positionLocation = glGetUniformLocation(guiGl->font.program, "position");
+    guiGl->font.scaleLocation = glGetUniformLocation(guiGl->font.program, "scale");
+    guiGl->font.overlayColorLocation = glGetUniformLocation(guiGl->font.program, "overlayColor");
+    guiGl->font.samplerLocation = glGetUniformLocation(guiGl->font.program, "sampler");
+    guiGl->font.textureOffsetLocation = glGetUniformLocation(guiGl->font.program, "textureOffset");
+    guiGl->font.textureScaleLocation = glGetUniformLocation(guiGl->font.program, "textureScale");
+}
+
+static inline void initFlatShader(){
+    guiGl->flat.positionLocation = glGetUniformLocation(guiGl->flat.program, "position");
+    guiGl->flat.scaleLocation = glGetUniformLocation(guiGl->flat.program, "scale");
+    guiGl->flat.overlayColorLocation = glGetUniformLocation(guiGl->flat.program, "overlayColor");
+}
 
 #include "util_graphics.cpp"
 #include "util_font.cpp"
@@ -35,7 +80,7 @@ struct GuiStyle{
     } input;
     GuiElementStyle container;
     GuiElementStyle text;
-    AtlasFont font;
+    AtlasFont * font;
     int32 pt;
 };
 
@@ -99,6 +144,7 @@ struct GuiId{
 #define CARET_TICK 0.5f
 
 struct GuiContext{
+    AtlasFont font;
     int8 minZ;
     int8 maxZ;
     
@@ -150,6 +196,8 @@ static void guiInvalidate(GuiId * a){
     a->y = -1;
 }
 
+
+
 static bool guiEq(const GuiId A, const GuiId B){
     return A.x == B.x && A.y == B.y && A.z == B.z;
 }
@@ -167,6 +215,76 @@ void guiDeselectInput(){
     guiInvalidate(&guiContext->activeDropdown);
     guiContext->selection.isActive = false;
     guiContext->selection.activate = false;
+}
+
+bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
+    guiInput = {};
+    guiContext = &PPUSH(GuiContext);
+    memset(CAST(void*, guiContext), 0, sizeof(GuiContext));
+    guiGl = &PPUSH(GuiGL);
+    memset(CAST(void*, guiGl), 0, sizeof(GuiGL));
+
+    bool r = true;    
+    {//font
+        LOG(default, startup, "Reading in font");
+        r &= initAtlasFont(&guiContext->font, fontImagePath, fontDescriptionPath);
+        ASSERT(r);
+        LOG(default, startup, "Initing font success: %u", r);
+        if(!r){
+            return false;
+        }
+        ASSERT(guiContext->font.data.info.interpretation == BitmapInterpretationType_RGBA);
+        glGenTextures(1, &guiGl->font.texture);
+        glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, guiContext->font.data.info.width, guiContext->font.data.info.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, guiContext->font.data.data);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+        
+    }
+#ifndef RELEASE
+    r &= loadAndCompileShaders("..\\sources\\shaders\\font.vert", "..\\sources\\shaders\\font.frag", &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
+    ASSERT(r);
+    initFontShader();
+    LOG(default, shaders, "Font shaders loaded");
+    r &= loadAndCompileShaders("..\\sources\\shaders\\flat.vert", "..\\sources\\shaders\\flat.frag", &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
+    ASSERT(r);
+    initFlatShader();
+    LOG(default, shaders, "Flat shaders loaded");
+#else
+    r &= loadAndCompileShaders(___sources_shaders_font_vert, ___sources_shaders_font_vert_len, ___sources_shaders_font_frag, ___sources_shaders_font_frag_len, &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
+    ASSERT(r);
+    initFontShader();
+    LOG(default, shaders, "Font shaders loaded");
+    r &= loadAndCompileShaders(___sources_shaders_flat_vert, ___sources_shaders_flat_vert_len, ___sources_shaders_flat_frag, ___sources_shaders_flat_frag_len, &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
+    ASSERT(r);
+    initFlatShader();
+    LOG(default, shaders, "Flat shaders loaded");
+#endif
+    guiInvalidate(&guiContext->lastActive);
+    guiInvalidate(&guiContext->lastHover);
+    guiInvalidate(&guiContext->activeDropdown);
+    guiInvalidate(&guiContext->activeInput);
+	guiContext->popupCount = 0;
+    guiDeselectInput();
+    guiContext->selection.activate = false;
+    guiContext->mouseInContainer = false;
+    guiContext->escapeClick = false;
+    isInit = r;
+    
+    {
+        glGenBuffers(1, &guiGl->quad);
+        glBindBuffer(GL_ARRAY_BUFFER, guiGl->quad);
+        const float32 box[] = {
+            // triangle
+            1, 0,// 0.0f, 1.0f,
+            0, 0,// 0.0f, 1.0f,
+            1, 1,// 0.0f, 1.0f,
+            0, 1 //, 0.0f, 1.0f,
+        };
+        
+        glBufferData(GL_ARRAY_BUFFER, sizeof(box), box, GL_STATIC_DRAW);
+    }
+    return isInit;
 }
 
 bool guiAnyInputSelected(){
@@ -205,21 +323,6 @@ void guiSelectPreviousInput(){
     guiInvalidate(&guiContext->activeDropdown);
 }
 
-bool guiInit(){
-    guiInput = {};
-    guiContext = &PPUSH(GuiContext);
-    memset(CAST(void*, guiContext), 0, sizeof(GuiContext));
-    guiInvalidate(&guiContext->lastActive);
-    guiInvalidate(&guiContext->lastHover);
-    guiInvalidate(&guiContext->activeDropdown);
-    guiInvalidate(&guiContext->activeInput);
-	guiContext->popupCount = 0;
-    guiDeselectInput();
-    guiContext->selection.activate = false;
-    guiContext->mouseInContainer = false;
-    guiContext->escapeClick = false;
-    return true;
-}
 
 void guiBegin(int32 width, int32 height){
     float64 currentTimestamp = getProcessCurrentTime();
@@ -234,6 +337,16 @@ void guiBegin(int32 width, int32 height){
     guiContext->defaultContainer.defaultJustify = GuiJustify_Left;
     guiContext->addedContainersCount = 0;
     guiContext->selection.inputsRendered = 0;
+    glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
+    glBindBuffer(GL_ARRAY_BUFFER, guiGl->quad);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_GEQUAL);
 }
 
 GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, int32 posX, int32 posY, int32 width = 0, int32 height = 0, const GuiElementStyle * overrideStyle = NULL, GuiJustify defaultJustify = GuiJustify_Default){
@@ -406,8 +519,8 @@ static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle 
     if(justify == GuiJustify_Default){
         justify = (*container)->defaultJustify;
     }
-    int32 textWidth = MAX(calculateAtlasTextWidth(&style->font, text, style->pt), elementStyle->minWidth);
-    int32 textHeight = MAX(CAST(int32, style->font.lineHeight*ptToPx(CAST(float32, style->pt))/style->font.pixelSize), elementStyle->minHeight);
+    int32 textWidth = MAX(calculateAtlasTextWidth(style->font, text, style->pt), elementStyle->minWidth);
+    int32 textHeight = MAX(CAST(int32, style->font->lineHeight*ptToPx(CAST(float32, style->pt))/style->font->pixelSize), elementStyle->minHeight);
     int32 startX = (*container)->cursor[justify].x;
     int32 startY = (*container)->cursor[justify].y;
     int32 advanceX = textWidth + elementStyle->margin.r + elementStyle->margin.l + elementStyle->padding.l + elementStyle->padding.r;
@@ -464,12 +577,8 @@ static bool registerInputAndIsSelected(){
 }
 
 static bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
-    glUseProgram(gl->font.program);
-    glUniform1i(gl->font.samplerLocation, gl->font.atlasTextureUnit);
-    glActiveTexture(GL_TEXTURE0 + gl->font.atlasTextureUnit);
-    
-    
-    
+    glUseProgram(guiGl->font.program);
+
     int32 advance = 0;
     float32 resScaleY = 1.0f / (guiContext->height);
     float32 resScaleX = 1.0f / (guiContext->width);
@@ -477,7 +586,7 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
     float32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
     for(int i = 0; i < strlen(text); i++){
-        GlyphData * glyph = &platform->font.glyphs[CAST(uint8, text[i])];
+        const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
         ASSERT(glyph->valid);
         if(!glyph->valid){
             continue;
@@ -491,23 +600,23 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
             advance += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
         }
         
-        float32 zOffset = -(float32)zIndex / INT8_MAX;
+        float32 zOffset = (float32)zIndex / INT8_MAX;
         //position
-        glUniform3f(gl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
+        glUniform3f(guiGl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
         //scale
-        glUniform2f(gl->font.scaleLocation, fontScale * (glyph->AABB.width) * resScaleX * 2,
+        glUniform2f(guiGl->font.scaleLocation, fontScale * (glyph->AABB.width) * resScaleX * 2,
                     fontScale * resScaleY * (glyph->AABB.height) * 2);
         
         //texture offset
-        glUniform2f(gl->font.textureOffsetLocation, (float32)glyph->AABB.x / platform->font.data.info.width,
-                    (float32)glyph->AABB.y / platform->font.data.info.height);
+        glUniform2f(guiGl->font.textureOffsetLocation, (float32)glyph->AABB.x / font->data.info.width,
+                    (float32)glyph->AABB.y / font->data.info.height);
         
         //texture scale
-        glUniform2f(gl->font.textureScaleLocation, ((float32)glyph->AABB.width) / platform->font.data.info.width,
-                    ((float32)(glyph->AABB.height)) / platform->font.data.info.height);
+        glUniform2f(guiGl->font.textureScaleLocation, ((float32)glyph->AABB.width) / font->data.info.width,
+                    ((float32)(glyph->AABB.height)) / font->data.info.height);
         
         //color
-        glUniform4f(gl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
+        glUniform4f(guiGl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
         
         //draw it
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -523,19 +632,19 @@ bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX
 }
 
 static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
-    glUseProgram(gl->flat.program);
+    glUseProgram(guiGl->flat.program);
     
     float32 resScaleY = 1.0f / (guiContext->height);
     float32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    float32 zOffset = -(float32)zIndex / INT8_MAX;
-    glUniform3f(gl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
+    float32 zOffset = (float32)zIndex / INT8_MAX;
+    glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
-    glUniform2f(gl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
+    glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
     
     //color
-    glUniform4f(gl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
+    glUniform4f(guiGl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
     
     //draw it
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -544,19 +653,19 @@ static bool renderRect(const int32 positionX, const int32 positionY, const int32
 }
 
 static bool renderWireRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
-    glUseProgram(gl->flat.program);
+    glUseProgram(guiGl->flat.program);
     
     float32 resScaleY = 1.0f / (guiContext->height);
     float32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    float32 zOffset = -(float32)zIndex / INT8_MAX;
-    glUniform3f(gl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
+    float32 zOffset = (float32)zIndex / INT8_MAX;
+    glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
-    glUniform2f(gl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
+    glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
     
     //color
-    glUniform4f(gl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
+    glUniform4f(guiGl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
     
     //draw it
     // TODO(fidli): create vertex in GPU memory, this uses domain code vertices
@@ -841,7 +950,7 @@ void guiRenderText(GuiContainer * container, const GuiStyle * style, const char 
         elementStyle = overrideStyle;
     }
     calculateAndAdvanceCursor(&container, style, elementStyle, text, justify, &rei);
-    renderText(&style->font, text, rei.startX+elementStyle->padding.l, rei.startY+elementStyle->padding.t, style->pt, &elementStyle->fgColor, container->zIndex);
+    renderText(style->font, text, rei.startX+elementStyle->padding.l, rei.startY+elementStyle->padding.t, style->pt, &elementStyle->fgColor, container->zIndex);
 }
 
 void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
@@ -852,7 +961,7 @@ void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const ch
     }
     calculateAndAdvanceCursor(&container, style, elementStyle, text, justify, &rei);
     renderRect(rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStyle->bgColor, container->zIndex);
-    renderText(&style->font, text, rei.startX+elementStyle->padding.l, rei.startY+elementStyle->padding.t, style->pt, &elementStyle->fgColor, container->zIndex);
+    renderText(style->font, text, rei.startX+elementStyle->padding.l, rei.startY+elementStyle->padding.t, style->pt, &elementStyle->fgColor, container->zIndex);
 }
 
 bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
@@ -866,7 +975,7 @@ bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const cha
         elementStylePassive = overrideStylePassive;
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
-    return renderButton(&style->font, style->pt, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    return renderButton(style->font, style->pt, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 void guiSetCheckboxValue(GuiBool * target, bool newValue){
@@ -895,7 +1004,7 @@ bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool
         text[0] = ' ';
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
-    bool r = renderButton(&style->font, style->pt, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    bool r = renderButton(style->font, style->pt, text, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
     if(r){
         checked->set = true;
         checked->value = !checked->value;
@@ -914,7 +1023,7 @@ bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * dat
         elementStylePassive = overrideStylePassive;
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, data, justify, &rei);
-    return renderInput(&style->font, data, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    return renderInput(style->font, data, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
@@ -928,7 +1037,7 @@ bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * 
         elementStylePassive = overrideStylePassive;
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, searchtext, justify, &rei);
-    return renderDropdown(&style->font, searchtext, fullList, listSize, resultIndex, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    return renderDropdown(style->font, searchtext, fullList, listSize, resultIndex, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * message){
@@ -971,7 +1080,7 @@ void guiEnd(){
         GuiContainer * membrane = guiAddContainer(NULL, NULL, 0, 0, guiContext->width, guiContext->height, &style);
         membrane->zIndex = 100;
     }
-    insertSort(CAST(byte*, guiContext->addedContainers), sizeof(GuiContainer), guiContext->addedContainersCount, [](void * a, void * b) -> int8 { return CAST(GuiContainer *, a)->zIndex <= CAST(GuiContainer *, b)->zIndex; });
+    insertSort(CAST(byte*, guiContext->addedContainers), sizeof(GuiContainer), guiContext->addedContainersCount, [](void * a, void * b) -> int32 { return CAST(GuiContainer *, a)->zIndex <= CAST(GuiContainer *, b)->zIndex; });
     for(int32 i = 0; i < guiContext->addedContainersCount; i++){
         GuiContainer * container = guiContext->addedContainers[i];
         int32 w = container->widthUsed;
@@ -993,6 +1102,16 @@ void guiEnd(){
         }
         guiContext->selection.activate = false;
     }
+}
+
+void guiFinalize(){
+    glDeleteShader(guiGl->font.fragmentShader);
+    glDeleteShader(guiGl->font.vertexShader);
+    glDeleteProgram(guiGl->font.program);
+    
+    glDeleteShader(guiGl->flat.fragmentShader);
+    glDeleteShader(guiGl->flat.vertexShader);
+    glDeleteProgram(guiGl->flat.program);
 }
 #endif
 

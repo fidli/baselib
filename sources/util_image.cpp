@@ -98,17 +98,18 @@ bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
 }
 
 bool flipY(Image * target){
-    uint32 bytesize = target->info.width * target->info.height * target->info.bitsPerSample * target->info.samplesPerPixel;
+    ASSERT(target->info.bitsPerSample % 8 == 0);
+    ASSERT(target->info.samplesPerPixel == 1);
+    uint32 bytesize = target->info.width * target->info.height * (target->info.bitsPerSample/8) * target->info.samplesPerPixel;
     uint8 * tmp = &PUSHA(uint8, bytesize);
-    ASSERT((target->info.bitsPerSample * target->info.samplesPerPixel) % 8 == 0);
-    if((target->info.bitsPerSample * target->info.samplesPerPixel) % 8 != 0){
+    if(target->info.bitsPerSample % 8 != 0 || target->info.samplesPerPixel != 1){
         return false;
     }
     uint8 bytesPerPixel = (target->info.bitsPerSample * target->info.samplesPerPixel)/8;
     for(uint32 h = 0; h < target->info.height; h++){
         for(uint32 w = 0; w < target->info.width; w++){
             for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
-                tmp[w*bytesPerPixel + byteIndex + (target->info.height - h) * target->info.width * bytesPerPixel] = target->data[w*bytesPerPixel + byteIndex + target->info.width*h*bytesPerPixel];
+                tmp[w*bytesPerPixel + byteIndex + (target->info.height - h - 1) * target->info.width * bytesPerPixel] = target->data[w*bytesPerPixel + byteIndex + target->info.width*h*bytesPerPixel];
             }
         }
     }

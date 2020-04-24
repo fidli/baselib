@@ -154,7 +154,7 @@ bool decodeBMP(const FileContents * source, Image * target){
         return false;
     }
     uint32 filesize = *((uint32 *)(source->contents + 2));
-    uint32 dataOffset = *((uint32 *)(source->contents + 10));
+    int32 dataOffset = *((int32 *)(source->contents + 10));
     
     Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(source->contents + 14);
     target->info.width = infoheader->width;

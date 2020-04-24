@@ -15,6 +15,8 @@
 #define GL_MULTISAMPLE 0x809D
 #define GL_TEXTURE_BASE_LEVEL 0x813C
 #define GL_TEXTURE_MAX_LEVEL 0x813D
+#define GL_CLAMP_TO_BORDER 0x812D
+#define GL_CLAMP_TO_EDGE 0x812F
 
 DEFINEDLLFUNC(GLuint, glCreateShader, GLenum);
 DEFINEDLLFUNC(void, glShaderSource, GLuint, GLsizei, const char **, const GLint *);
@@ -46,7 +48,14 @@ DEFINEDLLFUNC(void, glUniform4f, GLint, GLfloat, GLfloat, GLfloat, GLfloat);
 #define OBTAINGLFUNC(HNDL, FNC) \
 FNC = (FNC##FuncType) wglGetProcAddress(#FNC);if(FNC == NULL){OBTAINDLLFUNC(HNDL, FNC);}ASSERT(FNC != NULL);
 
-bool initGl(){
+bool initOpenGL(HDC dc){
+    HGLRC dummyContext = wglCreateContext(dc);
+    ASSERT(dummyContext != NULL);
+    auto r = wglMakeCurrent(dc, dummyContext);
+    ASSERT(r == TRUE);
+    if(r != TRUE){
+        return false;
+    }
     HMODULE opengl = LoadLibrary("opengl32.dll");
     ASSERT(opengl);
     if(opengl != NULL){
@@ -76,7 +85,11 @@ bool initGl(){
         OBTAINGLFUNC(opengl, glUniform2f);
         OBTAINGLFUNC(opengl, glUniform3f);
         OBTAINGLFUNC(opengl, glUniform4f);
-        return true;
+        r = true;
+    }else{
+        r = false;
     }
-    return false;
+    wglMakeCurrent(NULL, NULL);
+    wglDeleteContext(dummyContext);
+    return r;
 }

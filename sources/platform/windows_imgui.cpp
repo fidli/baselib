@@ -5,7 +5,10 @@
 
 
 bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
-    bool inputHandled = false;    
+    if(!isInit){
+        return false;
+    }
+    bool inputHandled = false;
     switch(message)
     {
         case WM_MOUSEMOVE:{

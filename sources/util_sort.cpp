@@ -23,7 +23,7 @@ void static inline swap4(int32 * source, int32 * destination){
 //positive if a > b
 //0 if a == b
 //negative if a < b
-void insertSort(byte * target, const uint16 elemsize, int64 arraySize, int8 (*cmp)(void * a, void * b)){
+void insertSort(byte * target, const uint16 elemsize, int64 arraySize, int32 (*cmp)(void * a, void * b)){
     for(uint32 i = 1; i < arraySize; i++){
         uint32 s = i;
         uint32 t = i;

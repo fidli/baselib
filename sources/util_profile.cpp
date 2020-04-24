@@ -93,6 +93,6 @@ ProfileStats * getCurrentProfileStats(){
         }
     }
     r->count = profile->slotsUsed;
-    insertSort(CAST(byte*, &r->entries), sizeof(ProfileStats::Entry), r->count, [] (void * a, void * b) -> int8{float64 diff = CAST(ProfileStats::Entry*,a)->avgTime - CAST(ProfileStats::Entry*,b)->avgTime;if(diff > 0) return -1; return 0;});
+    insertSort(CAST(byte*, &r->entries), sizeof(ProfileStats::Entry), r->count, [] (void * a, void * b) -> int32{float64 diff = CAST(ProfileStats::Entry*,a)->avgTime - CAST(ProfileStats::Entry*,b)->avgTime;if(diff > 0) return -1; return 0;});
     return r;
 }
