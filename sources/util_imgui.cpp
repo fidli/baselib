@@ -1080,7 +1080,7 @@ void guiEnd(){
         GuiContainer * membrane = guiAddContainer(NULL, NULL, 0, 0, guiContext->width, guiContext->height, &style);
         membrane->zIndex = 100;
     }
-    insertSort(CAST(byte*, guiContext->addedContainers), sizeof(GuiContainer), guiContext->addedContainersCount, [](void * a, void * b) -> int32 { return CAST(GuiContainer *, a)->zIndex <= CAST(GuiContainer *, b)->zIndex; });
+    insertSort<GuiContainer*>(&guiContext->addedContainers[0], guiContext->addedContainersCount, [](GuiContainer * a, GuiContainer * b) -> int32 { return a->zIndex <= b->zIndex; });
     for(int32 i = 0; i < guiContext->addedContainersCount; i++){
         GuiContainer * container = guiContext->addedContainers[i];
         int32 w = container->widthUsed;

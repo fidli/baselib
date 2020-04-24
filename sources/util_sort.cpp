@@ -23,14 +23,17 @@ void static inline swap4(int32 * source, int32 * destination){
 //positive if a > b
 //0 if a == b
 //negative if a < b
-void insertSort(byte * target, const uint16 elemsize, int64 arraySize, int32 (*cmp)(void * a, void * b)){
+template<typename elemType, typename func>
+void insertSort(elemType * target, int32 arraySize, func cmp){
     for(uint32 i = 1; i < arraySize; i++){
         uint32 s = i;
         uint32 t = i;
         do{
             t--;
-            if(cmp(target + s*elemsize, target + t*elemsize) < 0){
-                swap(target + s*elemsize, target + t*elemsize, elemsize);
+            if(cmp(*(target + s), *(target + t)) < 0){
+                auto tmp = *(target + s);
+                *(target + s) = *(target + t);
+                *(target + t) = tmp;
                 s--;
             }else{
                 break;
@@ -70,14 +73,15 @@ void shuffle(byte * target, const uint16 elemsize, int64 arraySize){
     
 }
 
-//cmp 1 if a > b
+//positive if a > b
 //0 if a == b
-//-1 if a < b
-void mergeSort(byte * target, const uint16 elemsize, int64 chunkSize, int8 (*cmp)(void * a, void * b), byte * temp = NULL){
+//negative if a < b
+template<typename elemType, typename func>
+void mergeSort(elemType * target, int64 chunkSize, func cmp, elemType * temp = NULL){
     int64 half = chunkSize/2;
     if(chunkSize > 2){
-        mergeSort(target, elemsize, half, cmp, temp);
-        mergeSort(target + half*elemsize, elemsize, chunkSize - half, cmp, temp);
+        mergeSort(target, half, cmp, temp);
+        mergeSort(target + half, chunkSize - half, cmp, temp);
     }
     
     int64 index1 = 0;
@@ -86,42 +90,32 @@ void mergeSort(byte * target, const uint16 elemsize, int64 chunkSize, int8 (*cmp
     bool uninit = temp == NULL;
     
     if(uninit){
-        temp = &PUSHA(byte, elemsize * chunkSize);
+        temp = &PUSHA(elemType, chunkSize);
     }
     
     for(int64 index = 0; index < chunkSize; index++){
         if(index1 != half && index2 != chunkSize - half){
-            if( cmp(&target[index1*elemsize], &(target+half*elemsize)[index2*elemsize]) > 0){
-                
-                for(uint16 p = 0; p < elemsize; p++){
-                    temp[index*elemsize + p] = (target+half*elemsize)[index2*elemsize + p];
-                }
+            if( cmp(*(target + index1), *(target+half + index2)) > 0){
+                temp[index] = (target+half)[index2];
                 index2++;
-                
             }
             else{
-                for(uint16 p = 0; p < elemsize; p++){
-                    temp[index*elemsize + p] = target[index1*elemsize + p];
-                }
+                temp[index] = target[index1];
                 index1++;
             }
         }else{
             if(index1 == half){
-                for(uint16 p = 0; p < elemsize; p++){
-                    temp[index*elemsize + p] = (target+half*elemsize)[index2*elemsize + p];
-                }
+                temp[index] = (target+half)[index2];
                 index2++;
             }
             else{
-                for(uint16 p = 0; p < elemsize; p++){
-                    temp[index*elemsize + p] = target[index1*elemsize + p];
-                }
+                temp[index] = target[index1];
                 index1++;
             }
         }
     }
     //again slow copying
-    for(int i = 0; i < chunkSize * elemsize; i++){
+    for(int i = 0; i < chunkSize; i++){
         target[i] = temp[i];
     }
     if(uninit){

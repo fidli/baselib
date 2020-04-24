@@ -14,6 +14,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         case WM_MOUSEMOVE:{
             guiInput.mouse.y = (int16) (lParam >> 16);
             guiInput.mouse.x = (int16) (lParam);
+            return false;
         }break;
         case WM_LBUTTONUP:{
             guiInput.mouse.buttons.leftUp = true;

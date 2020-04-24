@@ -472,23 +472,19 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, uint32 i
     
     
     //sort by weigth, then by size //then assign codes
-    insertSort((byte * )codeWords, sizeof(CodeWord), itemCount, [](void * a, void * b) -> int32{
-               CodeWord * A = (CodeWord *) a;
-               CodeWord * B = (CodeWord *) b;
-               if(A->weight > B->weight){
+    insertSort(codeWords, itemCount, [](CodeWord & A, CodeWord & B) -> int32{
+               if(A.weight > B.weight){
                return 1;
-               }else if(A->weight == B->weight){
+               }else if(A.weight == B.weight){
                return 0;
                }
                return -1;
                });
     
-    insertSort((byte * )codeWords, sizeof(CodeWord), itemCount, [](void * a, void * b) -> int32{
-               CodeWord * A = (CodeWord *) a;
-               CodeWord * B = (CodeWord *) b;
-               if(A->bitSize > B->bitSize){
+    insertSort(codeWords, itemCount, [](CodeWord & A, CodeWord & B) -> int32{
+               if(A.bitSize > B.bitSize){
                return 1;
-               }else if(A->bitSize == B->bitSize){
+               }else if(A.bitSize == B.bitSize){
                return 0;
                }
                return -1;
