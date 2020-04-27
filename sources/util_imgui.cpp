@@ -325,6 +325,7 @@ void guiSelectPreviousInput(){
 
 
 void guiBegin(int32 width, int32 height){
+    PROFILE_SCOPE(gui_begin);
     float64 currentTimestamp = getProcessCurrentTime();
     guiContext->activeInputTimeAccumulator += currentTimestamp - guiContext->activeInputLastTimestamp;
     guiContext->activeInputLastTimestamp = currentTimestamp;
@@ -513,6 +514,7 @@ static void recalculateParentUsage(GuiContainer * container){
 }
 
 static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle * style, const GuiElementStyle * elementStyle, const char * text, GuiJustify justify, RenderElementInfo * info){
+    PROFILE_SCOPE(gui_calcnadvance);
     if(!*container){
         *container = &guiContext->defaultContainer;
     }
@@ -577,6 +579,7 @@ static bool registerInputAndIsSelected(){
 }
 
 static bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
+    PROFILE_SCOPE(gui_render_text);
     glUseProgram(guiGl->font.program);
 
     int32 advance = 0;
@@ -585,22 +588,22 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
     int32 targetSize = ptToPx(CAST(float32, pt));
     float32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
-    for(int i = 0; i < strlen(text); i++){
+    int32 len = strlen(text);
+    for(int i = 0; i < len; i++){
         const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
         ASSERT(glyph->valid);
         if(!glyph->valid){
             continue;
         }
-        
-        int32 positionX = startX + advance + (int32)((float32)glyph->marginX*fontScale);
-        int32 positionY = startY + (int32)((float32)glyph->marginY*fontScale);
+        int32 positionX = startX + CAST(int32, fontScale*(advance + glyph->marginX));
+        int32 positionY = startY + CAST(int32, fontScale*glyph->marginY);
         //kerning
         if(prevGlyph){
             positionX += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
             advance += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
         }
         
-        float32 zOffset = (float32)zIndex / INT8_MAX;
+        float32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
         //position
         glUniform3f(guiGl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
         //scale
@@ -621,7 +624,7 @@ static bool renderText(const AtlasFont * font, const char * text, int startX, in
         //draw it
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
-        advance += (int32)((float32)glyph->width * fontScale);
+        advance += glyph->width;
         prevGlyph = glyph->glyph;
     }
     return true;
@@ -632,13 +635,14 @@ bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX
 }
 
 static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
+    PROFILE_SCOPE(gui_render_rect);
     glUseProgram(guiGl->flat.program);
     
     float32 resScaleY = 1.0f / (guiContext->height);
     float32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    float32 zOffset = (float32)zIndex / INT8_MAX;
+    float32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
@@ -659,7 +663,7 @@ static bool renderWireRect(const int32 positionX, const int32 positionY, const i
     float32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    float32 zOffset = (float32)zIndex / INT8_MAX;
+    float32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
@@ -944,6 +948,7 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
 }
 
 void guiRenderText(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
+    PROFILE_SCOPE(gui_render_text);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyle = &style->text;
     if(overrideStyle != NULL){
@@ -954,6 +959,7 @@ void guiRenderText(GuiContainer * container, const GuiStyle * style, const char 
 }
 
 void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
+    PROFILE_SCOPE(gui_render_box_text);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyle = &style->text;
     if(overrideStyle != NULL){
@@ -965,6 +971,7 @@ void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const ch
 }
 
 bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
+    PROFILE_SCOPE(gui_render_button);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->button.active;
     const GuiElementStyle * elementStylePassive = &style->button.passive;
@@ -984,6 +991,7 @@ void guiSetCheckboxValue(GuiBool * target, bool newValue){
 }
 
 bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool * checked, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
+    PROFILE_SCOPE(gui_render_checkbox);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->button.active;
     const GuiElementStyle * elementStylePassive = &style->button.passive;
@@ -1013,6 +1021,7 @@ bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool
 }
 
 bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * data, const char * dictionary, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
+    PROFILE_SCOPE(gui_render_input);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
     const GuiElementStyle * elementStylePassive = &style->input.passive;
@@ -1027,6 +1036,7 @@ bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * dat
 }
 
 bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
+    PROFILE_SCOPE(gui_render_dropdown);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
     const GuiElementStyle * elementStylePassive = &style->input.passive;
@@ -1051,6 +1061,7 @@ void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * mess
 }
 
 void guiEnd(){
+    PROFILE_SCOPE(gui_end);
     // messages
     bool close = false;
     for(int32 i = 0; i < guiContext->messagePopupCount; i++){

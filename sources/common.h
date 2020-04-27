@@ -11,8 +11,8 @@
 #define GIGABYTE(n) (((nint)1024)*((nint)MEGABYTE((n))))
 
 
-#define INT32_MAX 0x7FFFFFFF;
-#define INT8_MAX 0x7F;
+#define INT32_MAX 0x7FFFFFFF
+#define INT8_MAX 0x7F
 
 #define STRINGIFY(a) str(a)
 #define str(a) #a

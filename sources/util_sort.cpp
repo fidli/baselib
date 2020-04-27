@@ -78,20 +78,22 @@ void shuffle(byte * target, const uint16 elemsize, int64 arraySize){
 //negative if a < b
 template<typename elemType, typename func>
 void mergeSort(elemType * target, int64 chunkSize, func cmp, elemType * temp = NULL){
+    if(chunkSize <= 10){
+        insertSort(target, chunkSize, cmp);
+        return;
+    }
+    bool uninit = temp == NULL;
+    if(uninit){
+        temp = &PUSHA(elemType, chunkSize);
+    }
     int64 half = chunkSize/2;
-    if(chunkSize > 2){
+    if(chunkSize > 10){
         mergeSort(target, half, cmp, temp);
-        mergeSort(target + half, chunkSize - half, cmp, temp);
+        mergeSort(target + half, chunkSize - half, cmp, temp + half);
     }
     
     int64 index1 = 0;
     int64 index2 = 0;
-    
-    bool uninit = temp == NULL;
-    
-    if(uninit){
-        temp = &PUSHA(elemType, chunkSize);
-    }
     
     for(int64 index = 0; index < chunkSize; index++){
         if(index1 != half && index2 != chunkSize - half){

@@ -11,7 +11,7 @@ struct ProfileEntry{
 
 struct Profile{
     ProfileEntry slots[100];
-    const char * names[100];
+    char names[100][30];
     int32 slotsUsed;
 };
 
@@ -27,7 +27,7 @@ ProfileEntry * createProfileEntry(const char * name){
     ProfileEntry * result = &profile->slots[profile->slotsUsed];
     memset(CAST(void *, result), 0, sizeof(ProfileEntry));
     // NOTE(fidli): this mush be compile known or persistent string, which is the usual case
-    profile->names[profile->slotsUsed] = name;
+    strncpy(profile->names[profile->slotsUsed], name, ARRAYSIZE(profile->names[0]));
     profile->slotsUsed++;
     return result;
 }
@@ -69,30 +69,30 @@ void profileClearStats(){
 
 struct ProfileStats{
     struct Entry{
-        const char * name;
-        float64 avgTime;
         uint64 totalCount;
         float64 totalTime;
+        float64 avgTime;
+        const char * name;
     } entries[ARRAYSIZE(Profile::slots)];
     int32 count;
 };
 
-ProfileStats * getCurrentProfileStats(){
+inline ProfileStats * getCurrentProfileStats(){
     ProfileStats * r = &PUSH(ProfileStats);
-    r->count = 0;
+    int32 count = 0;
+    
     for(int32 i = 0; i < profile->slotsUsed; i++){
         ProfileEntry * entry = &profile->slots[i];
-        ProfileStats::Entry * stat = &r->entries[i];
-        stat->name = profile->names[i];
-        stat->totalCount = entry->callCountTotal;
-        stat->totalTime = entry->timeSpentTotal;
-        if(stat->totalCount){
-            stat->avgTime = stat->totalTime/stat->totalCount;
-        }else{
-            stat->avgTime = 0;
+        if(entry->callCountTotal){
+            ProfileStats::Entry * stat = &r->entries[count];
+            stat->totalCount = entry->callCountTotal;
+            stat->totalTime = entry->timeSpentTotal;
+            stat->avgTime = entry->timeSpentTotal/entry->callCountTotal;
+            stat->name = profile->names[count];
+            count++;
         }
     }
-    r->count = profile->slotsUsed;
-    insertSort(r->entries, r->count, [] (ProfileStats::Entry & a, ProfileStats::Entry & b) -> int32{float64 diff = a.avgTime - b.avgTime;if(diff > 0) return -1; return 0;});
+    r->count = count;
+    mergeSort(&r->entries[0], r->count, [] (ProfileStats::Entry & a, ProfileStats::Entry & b) -> int32{float64 diff = a.avgTime - b.avgTime;if(diff < 0) return 1; return -1;});
     return r;
 }
