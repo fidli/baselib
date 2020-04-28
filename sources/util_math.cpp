@@ -547,6 +547,20 @@ v2_64 V2_64(float64 x, float64 y){
     return res;
 }
 
+v2 operator/=(v2 & a, float32 b){
+    for(int i = 0; i < ARRAYSIZE(a.v); i++){
+        a.v[i] /= b;
+    }
+    return a;
+}
+
+v2 operator-=(v2 & a, v2 b){
+    for(int i = 0; i < ARRAYSIZE(a.v); i++){
+        a.v[i] -= b.v[i];
+    }
+    return a;
+}
+
 dv2 DV2(int32 x, int32 y){
     dv2 res = {x, y};
     return res;
@@ -763,6 +777,13 @@ v3 & operator-=(v3 & a, const v3 & b){
 }
 
 v3_64 & operator-=(v3_64 & a, const v3_64 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] -= b.v[i];
+    }
+    return a;
+}
+
+dv2 & operator-=(dv2 & a, const dv2 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] -= b.v[i];
     }

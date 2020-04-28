@@ -578,7 +578,7 @@ static bool registerInputAndIsSelected(){
     }
 }
 
-static bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
+bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
     PROFILE_SCOPE(gui_render_text);
     glUseProgram(guiGl->font.program);
 
