@@ -159,7 +159,8 @@ struct GuiContext{
     float32 activeInputTimeAccumulator;
     int32 caretPos;
     bool caretVisible;
-    char * inputData;
+    char * inputText;
+    int32 inputMaxlen;
     const char * inputCharlist;
 	
 	char popups[10][20];
@@ -196,8 +197,6 @@ static void guiInvalidate(GuiId * a){
     a->y = -1;
 }
 
-
-
 static bool guiEq(const GuiId A, const GuiId B){
     return A.x == B.x && A.y == B.y && A.z == B.z;
 }
@@ -210,7 +209,7 @@ void guiDeselectInput(){
     if(guiValid(guiContext->activeInput) || guiValid(guiContext->activeDropdown)){
         guiContext->escapeClick = true;
     }
-    guiContext->selection.elementIndex = -1;
+    guiContext->selection.elementIndex = 0;
     guiInvalidate(&guiContext->activeInput);
     guiInvalidate(&guiContext->activeDropdown);
     guiContext->selection.isActive = false;
@@ -279,7 +278,12 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
             1, 0,// 0.0f, 1.0f,
             0, 0,// 0.0f, 1.0f,
             1, 1,// 0.0f, 1.0f,
-            0, 1 //, 0.0f, 1.0f,
+            0, 1, //, 0.0f, 1.0f,
+            // lines
+            0, 0,
+            0, 1,
+            1, 1,
+            1, 0
         };
         
         glBufferData(GL_ARRAY_BUFFER, sizeof(box), box, GL_STATIC_DRAW);
@@ -300,11 +304,7 @@ void guiActivateSelection(){
 }
 
 void guiSelectNextInput(){
-    if(guiContext->selection.isActive){
-        guiContext->selection.elementIndex++;
-    }else{
-        guiContext->selection.elementIndex = 0;
-    }
+    guiContext->selection.elementIndex++;
     guiContext->selection.isActive = true;
     guiContext->selection.activate = false;
     guiInvalidate(&guiContext->activeInput);
@@ -312,11 +312,7 @@ void guiSelectNextInput(){
 }
 
 void guiSelectPreviousInput(){
-    if(guiContext->selection.isActive){
-        guiContext->selection.elementIndex--;
-    }else{
-        guiContext->selection.elementIndex = -1;
-    }
+    guiContext->selection.elementIndex--;
     guiContext->selection.isActive = true;
     guiContext->selection.activate = false;
     guiInvalidate(&guiContext->activeInput);
@@ -672,13 +668,12 @@ static bool renderWireRect(const int32 positionX, const int32 positionY, const i
     glUniform4f(guiGl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
     
     //draw it
-    // TODO(fidli): create vertex in GPU memory, this uses domain code vertices
     glDrawArrays(GL_LINE_LOOP, 4, 4);
     
     return true;
 }
 
-static bool renderInput(const AtlasFont * font, char * text, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, int8 zIndex = 0){
+static bool renderInput(const AtlasFont * font, char * text, int32 textMaxlen, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, int8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext->lastActive);
@@ -691,9 +686,9 @@ static bool renderInput(const AtlasFont * font, char * text, const char * charli
             guiContext->currentHover = id;
         }
     }
-    
+
     bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
-    
+
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
             if(isHoverBeforeAndNow){
@@ -703,7 +698,8 @@ static bool renderInput(const AtlasFont * font, char * text, const char * charli
                 guiContext->activeInputTimeAccumulator = 0;
                 guiContext->caretVisible = true;
                 guiContext->caretPos = 0;
-                guiContext->inputData = text;
+                guiContext->inputText = text;
+                guiContext->inputMaxlen = textMaxlen;
                 guiContext->inputCharlist = charlist;
             }
             guiInvalidate(&guiContext->lastActive);
@@ -716,20 +712,26 @@ static bool renderInput(const AtlasFont * font, char * text, const char * charli
             guiContext->activeInputTimeAccumulator = 0;
             guiContext->caretVisible = true;
             guiContext->caretPos = 0;
-            guiContext->inputData = text;
+            guiContext->inputText = text;
+            guiContext->inputMaxlen = textMaxlen;
             guiContext->inputCharlist = charlist;
         }
     }else{
-        if(guiInput.mouse.buttons.leftDown && guiEq(id, guiContext->activeInput)) guiInvalidate(&guiContext->activeInput);
+        if(guiInput.mouse.buttons.leftDown && guiEq(id, guiContext->activeInput)){
+            guiInvalidate(&guiContext->activeInput);
+        }
     }
     
     if(isHoverBeforeAndNow && !isLastActive){
-        if(guiInput.mouse.buttons.leftDown) guiContext->lastActive = id;
+        if(guiInput.mouse.buttons.leftDown){
+            guiContext->lastActive = id;
+            guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1; 
+        }
     }
     
     renderRect(positionX, positionY, width, height, boxBgColor, zIndex);
     if(isSelected){
-        renderWireRect(positionX, positionY, width, height, inputTextColor, zIndex);
+        renderWireRect(positionX, positionY, width, height, inputTextColor, zIndex + 0.1f);
     }
     renderRect(positionX+margin, positionY+margin, width-2*margin, height-2*margin, fieldColor, zIndex);
     
@@ -789,6 +791,7 @@ static bool renderButton(const AtlasFont * font, int32 pt, const char * text, co
     }else if(isHoverBeforeAndNow){
         if(guiInput.mouse.buttons.leftDown){
             guiContext->lastActive = id;
+            guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1; 
         }
     }
 
@@ -808,7 +811,7 @@ static bool renderButton(const AtlasFont * font, int32 pt, const char * text, co
     
     renderRect(positionX, positionY, width, height, bgColor, zIndex);
     if(isSelected){
-        renderWireRect(positionX, positionY, width, height, textColor, zIndex);
+        renderWireRect(positionX, positionY, width, height, textColor, zIndex + 0.1f);
     }
     renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, pt, textColor, zIndex);
     
@@ -853,6 +856,7 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
         if(isHeadHoverBeforeAndNow && !isHeadLastActive){
             if(guiInput.mouse.buttons.leftDown){
                 guiContext->lastActive = headId;
+                guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1; 
             }
         }
         if(wasHeadSubmitted){
@@ -870,7 +874,7 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
         }
         renderRect(positionX, positionY, width, height, bgColor, zIndex);
         if(isHeadSelected){
-            renderWireRect(positionX, positionY, width, height, textColor, zIndex);
+            renderWireRect(positionX, positionY, width, height, textColor, zIndex + 0.1f);
         }
         renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor, zIndex);
     }
@@ -910,6 +914,7 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
                     if(guiInput.mouse.buttons.leftDown){
                         guiContext->lastActive = id;
                         guiContext->activeDropdown = headId;
+                        guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1; 
                     }
                 }
                 
@@ -924,7 +929,7 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
                 }
                 renderRect(buttonPositionX, buttonPositionY, width, height, bgColor, CAST(float, zIndex + 1));
                 if(isSelected){
-                    renderWireRect(buttonPositionX, buttonPositionY, width, height, textColor, zIndex + 1.0f);
+                    renderWireRect(buttonPositionX, buttonPositionY, width, height, textColor, zIndex + 1.1f);
                 }
                 renderTextXYCentered(font, list[i], buttonPositionX + width/2, buttonPositionY + height/2, 14, textColor, zIndex + 1);
                 
@@ -1020,7 +1025,7 @@ bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool
     return r;
 }
 
-bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * data, const char * dictionary, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
+bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * text, int32 textMaxlen, const char * dictionary, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
     PROFILE_SCOPE(gui_render_input);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
@@ -1031,8 +1036,8 @@ bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * dat
     if(overrideStylePassive != NULL){
         elementStylePassive = overrideStylePassive;
     }
-    calculateAndAdvanceCursor(&container, style, elementStyleActive, data, justify, &rei);
-    return renderInput(style->font, data, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
+    return renderInput(style->font, text, textMaxlen, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
