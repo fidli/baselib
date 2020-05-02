@@ -729,6 +729,14 @@ dv3_64 & operator+=(dv3_64 & a, const dv3_64 & b){
     return a;
 }
 
+dv2 operator/(const dv2 & a, const int32 b){
+    dv2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] / b;
+    }
+    return result;
+}
+
 v3_64 operator/(const dv3_64 & a, const float64 b){
     v3_64 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){

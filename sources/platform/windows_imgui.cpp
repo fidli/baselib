@@ -24,7 +24,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
             guiInput.mouse.buttons.leftDown = true;
             inputHandled = guiAnyPopup();
             // NOTE(fidli): any input gets re-selected potentially
-            //guiDeselectInput();
+            guiDeselectInput();
         }break;
         case WM_KEYDOWN:{
             //first hit
