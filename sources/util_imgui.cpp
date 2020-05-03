@@ -158,6 +158,8 @@ struct GuiContext{
     float32 activeInputLastTimestamp;
     float32 activeInputTimeAccumulator;
     int32 caretPos;
+    int32 caretWidth;
+    bool caretPositioning;
     bool caretVisible;
     char * inputText;
     int32 inputMaxlen;
@@ -205,6 +207,11 @@ bool guiValid(const GuiId a){
     return a.x != -1 && a.y != -1;
 }
 
+void guiCancelCaretPositioning(){
+    guiContext->caretPositioning = false;
+    guiContext->caretWidth = 0;
+}
+
 void guiDeselectInput(){
     if(guiValid(guiContext->activeInput) || guiValid(guiContext->activeDropdown)){
         guiContext->escapeClick = true;
@@ -214,6 +221,7 @@ void guiDeselectInput(){
     guiInvalidate(&guiContext->activeDropdown);
     guiContext->selection.isActive = false;
     guiContext->selection.activate = false;
+    guiCancelCaretPositioning();
 }
 
 bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
@@ -268,6 +276,7 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
     guiContext->selection.activate = false;
     guiContext->mouseInContainer = false;
     guiContext->escapeClick = false;
+    guiContext->caretPositioning = false;
     isInit = r;
     
     {
@@ -303,12 +312,23 @@ void guiActivateSelection(){
     guiContext->selection.activate = true;
 }
 
+
+void guiSelectFirstInput(){
+    guiContext->selection.elementIndex = 0;
+    guiContext->selection.isActive = true;
+    guiContext->selection.activate = false;
+    guiInvalidate(&guiContext->activeInput);
+    guiInvalidate(&guiContext->activeDropdown);
+    guiCancelCaretPositioning();
+}
+
 void guiSelectNextInput(){
     guiContext->selection.elementIndex++;
     guiContext->selection.isActive = true;
     guiContext->selection.activate = false;
     guiInvalidate(&guiContext->activeInput);
     guiInvalidate(&guiContext->activeDropdown);
+    guiCancelCaretPositioning();
 }
 
 void guiSelectPreviousInput(){
@@ -317,6 +337,7 @@ void guiSelectPreviousInput(){
     guiContext->selection.activate = false;
     guiInvalidate(&guiContext->activeInput);
     guiInvalidate(&guiContext->activeDropdown);
+    guiCancelCaretPositioning();
 }
 
 
@@ -673,7 +694,171 @@ static bool renderWireRect(const int32 positionX, const int32 positionY, const i
     return true;
 }
 
-static bool renderInput(const AtlasFont * font, char * text, int32 textMaxlen, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, int8 zIndex = 0){
+void guiResetCaretVisually(){
+    guiContext->activeInputLastTimestamp = getProcessCurrentTime();
+    guiContext->activeInputTimeAccumulator = 0;
+    guiContext->caretVisible = true;
+}
+
+void guiInputCharacters(const char * input, int32 len){
+    int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    int32 ci = 0;
+    for(; ci < len; ci++){
+        char c = input[ci];
+        bool isValid = true;
+        if(guiContext->inputCharlist != NULL){
+            //start parse format
+            const char * format = guiContext->inputCharlist;
+            bool inverted = false;
+            int32 formatIndex = 0;
+            if(format[formatIndex] == '^'){
+                inverted = true;
+                formatIndex++;
+            }
+            char digitRangeLow = 0;
+            char digitRangeHigh = 0;
+            char smallLetterRangeLow = 0;
+            char smallLetterRangeHigh = 0;
+            char capitalLetterRangeLow = 0;
+            char capitalLetterRangeHigh = 0;
+            const char* charlist[4] = {};
+            uint8 charlistLengths[4] = {};
+            uint8 charlistCount = 0;
+            
+            uint8 charlistLen = 0;
+            for(;format[formatIndex] != 0; formatIndex++){
+                if(format[formatIndex+1] == '-'){
+                    if(charlistLen > 0){
+                        charlistLengths[charlistCount] = charlistLen;
+                        charlistLen = 0;
+                    }
+                    
+                    if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
+                        capitalLetterRangeLow = format[formatIndex];                         
+                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                        smallLetterRangeLow = format[formatIndex];                            
+                    }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
+                        digitRangeLow = format[formatIndex];
+                    }else{
+                        INV; //implement me maybe? makes sense? i havent been in these depths for long
+                    }
+                    
+                    formatIndex += 2;
+                    
+                    if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
+                        capitalLetterRangeHigh = format[formatIndex];                    
+                        ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
+                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                        smallLetterRangeHigh = format[formatIndex];
+                        ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
+                    }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
+                        digitRangeHigh = format[formatIndex];
+                        ASSERT(digitRangeHigh > digitRangeLow);
+                    }else{
+                        INV; //implement me maybe? makes sense?
+                    }
+                    
+                }else{
+                    
+                    if(charlistLen == 0){
+                        charlistCount++;
+                        charlist[charlistCount-1] = &format[formatIndex];
+                    }
+                    charlistLengths[charlistCount-1]++;
+                    charlistLen++;
+                    
+                }
+            }
+            //end parse format
+            isValid = false;
+            //start validate char
+            {
+                if(digitRangeLow != '\0'){
+                    if(c >= digitRangeLow && c <= digitRangeHigh && !inverted){
+                        isValid = true;
+                        break;
+                    }else if((c < digitRangeLow && c > digitRangeHigh) && inverted){
+                        isValid = true;
+                        break;
+                    }
+                }
+                if(capitalLetterRangeLow != '\0'){
+                    if(c >= capitalLetterRangeLow && c <= capitalLetterRangeHigh && !inverted){
+                        isValid = true;
+                        break;
+                    }else if((c < capitalLetterRangeLow && c > capitalLetterRangeHigh) && inverted){
+                        isValid = true;
+                        break;
+                    }
+                }
+                if(smallLetterRangeLow != '\0'){
+                    if(c >= smallLetterRangeLow && c <= smallLetterRangeHigh && !inverted){
+                        isValid = true;
+                        break;
+                    }else if((c < smallLetterRangeLow || c > smallLetterRangeHigh) && inverted){
+                        isValid = true;
+                        break;
+                    }                        
+                }
+                
+                bool found = false;
+                for(int charlistIndex = 0; charlistIndex < charlistCount; charlistIndex++){
+                    for(int charIndex = 0; charIndex < charlistLengths[charlistIndex]; charIndex++){
+                        if(c == charlist[charlistIndex][charIndex]){
+                            isValid = true;
+                            break;
+                        }
+                    }
+                    if(found){
+                        break;
+                    }
+                }
+                
+                if(!inverted && found){
+                    isValid = true;
+                    break;
+                }else if(inverted && !found){
+                    isValid = true;
+                    break;
+                }
+            }
+            //end validate char
+        }
+        if(isValid){
+            if(textlen + 2 < guiContext->inputMaxlen){
+                for(int32 i = textlen; i > guiContext->caretPos + ci; i--){
+                    guiContext->inputText[i] = guiContext->inputText[i-1];
+                } 
+                guiContext->inputText[guiContext->caretPos + ci] = c;
+                textlen++;
+            }
+        }else{
+            break;
+        }
+    }
+    guiContext->inputText[textlen+1] = '\0';
+    guiContext->caretPos += ci;
+    guiResetCaretVisually();
+}
+
+void guiDeleteInputCharacters(int32 from, int32 to){
+    int32 start = from;
+    int32 end = to;
+    if(end < start){
+        SWAP(end, start);
+    }
+    int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    start = clamp(start, 0, textlen);
+    end = clamp(end, 0, textlen);
+    if(start != end){
+        memcpy(guiContext->inputText + start, guiContext->inputText + end, textlen-end);
+        guiContext->inputText[textlen-(end-start)] = '\0';
+    }
+    guiContext->caretPos = start;
+    guiCancelCaretPositioning();
+}
+
+static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 textMaxlen, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, int8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext->lastActive);
@@ -688,19 +873,25 @@ static bool renderInput(const AtlasFont * font, char * text, int32 textMaxlen, c
     }
 
     bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
-
+    int32 textPxWidthHalf = calculateAtlasTextWidth(font, text, pt)/2;
+    int32 textPxStartX = positionX + width/2 - textPxWidthHalf;
+    if(guiInput.mouse.buttons.leftDown && isHoverNow){
+        guiContext->caretPos = calculateAtlasTextCaretPosition(font, text, pt, guiInput.mouse.x - textPxStartX);
+        guiContext->caretPositioning = true;
+    }
     if(isLastActive){
+        if(guiContext->caretPositioning == true){
+            guiContext->caretWidth = calculateAtlasTextCaretPosition(font, text, pt, guiInput.mouse.x - textPxStartX) - guiContext->caretPos;
+        }
         if(guiInput.mouse.buttons.leftUp){
             if(isHoverBeforeAndNow){
                 result = true;
                 guiContext->activeInput = id;
-                guiContext->activeInputLastTimestamp = getProcessCurrentTime();
-                guiContext->activeInputTimeAccumulator = 0;
-                guiContext->caretVisible = true;
-                guiContext->caretPos = 0;
+                guiResetCaretVisually();
                 guiContext->inputText = text;
                 guiContext->inputMaxlen = textMaxlen;
                 guiContext->inputCharlist = charlist;
+                guiContext->caretPositioning = false;
             }
             guiInvalidate(&guiContext->lastActive);
         }
@@ -708,10 +899,9 @@ static bool renderInput(const AtlasFont * font, char * text, int32 textMaxlen, c
         result = true;
         if(!guiEq(guiContext->activeInput, id)){
             guiContext->activeInput = id;
-            guiContext->activeInputLastTimestamp = getProcessCurrentTime();
-            guiContext->activeInputTimeAccumulator = 0;
-            guiContext->caretVisible = true;
+            guiResetCaretVisually();
             guiContext->caretPos = 0;
+            guiContext->caretWidth = 0;
             guiContext->inputText = text;
             guiContext->inputMaxlen = textMaxlen;
             guiContext->inputCharlist = charlist;
@@ -734,10 +924,17 @@ static bool renderInput(const AtlasFont * font, char * text, int32 textMaxlen, c
         renderWireRect(positionX, positionY, width, height, inputTextColor, zIndex + 0.1f);
     }
     renderRect(positionX+margin, positionY+margin, width-2*margin, height-2*margin, fieldColor, zIndex);
-    
-    
-    
-    renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, inputTextColor, zIndex);
+	if(guiEq(guiContext->activeInput, id) || (isLastActive && guiContext->caretPositioning)){
+        if(guiContext->caretWidth != 0){
+            int32 caretXStart = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos);
+            int32 caretXEnd = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos + guiContext->caretWidth);
+            if(caretXEnd < caretXStart){
+                SWAP(caretXStart, caretXEnd);
+            }
+            renderRect(textPxStartX + caretXStart, positionY, caretXEnd - caretXStart, height, boxBgColor, zIndex);
+        }
+    }
+    renderText(font, text, textPxStartX, positionY + height/2 - CAST(int32, ((CAST(float32, ptToPx(CAST(float32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, inputTextColor, zIndex);
     
     //do something at all
 	if(guiEq(guiContext->activeInput, id)){
@@ -746,19 +943,12 @@ static bool renderInput(const AtlasFont * font, char * text, int32 textMaxlen, c
             guiContext->activeInputTimeAccumulator -= CARET_TICK;
             guiContext->caretVisible = !guiContext->caretVisible;
         }
-        int32 texlen = strlen(text);
-        if(guiContext->caretPos > texlen) guiContext->caretPos = texlen;
         //draw for now?
-        if(guiContext->caretVisible){
-            char * tmpbuf = &PUSHA(char, texlen+1); 
-            strncpy(tmpbuf, text, guiContext->caretPos);
-            tmpbuf[guiContext->caretPos] = 0;
-            int32 carretXOffset = calculateAtlasTextWidth(font, tmpbuf, 14);
-            int32 textXOffset = (width-2*margin)/2-calculateAtlasTextWidth(font, text, 14)/2;
-            POP;
+        if(guiContext->caretWidth == 0 && guiContext->caretVisible){
+            int32 carretXOffset = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos);
+            int32 textXOffset = (width-2*margin)/2-textPxWidthHalf;
             renderRect(positionX+margin+carretXOffset+textXOffset, positionY + 2*margin, 4, height - 4*margin, inputTextColor, zIndex);
-        }
-        
+        }        
     }
     
     return result;
@@ -1037,7 +1227,7 @@ bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * tex
         elementStylePassive = overrideStylePassive;
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
-    return renderInput(style->font, text, textMaxlen, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    return renderInput(style->font, style->pt, text, textMaxlen, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){

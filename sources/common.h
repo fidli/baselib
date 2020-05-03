@@ -21,7 +21,7 @@
 
 #define CAST(type, what) ((type)(what))
 
-#define SWAP(a, b) { auto tmp = a; a = b; b = a;}
+#define SWAP(a, b) { auto tmp = a; a = b; b = tmp;}
 
 #ifdef RELEASE
 #pragma message("RELEASE MODE")

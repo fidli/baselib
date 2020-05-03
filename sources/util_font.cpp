@@ -275,12 +275,52 @@ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * as
     return true;
 }
 
-int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int pt){
+int32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text, int32 pt, int32 pxPosition){
+    if(pxPosition < 0){
+        return 0;
+    }
     int32 width = 0;
     int32 targetSize = ptToPx(CAST(float32, pt));
     float32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
     nint len = strlen(text);
+    int32 unscaledTarget = CAST(int32, pxPosition/fontScale);
+    int32 caretPosition = 0;
+    for(; caretPosition < len; caretPosition++){
+        int32 contribution = 0;
+        const GlyphData * glyph = &font->glyphs[CAST(uint8, text[caretPosition])];
+        ASSERT(glyph->valid);
+        //kerning?
+        if(prevGlyph){
+            contribution -= glyph->kerning[prevGlyph];
+        }
+        contribution += glyph->width;
+        int32 nextWidth = width + contribution;
+        if(unscaledTarget <= nextWidth && unscaledTarget >= width){
+            if(unscaledTarget - width < nextWidth - unscaledTarget){
+                return caretPosition;
+            }else{
+                return caretPosition + 1;
+            }
+        }
+        width = nextWidth;
+        
+    }
+    return caretPosition;
+}
+
+
+int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int32 pt, int32 textLen = -1){
+    int32 width = 0;
+    int32 targetSize = ptToPx(CAST(float32, pt));
+    float32 fontScale = (float32)targetSize / font->pixelSize;
+    char prevGlyph = 0;
+    nint len;
+    if(textLen != -1){
+        len = textLen;
+    }else{
+        len = strlen(text);
+    }
     for(int i = 0; i < len; i++){
         const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
         ASSERT(glyph->valid);

@@ -27,11 +27,13 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
             guiDeselectInput();
         }break;
         case WM_KEYDOWN:{
+            bool ctrlDown = GetKeyState(0x11) & (1 << 15);
+            bool shiftDown = GetKeyState(0x10) & (1 << 15);
             //first hit
             if(~lParam & (1<<30)){
                 switch (wParam){
                     case 0x09:{// tab
-                        if(GetKeyState(0x10) & (1 << 15)){//shift
+                        if(shiftDown){
                             guiSelectPreviousInput();
                         }else{
                             guiSelectNextInput();
@@ -39,49 +41,84 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         inputHandled = true;
                         return inputHandled;
                     }break;
+                    case 0x1B:{// escape
+                        if(guiAnyInputSelected() || guiValid(guiContext->activeInput)){
+                            if(guiContext->caretPositioning){
+                                guiCancelCaretPositioning();
+                            }else{
+                                guiDeselectInput();
+                            }
+                            inputHandled = true;
+                        } else if(guiAnyPopup()){
+                            guiClosePopup(NULL);
+                            inputHandled = true;
+                        }
+                    }break;
                 }
                 if(guiAnyInputSelected()){
                     switch (wParam){
-                        case 0x1B:{// escape
-                            guiDeselectInput();
-                            inputHandled = true;
-                        }break;
                         case 0x0D:{// enter
                             guiActivateSelection();
                             inputHandled = true;
                         }break;
-                        
                     }
-                } else if(guiAnyPopup()){
+                } 
+                if(!inputHandled && guiValid(guiContext->activeInput)){
                     switch (wParam){
-                        case 0x1B:{// escape
-                            guiClosePopup(NULL);
-                            inputHandled = true;
-                        }break;
-                    }
-                }
-                if(guiValid(guiContext->activeInput)){
-                    switch (wParam){
-                        case 0x1B: {// escape
-                            guiDeselectInput();
-                            inputHandled = true;
-                        }break;
                         case 0x28: // down arrow
                         case 0x26:{ // up arrow
                         }break;
                         case 0x25:{// left arrow
-                            if(guiContext->caretPos > 0){
-                                guiContext->caretPos--;
+                            if(!shiftDown){
+                                guiCancelCaretPositioning();
+                                guiContext->caretPos = MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                                if(guiContext->caretPos > 0){
+                                    guiContext->caretPos--;
+                                }
+                                guiResetCaretVisually();
+                            }else{
+                                if(guiContext->caretPos + guiContext->caretWidth > 0){
+                                    guiContext->caretWidth--;
+                                }
                             }
+                            inputHandled = true;
                         }break;
                         case 0x27:{ //right arrow
-                            guiContext->caretPos++;
+                            nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+                            if(!shiftDown){
+                                guiCancelCaretPositioning();
+                                guiContext->caretPos = MAX(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                                if(guiContext->caretPos < textlen){
+                                    guiContext->caretPos++;
+                                }
+                                guiResetCaretVisually();
+                            }else{
+                                if(guiContext->caretPos + guiContext->caretWidth < textlen){
+                                    guiContext->caretWidth++;
+                                }
+                            }
+                            inputHandled = true;
                         }break;
                         case 0x24:{ // HOME
-                            guiContext->caretPos = 0;
+                            if(!shiftDown){
+                                guiCancelCaretPositioning();
+                                guiContext->caretPos = 0;
+                                guiResetCaretVisually();
+                            }else{
+                                guiContext->caretWidth = -guiContext->caretPos;
+                            }
+                            inputHandled = true;
                         }break;
                         case 0x23:{ // END
-                            guiContext->caretPos = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+                            nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+                            if(!shiftDown){
+                                guiCancelCaretPositioning();
+                                guiContext->caretPos = textlen;
+                                guiResetCaretVisually();
+                            }else{
+                                guiContext->caretWidth = textlen - guiContext->caretPos;
+                            }
+                            inputHandled = true;
                         }break;
                         case 0x10:{ //shift
                             //is handled by get key state
@@ -96,28 +133,32 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             }else{
                                 guiDeselectInput();
                             }
+                            inputHandled = true;
                         }break;
                         case 0x08:{ //backspace
-                            //assuming this fits
-                            int32 textlen = strlen(guiContext->inputText);
-                            for(int32 i = guiContext->caretPos-1; i < textlen; i++){
-                                guiContext->inputText[i] = guiContext->inputText[i+1];
-                            } 
-                            guiContext->inputText[textlen-1] = 0;
-                            if(guiContext->caretPos > 0){
-                                guiContext->caretPos--;
+                            if(guiContext->caretWidth == 0){
+                                guiDeleteInputCharacters(guiContext->caretPos-1, guiContext->caretPos);
+                            }else if(guiContext->caretWidth){
+                                guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
                             }
+                            guiResetCaretVisually();
+                            inputHandled = true;
                         }break;
                         case 0x2E:{ //delete
-                            //assuming this fits
-                            int32 textlen = strlen(guiContext->inputText);
-                            for(int32 i = guiContext->caretPos; i < textlen; i++){
-                                guiContext->inputText[i] = guiContext->inputText[i+1];
-                            } 
-                            guiContext->inputText[textlen-1] = 0;
+                            if(guiContext->caretWidth == 0){
+                                guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos+1);
+                            }else if(guiContext->caretWidth){
+                                guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos+guiContext->caretWidth);
+                            }
+                            guiResetCaretVisually();
+                            inputHandled = true;
                         }break;
                         default:{
+                            if(guiContext->caretWidth != 0){
+                                guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                            }
                             char c = wParam;//assuming ascii character
+                            
                             if(c == (char)0x6D || c == (char)0xBD){ //minus
                                 c = '-';
                             }
@@ -128,7 +169,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             if(GetKeyState(0x14) & 1){//caps lock
                                 capitals = true;
                             }
-                            if(GetKeyState(0x10) & (1 << 15)){//shift
+                            if(shiftDown){//shift
                                 capitals = !capitals;
                             }
                             if(!capitals){
@@ -137,9 +178,8 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                                     c += (char)0x20;
                                 }
                             }
-                            
-                            bool isValid = true;
-                            if(guiContext->inputCharlist != NULL){
+                            bool isValid = c >= 32;
+                            if(isValid && guiContext->inputCharlist != NULL){
                                 //start parse format
                                 const char * format = guiContext->inputCharlist;
                                 bool inverted = false;
@@ -259,16 +299,16 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                                 //end validate char
                             }
                             if(isValid){
-                                // assuming this fits
                                 int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
                                 if(textlen + 2 < guiContext->inputMaxlen){
                                     for(int32 i = textlen; i > guiContext->caretPos; i--){
                                         guiContext->inputText[i] = guiContext->inputText[i-1];
                                     } 
                                     guiContext->inputText[guiContext->caretPos] = c;
-                                    guiContext->inputText[guiContext->caretPos+1] = '\0';
+                                    guiContext->inputText[textlen+1] = '\0';
                                     guiContext->caretPos++;
                                 }
+                                guiResetCaretVisually();
                             }
                         }break;
                     }
