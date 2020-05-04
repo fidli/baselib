@@ -168,6 +168,7 @@ struct GuiContext{
 	char popups[10][20];
 	int32 popupCount;
 	bool popupLocked;
+    bool dropdownLocked;
 
     char messagePopups[10][20];
     int32 messagePopupCount;
@@ -218,7 +219,7 @@ void guiDeselectInput(){
     }
     guiContext->selection.elementIndex = 0;
     guiInvalidate(&guiContext->activeInput);
-    guiInvalidate(&guiContext->activeDropdown);
+    // NOTE(fidli): dropown gets sorted out at the end of the gui
     guiContext->selection.isActive = false;
     guiContext->selection.activate = false;
     guiCancelCaretPositioning();
@@ -318,7 +319,6 @@ void guiSelectFirstInput(){
     guiContext->selection.isActive = true;
     guiContext->selection.activate = false;
     guiInvalidate(&guiContext->activeInput);
-    guiInvalidate(&guiContext->activeDropdown);
     guiCancelCaretPositioning();
 }
 
@@ -327,7 +327,6 @@ void guiSelectNextInput(){
     guiContext->selection.isActive = true;
     guiContext->selection.activate = false;
     guiInvalidate(&guiContext->activeInput);
-    guiInvalidate(&guiContext->activeDropdown);
     guiCancelCaretPositioning();
 }
 
@@ -336,7 +335,6 @@ void guiSelectPreviousInput(){
     guiContext->selection.isActive = true;
     guiContext->selection.activate = false;
     guiInvalidate(&guiContext->activeInput);
-    guiInvalidate(&guiContext->activeDropdown);
     guiCancelCaretPositioning();
 }
 
@@ -349,6 +347,7 @@ void guiBegin(int32 width, int32 height){
     guiInvalidate(&guiContext->currentHover);
     guiContext->minZ = guiContext->maxZ = 0;
 	guiContext->popupLocked = true;
+    guiContext->dropdownLocked = false;
     memset(CAST(void*, &guiContext->defaultContainer), 0, sizeof(guiContext->defaultContainer));
     guiContext->defaultContainer.width = guiContext->width = width;
     guiContext->defaultContainer.height = guiContext->height = height;
@@ -581,7 +580,14 @@ static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle 
 }
 
 static bool registerInputAndIsSelected(){
-    if(guiAnyPopup()){
+    if(guiValid(guiContext->activeDropdown)){
+        if(guiContext->dropdownLocked){
+            bool res = guiContext->selection.isActive && guiContext->selection.inputsRendered == guiContext->selection.elementIndex;
+            guiContext->selection.inputsRendered++;
+            return res;
+        }
+        return false;
+    }else if(guiAnyPopup()){
         if(!guiContext->popupLocked){
             bool res = guiContext->selection.isActive && guiContext->selection.inputsRendered == guiContext->selection.elementIndex;
             guiContext->selection.inputsRendered++;
@@ -683,7 +689,7 @@ static bool renderWireRect(const int32 positionX, const int32 positionY, const i
     float32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
-    glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
+    glUniform2f(guiGl->flat.scaleLocation, (width-1) * resScaleX * 2, resScaleY * (height-1) * 2);
     
     //color
     glUniform4f(guiGl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
@@ -901,7 +907,7 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
             guiContext->activeInput = id;
             guiResetCaretVisually();
             guiContext->caretPos = 0;
-            guiContext->caretWidth = 0;
+            guiContext->caretWidth = strlen_s(text, textMaxlen);
             guiContext->inputText = text;
             guiContext->inputMaxlen = textMaxlen;
             guiContext->inputCharlist = charlist;
@@ -1009,7 +1015,7 @@ static bool renderButton(const AtlasFont * font, int32 pt, const char * text, co
 }
 
 
-static bool renderDropdown(const AtlasFont * font, char * text, const char ** list, int32 listSize, int32 * resultIndex, int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
+static bool renderDropdown(const AtlasFont * font, int32 pt, char * searchtext, int32 searchMaxlen, const char ** list, int32 listSize, int32 * resultIndex, int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
     bool isHeadLastActive;
     bool isDropdownActive;
     GuiId headId = {positionX, positionY, zIndex};
@@ -1035,12 +1041,17 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
             if(guiInput.mouse.buttons.leftUp){
 				if(!isBlockedByPopup && isHeadHoverBeforeAndNow){
                     guiContext->activeDropdown = headId;
+                    guiSelectFirstInput();
                 }
                 guiInvalidate(&guiContext->lastActive);
             }
         }else{
-            if(guiInput.mouse.buttons.leftDown && guiEq(headId, guiContext->activeDropdown)){
-               guiInvalidate(&guiContext->activeDropdown);
+            if(guiContext->escapeClick && guiEq(headId, guiContext->activeDropdown)){
+                guiContext->escapeClick = false;
+                // if no click into searchbar
+                if(!(guiInput.mouse.x > positionX && guiInput.mouse.x <= positionX + width && guiInput.mouse.y > positionY + height && guiInput.mouse.y <= positionY + height*2)){
+                    guiInvalidate(&guiContext->activeDropdown);
+                }
             }
         }
         if(isHeadHoverBeforeAndNow && !isHeadLastActive){
@@ -1051,6 +1062,8 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
         }
         if(wasHeadSubmitted){
             guiContext->activeDropdown = headId;
+            guiSelectFirstInput();
+            guiContext->caretWidth = strlen_s(searchtext, searchMaxlen);
         }
         
         const Color * textColor;
@@ -1066,18 +1079,20 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
         if(isHeadSelected){
             renderWireRect(positionX, positionY, width, height, textColor, zIndex + 0.1f);
         }
-        renderTextXYCentered(font, text, positionX + width/2, positionY + height/2, 14, textColor, zIndex);
+        renderTextXYCentered(font, searchtext, positionX + width/2, positionY + height/2, pt, textColor, zIndex);
     }
     //end dropdown head
     bool selected = false;
     //start list members
     if(isDropdownActive){
+        guiContext->dropdownLocked = true;
+        renderInput(font, pt, searchtext, searchMaxlen, NULL, positionX, positionY + height, width, height, inactiveBgColor, activeBgColor, activeTextColor, zIndex+1); 
         for(int32 i = 0; i < listSize; i++){
             
             //start individual buttons
             {
                 int32 buttonPositionX = positionX;
-                int32 buttonPositionY = positionY + (i+1)*height;
+                int32 buttonPositionY = positionY + (i+2)*height;
                 GuiId id = {buttonPositionX, buttonPositionY, zIndex+1};
                 bool isLastActive = guiEq(id, guiContext->lastActive);
                 bool result = false;
@@ -1107,6 +1122,9 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
                         guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1; 
                     }
                 }
+                if(wasSubmitted){
+                    result = true;
+                }
                 
                 const Color * textColor;
                 const Color * bgColor;
@@ -1121,11 +1139,11 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
                 if(isSelected){
                     renderWireRect(buttonPositionX, buttonPositionY, width, height, textColor, zIndex + 1.1f);
                 }
-                renderTextXYCentered(font, list[i], buttonPositionX + width/2, buttonPositionY + height/2, 14, textColor, zIndex + 1);
+                renderTextXYCentered(font, list[i], buttonPositionX + width/2, buttonPositionY + height/2, pt, textColor, zIndex + 1);
                 
                 if(result){
                     *resultIndex = i;
-                    strcpy(text, list[i]); 
+                    strcpy(searchtext, list[i]); 
                     selected = true;
                 }
             }
@@ -1134,6 +1152,7 @@ static bool renderDropdown(const AtlasFont * font, char * text, const char ** li
         if(guiInput.mouse.buttons.leftUp){
             guiContext->activeDropdown = headId;
         }
+        guiContext->dropdownLocked = false;
     }
     //end list members
     if(selected){
@@ -1230,7 +1249,7 @@ bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * tex
     return renderInput(style->font, style->pt, text, textMaxlen, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
-bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
+bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, int32 searchMaxlen, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
     PROFILE_SCOPE(gui_render_dropdown);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
@@ -1242,7 +1261,7 @@ bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * 
         elementStylePassive = overrideStylePassive;
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, searchtext, justify, &rei);
-    return renderDropdown(style->font, searchtext, fullList, listSize, resultIndex, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
+    return renderDropdown(style->font, style->pt, searchtext, searchMaxlen, fullList, listSize, resultIndex, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStylePassive->fgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, container->zIndex);
 }
 
 void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * message){
@@ -1257,6 +1276,9 @@ void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * mess
 
 void guiEnd(){
     PROFILE_SCOPE(gui_end);
+    if(guiContext->escapeClick){
+        guiInvalidate(&guiContext->activeDropdown);
+    }
     // messages
     bool close = false;
     for(int32 i = 0; i < guiContext->messagePopupCount; i++){

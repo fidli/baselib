@@ -45,11 +45,14 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         if(guiAnyInputSelected() || guiValid(guiContext->activeInput)){
                             if(guiContext->caretPositioning){
                                 guiCancelCaretPositioning();
-                            }else{
+                            } else{
                                 guiDeselectInput();
                             }
                             inputHandled = true;
-                        } else if(guiAnyPopup()){
+                        } else if(guiValid(guiContext->activeDropdown)){
+                            guiInvalidate(&guiContext->activeDropdown);
+                            inputHandled = true;
+                        }else if(guiAnyPopup()){
                             guiClosePopup(NULL);
                             inputHandled = true;
                         }
@@ -179,136 +182,8 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                                 }
                             }
                             bool isValid = c >= 32;
-                            if(isValid && guiContext->inputCharlist != NULL){
-                                //start parse format
-                                const char * format = guiContext->inputCharlist;
-                                bool inverted = false;
-                                int32 formatIndex = 0;
-                                if(format[formatIndex] == '^'){
-                                    inverted = true;
-                                    formatIndex++;
-                                }
-                                char digitRangeLow = 0;
-                                char digitRangeHigh = 0;
-                                char smallLetterRangeLow = 0;
-                                char smallLetterRangeHigh = 0;
-                                char capitalLetterRangeLow = 0;
-                                char capitalLetterRangeHigh = 0;
-                                const char* charlist[4] = {};
-                                uint8 charlistLengths[4] = {};
-                                uint8 charlistCount = 0;
-                                
-                                uint8 charlistLen = 0;
-                                for(;format[formatIndex] != 0; formatIndex++){
-                                    if(format[formatIndex+1] == '-'){
-                                        if(charlistLen > 0){
-                                            charlistLengths[charlistCount] = charlistLen;
-                                            charlistLen = 0;
-                                        }
-                                        
-                                        if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
-                                            capitalLetterRangeLow = format[formatIndex];                         
-                                        }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                                            smallLetterRangeLow = format[formatIndex];                            
-                                        }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
-                                            digitRangeLow = format[formatIndex];
-                                        }else{
-                                            INV; //implement me maybe? makes sense? i havent been in these depths for long
-                                        }
-                                        
-                                        formatIndex += 2;
-                                        
-                                        if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
-                                            capitalLetterRangeHigh = format[formatIndex];                    
-                                            ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
-                                        }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                                            smallLetterRangeHigh = format[formatIndex];
-                                            ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
-                                        }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
-                                            digitRangeHigh = format[formatIndex];
-                                            ASSERT(digitRangeHigh > digitRangeLow);
-                                        }else{
-                                            INV; //implement me maybe? makes sense?
-                                        }
-                                        
-                                    }else{
-                                        
-                                        if(charlistLen == 0){
-                                            charlistCount++;
-                                            charlist[charlistCount-1] = &format[formatIndex];
-                                        }
-                                        charlistLengths[charlistCount-1]++;
-                                        charlistLen++;
-                                        
-                                    }
-                                }
-                                //end parse format
-                                isValid = false;
-                                //start validate char
-                                do{
-                                    if(digitRangeLow != '\0'){
-                                        if(c >= digitRangeLow && c <= digitRangeHigh && !inverted){
-                                            isValid = true;
-                                            break;
-                                        }else if((c < digitRangeLow && c > digitRangeHigh) && inverted){
-                                            isValid = true;
-                                            break;
-                                        }
-                                    }
-                                    if(capitalLetterRangeLow != '\0'){
-                                        if(c >= capitalLetterRangeLow && c <= capitalLetterRangeHigh && !inverted){
-                                            isValid = true;
-                                            break;
-                                        }else if((c < capitalLetterRangeLow && c > capitalLetterRangeHigh) && inverted){
-                                            isValid = true;
-                                            break;
-                                        }
-                                    }
-                                    if(smallLetterRangeLow != '\0'){
-                                        if(c >= smallLetterRangeLow && c <= smallLetterRangeHigh && !inverted){
-                                            isValid = true;
-                                            break;
-                                        }else if((c < smallLetterRangeLow || c > smallLetterRangeHigh) && inverted){
-                                            isValid = true;
-                                            break;
-                                        }                        
-                                    }
-                                    
-                                    bool found = false;
-                                    for(int charlistIndex = 0; charlistIndex < charlistCount; charlistIndex++){
-                                        for(int charIndex = 0; charIndex < charlistLengths[charlistIndex]; charIndex++){
-                                            if(c == charlist[charlistIndex][charIndex]){
-                                                isValid = true;
-                                                break;
-                                            }
-                                        }
-                                        if(found){
-                                            break;
-                                        }
-                                    }
-                                    
-                                    if(!inverted && found){
-                                        isValid = true;
-                                        break;
-                                    }else if(inverted && !found){
-                                        isValid = true;
-                                        break;
-                                    }
-                                    
-                                }while(false);
-                                //end validate char
-                            }
                             if(isValid){
-                                int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
-                                if(textlen + 2 < guiContext->inputMaxlen){
-                                    for(int32 i = textlen; i > guiContext->caretPos; i--){
-                                        guiContext->inputText[i] = guiContext->inputText[i-1];
-                                    } 
-                                    guiContext->inputText[guiContext->caretPos] = c;
-                                    guiContext->inputText[textlen+1] = '\0';
-                                    guiContext->caretPos++;
-                                }
-                                guiResetCaretVisually();
+                                guiInputCharacters(&c, 1);
                             }
                         }break;
                     }
