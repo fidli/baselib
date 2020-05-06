@@ -20,8 +20,14 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
             guiInput.mouse.buttons.leftUp = true;
             inputHandled = guiAnyPopup();
         }break;
+        case WM_LBUTTONDBLCLK:
+            guiInput.mouse.buttons.leftDoubleClick = true;
+            guiInput.mouse.lastDoubleClickTime = getProcessCurrentTime();
         case WM_LBUTTONDOWN:{
             guiInput.mouse.buttons.leftDown = true;
+            if(message == WM_LBUTTONDOWN && CAST(uint32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastDoubleClickTime)) < GetDoubleClickTime()){
+                guiInput.mouse.buttons.leftTripleClick = true;
+            }
             inputHandled = guiAnyPopup();
             // NOTE(fidli): any input gets re-selected potentially
             guiDeselectInput();
@@ -74,13 +80,19 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         case 0x25:{// left arrow
                             if(!shiftDown){
                                 guiCancelCaretPositioning();
-                                guiContext->caretPos = MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
-                                if(guiContext->caretPos > 0){
-                                    guiContext->caretPos--;
+                                if(ctrlDown){
+                                    guiJumpToPrevWord();
+                                }else{
+                                    guiContext->caretPos = MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                                    if(guiContext->caretPos > 0){
+                                        guiContext->caretPos--;
+                                    }
                                 }
                                 guiResetCaretVisually();
                             }else{
-                                if(guiContext->caretPos + guiContext->caretWidth > 0){
+                                if(ctrlDown){
+                                    guiAppendPrevWordToSelection();
+                                }else if(guiContext->caretPos + guiContext->caretWidth > 0){
                                     guiContext->caretWidth--;
                                 }
                             }
@@ -90,13 +102,19 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
                             if(!shiftDown){
                                 guiCancelCaretPositioning();
-                                guiContext->caretPos = MAX(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
-                                if(guiContext->caretPos < textlen){
-                                    guiContext->caretPos++;
+                                if(ctrlDown){
+                                    guiJumpToNextWord();
+                                }else{
+                                    guiContext->caretPos = MAX(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                                    if(guiContext->caretPos < textlen){
+                                        guiContext->caretPos++;
+                                    }
+                                    guiResetCaretVisually();
                                 }
-                                guiResetCaretVisually();
                             }else{
-                                if(guiContext->caretPos + guiContext->caretWidth < textlen){
+                                if(ctrlDown){
+                                    guiAppendNextWordToSelection();
+                                }else if(guiContext->caretPos + guiContext->caretWidth < textlen){
                                     guiContext->caretWidth++;
                                 }
                             }
@@ -156,6 +174,17 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             guiResetCaretVisually();
                             inputHandled = true;
                         }break;
+                        case 0x41:{ //A
+                            if(ctrlDown){
+                                guiSelectWholeInput();
+                                guiCancelCaretPositioning();
+                                nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+                                guiContext->caretPos = 0;
+                                guiContext->caretWidth = textlen; 
+                                inputHandled = true;
+                                break;
+                            }
+                        } // no break on purpouse
                         default:{
                             if(guiContext->caretWidth != 0){
                                 guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);

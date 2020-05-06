@@ -130,7 +130,10 @@ struct{
         struct {
             bool leftUp;
             bool leftDown;
+            bool leftDoubleClick;
+            bool leftTripleClick;
         } buttons;
+        float32 lastDoubleClickTime;
     } mouse;
 } guiInput;
 
@@ -865,6 +868,121 @@ void guiDeleteInputCharacters(int32 from, int32 to){
     guiCancelCaretPositioning();
 }
 
+static int32 guiFindNextWordCaret(int32 start){
+    int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    int32 caretPos = start;
+    bool jumped = false;
+    // inner word
+    while(caretPos < textlen){
+        char c = guiContext->inputText[caretPos];
+        if(c != ' ' && c != '\t' && c != '\n' && c != '\r'){
+            caretPos++;
+            jumped = true;
+        }else{
+            break;
+        }
+    }
+    // whitespaces
+    if(!jumped){
+        while(caretPos < textlen){
+            char c =  guiContext->inputText[caretPos];
+            if(c == ' ' || c == '\t' || c == '\n' || c == '\r'){
+                caretPos++;
+                jumped = true;
+            }else{
+                break;
+            }
+        }
+    }
+    ASSERT(caretPos <= textlen);
+    return caretPos;
+}
+
+static int32 guiFindPrevWordCaret(int32 start){
+    int32 caretPos = start - 1;
+    if(caretPos <= 1){
+        caretPos = 0;
+    }else{
+        bool jumped = false;
+        // inner word
+        while(caretPos > 0){
+            char c = guiContext->inputText[caretPos];
+            if(c != ' ' && c != '\t' && c != '\n' && c != '\r'){
+                caretPos--;
+                jumped = true;
+            }else{
+                caretPos += jumped;
+                break;
+            }
+        }
+        // whitespaces
+        if(!jumped){
+            while(caretPos > 0){
+                char c =  guiContext->inputText[caretPos];
+                if(c == ' ' || c == '\t' || c == '\n' || c == '\r'){
+                    caretPos--;
+                    jumped = true;
+                }else{
+                    caretPos += jumped;
+                    break;
+                }
+            }
+        }
+        // boundary
+        if(!jumped){
+            while(caretPos > 0){
+                char c =  guiContext->inputText[caretPos-1];
+                if(c == ' ' || c == '\t' || c == '\n' || c == '\r'){
+                    caretPos--;
+                    jumped = true;
+                }else{
+                    caretPos += jumped;
+                    break;
+                }
+            }
+        }
+    }
+    ASSERT(caretPos >= 0);
+    return caretPos;
+}
+
+void guiJumpToNextWord(){
+    int32 caretPos = guiFindNextWordCaret(MAX(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth));
+    guiContext->caretPos = caretPos;
+    guiContext->caretWidth = 0;
+}
+
+void guiJumpToPrevWord(){
+    int32 caretPos = guiFindPrevWordCaret(MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth));
+    guiContext->caretPos = caretPos;
+    guiContext->caretWidth = 0;
+}
+
+void guiAppendNextWordToSelection(){
+    int32 oldWidth = guiContext->caretWidth;
+    int32 caretPos = guiFindNextWordCaret(guiContext->caretPos + guiContext->caretWidth);
+    guiContext->caretWidth = caretPos - guiContext->caretPos;
+    if(oldWidth * guiContext->caretWidth < 0){
+        guiContext->caretWidth = 0;
+    }
+}
+
+void guiAppendPrevWordToSelection(){
+    int32 oldWidth = guiContext->caretWidth;
+    int32 caretPos = guiFindPrevWordCaret(guiContext->caretPos + guiContext->caretWidth);
+    guiContext->caretWidth = caretPos - guiContext->caretPos;
+    if(oldWidth * guiContext->caretWidth < 0){
+        guiContext->caretWidth = 0;
+    }
+}
+
+void guiSelectWholeInput(){
+    guiCancelCaretPositioning();
+    nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    guiContext->caretPos = 0;
+    guiContext->caretWidth = textlen; 
+}
+
 static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 textMaxlen, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, const Color * selectBgColor, const Color * selectTextColor, int8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
@@ -882,7 +1000,12 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
     bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
     int32 textPxWidthHalf = calculateAtlasTextWidth(font, text, pt)/2;
     int32 textPxStartX = positionX + width/2 - textPxWidthHalf;
-    if(guiInput.mouse.buttons.leftDown && isHoverNow){
+    if(guiInput.mouse.buttons.leftTripleClick && isHoverNow){
+        guiSelectWholeInput();
+    }else if(guiInput.mouse.buttons.leftDoubleClick && isHoverNow){
+        guiJumpToPrevWord();
+        guiAppendNextWordToSelection();
+    }else if(guiInput.mouse.buttons.leftDown && isHoverNow){
         guiContext->caretPos = calculateAtlasTextCaretPosition(font, text, pt, guiInput.mouse.x - textPxStartX);
         guiContext->caretPositioning = true;
     }
@@ -894,11 +1017,11 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
             if(isHoverBeforeAndNow){
                 result = true;
                 guiContext->activeInput = id;
-                guiResetCaretVisually();
                 guiContext->inputText = text;
                 guiContext->inputMaxlen = textMaxlen;
                 guiContext->inputCharlist = charlist;
                 guiContext->caretPositioning = false;
+                guiResetCaretVisually();
             }
             guiInvalidate(&guiContext->lastActive);
         }
@@ -906,12 +1029,11 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
         result = true;
         if(!guiEq(guiContext->activeInput, id)){
             guiContext->activeInput = id;
-            guiResetCaretVisually();
-            guiContext->caretPos = 0;
-            guiContext->caretWidth = strlen_s(text, textMaxlen);
             guiContext->inputText = text;
             guiContext->inputMaxlen = textMaxlen;
             guiContext->inputCharlist = charlist;
+            guiResetCaretVisually();
+            guiSelectWholeInput();
         }
     }else{
         if(guiInput.mouse.buttons.leftDown && guiEq(id, guiContext->activeInput)){
