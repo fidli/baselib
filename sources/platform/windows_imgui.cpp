@@ -1,6 +1,8 @@
 #ifndef WINDOWS_IMGUI_CPP
 #define WINDOWS_IMGUI_CPP
 
+extern HWND window;
+
 #include "util_imgui.cpp"
 
 
@@ -139,9 +141,8 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         }
                         inputHandled = true;
                     }break;
-                    case 0x10:{ //shift
-                        //is handled by get key state
-                    }break;
+                    case 0x11: // ctrl
+                    case 0x10: // shift
                     case 0x14:{ //caps lock
                         //is handled by get key state
                     }break;
@@ -172,8 +173,9 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         guiResetCaretVisually();
                         inputHandled = true;
                     }break;
-                    case 0x41:{ //A
-                        if(ctrlDown){
+                    default:{
+                        // ctrl-a
+                        if(wParam == 0x41 && ctrlDown){
                             guiSelectWholeInput();
                             guiCancelCaretPositioning();
                             nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
@@ -182,8 +184,40 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             inputHandled = true;
                             break;
                         }
-                    } // no break on purpouse
-                    default:{
+                        // ctrl-c OR ctrl-x
+                        if((wParam == 0x43 || wParam == 0x58) && ctrlDown){
+                            if(OpenClipboard(window)){
+                                HGLOBAL contentsHandle = GlobalAlloc(GMEM_MOVEABLE, ABS(guiContext->width) * sizeof(char));
+                                void * contents = GlobalLock(contentsHandle);
+                                int32 start = MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                                memcpy(contents, guiContext->inputText + start, ABS(guiContext->caretWidth));
+                                CAST(char*, contents)[ABS(guiContext->caretWidth)] = '\0';
+                                GlobalUnlock(contentsHandle);
+                                EmptyClipboard();
+                                SetClipboardData(CF_TEXT, contentsHandle);
+                                CloseClipboard();
+                                if(wParam == 0x58 && guiContext->caretWidth != 0){
+                                    guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos+guiContext->caretWidth);
+                                }
+                            }
+                            inputHandled = true;
+                            break;
+                        }
+                        // ctrl-v
+                        if((wParam == 0x56) && ctrlDown){
+                            if(IsClipboardFormatAvailable(CF_TEXT) && OpenClipboard(window)){
+                                HGLOBAL contentsHandle = GetClipboardData(CF_TEXT); 
+                                char * data = CAST(char*, GlobalLock(contentsHandle));
+                                GlobalUnlock(contentsHandle); 
+                                CloseClipboard();
+                                if(guiContext->caretWidth != 0){
+                                    guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                                }
+                                guiInputCharacters(data, strlen(data));
+                            }
+                            inputHandled = true;
+                            break;
+                        }
                         if(guiContext->caretWidth != 0){
                             guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
                         }
