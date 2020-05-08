@@ -1,12 +1,14 @@
 #pragma once
 
 #include "util_time.h"
+int32 logErrorCount;
 #ifndef RELEASE
 #include "util_string.cpp"
 #include "util_io.cpp"
 #else
 #include "math_macros.h"
 uint32 snprintf(char * target, nint limit, const char * format, ...);
+nint strlen_s(const char * target, nint limit);
 uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap);
 int printf(const char * format, ...);
 
@@ -55,6 +57,7 @@ enum LogTarget{
     
     LogTarget_Console,
     LogTarget_File,
+    LogTarget_Status,
     
     LogTarget_Count
 };
@@ -65,11 +68,12 @@ struct LoggerInfo{
     union{
         struct{
             char path[255];
-        }file;
+        } file;
+        struct{
+            char lastStatus[255];
+        } status;
     };
 };
-
-
 
 struct Loggers{
     char messagebuffer[1024];
@@ -83,7 +87,7 @@ struct Loggers{
 
 static Loggers loggers;
 
-#define LOGE(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Error, STRINGIFY(resourceName), (message), __VA_ARGS__);
+#define LOGE(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Error, STRINGIFY(resourceName), (message), __VA_ARGS__); logErrorCount++;
 #define LOGW(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Warning, STRINGIFY(resourceName), (message), __VA_ARGS__);
 #define LOG(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Notice, STRINGIFY(resourceName), (message), __VA_ARGS__);
 
@@ -119,7 +123,10 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
                     printf("%1024s", loggers.messagebuffer);
                 }break;
                 case LogTarget_File:{
-                    appendFile(info->file.path, loggers.messagebuffer, strlen(loggers.messagebuffer));
+                    appendFile(info->file.path, loggers.messagebuffer, strlen_s(loggers.messagebuffer, 1024));
+                }break;
+                case LogTarget_Status:{
+                    strncpy(info->status.lastStatus, loggers.messagebuffer, 255);
                 }break;
                 case LogTarget_Count:
                 case LogTarget_Invalid:
@@ -139,6 +146,32 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
 #endif
     }
     
+}
+
+const char * getLoggerStatus(const char * loggerName){
+    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
+        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
+            return loggers.loggers[i].status.lastStatus;
+        }
+    }
+    return NULL;
+}
+
+bool createStatusLogger(const char * loggerName, LogLevel level){
+    if(loggers.loggerCount >= ARRAYSIZE(loggers.loggers)){
+        return false;
+    }
+    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
+        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
+            return false;
+        }
+    }
+    strncpy(loggers.loggerNames[loggers.loggerCount], loggerName, ARRAYSIZE(loggers.loggerNames[0]));
+    loggers.loggers[loggers.loggerCount].target = LogTarget_Status;
+    memset(loggers.loggers[loggers.loggerCount].status.lastStatus, 0, ARRAYSIZE(loggers.loggers[loggers.loggerCount].status.lastStatus));
+    loggers.loggers[loggers.loggerCount].level = level;
+    loggers.loggerCount++;
+    return true;
 }
 
 bool createFileLogger(const char * loggerName, LogLevel level, const char * path){

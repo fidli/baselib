@@ -63,6 +63,19 @@ bool findInDoubleLinkedList(DoubleLinkedList * target, const char * key, void **
 	return false;
 }
 
+bool renameInDoubleLinkedList(DoubleLinkedList * target, const char * key, const char * newkey){
+	if(!target->head) return false;
+	DoubleLinkedListElement * current = target->head;
+	do{
+		if(!strncmp(key, current->key, 20)){
+			strncpy(current->key, newkey, 20);
+			return true;
+		}else{
+			current = current->next;
+		}
+	}while(current != target->head);
+	return false;
+}
 
 bool insertIntoDoubleLinkedList(DoubleLinkedList * target, const char * key, void * data){
 	if(target->slotsUsed >= target->size) return false;

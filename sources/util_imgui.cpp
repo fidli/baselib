@@ -618,7 +618,6 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
     int32 len = strlen(text);
     for(int i = 0; i < len; i++){
         const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
-        ASSERT(glyph->valid);
         if(!glyph->valid){
             continue;
         }

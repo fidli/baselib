@@ -63,16 +63,20 @@ char * strcpy(char * target, const char * source){
 
 nint strlen_s(const char * source, nint limit){
     nint length = 0;
-    while(source[length] != '\0' && length < limit){
-        length++;
+    if(source){
+        while(source[length] != '\0' && length < limit){
+            length++;
+        }
     }
     return length;
 }
 
 nint strlen(const char * source){
     nint length = 0;
-    while(source[length] != '\0'){
-        length++;
+    if(source){
+        while(source[length] != '\0'){
+            length++;
+        }
     }
     return length;
 }

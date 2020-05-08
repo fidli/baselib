@@ -322,7 +322,11 @@ int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int32 p
         len = strlen(text);
     }
     for(int i = 0; i < len; i++){
-        const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
+        uint8 c = text[i];
+        const GlyphData * glyph = &font->glyphs[c];
+        if(!glyph->valid && (c == '\r' || c == '\n')){
+            continue;
+        }
         ASSERT(glyph->valid);
         //kerning?
         if(prevGlyph){
