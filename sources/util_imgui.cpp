@@ -221,7 +221,7 @@ void guiDeselectInput(){
     if(guiValid(guiContext->activeInput) || guiValid(guiContext->activeDropdown)){
         guiContext->escapeClick = true;
     }
-    guiContext->selection.elementIndex = 0;
+    guiContext->selection.elementIndex = -1;
     guiInvalidate(&guiContext->activeInput);
     // NOTE(fidli): dropown gets sorted out at the end of the gui
     guiContext->selection.isActive = false;
