@@ -13,13 +13,6 @@ void static inline swap(byte * source, byte * destination, const uint16 elemsize
     }
 }
 
-void static inline swap4(int32 * source, int32 * destination){
-    int32 temp = *(destination);
-    *(destination) = *(source);
-    *(source) = temp;
-    
-}
-
 //positive if a > b
 //0 if a == b
 //negative if a < b
@@ -30,30 +23,8 @@ void insertSort(elemType * target, int32 arraySize, func cmp){
         uint32 t = i;
         do{
             t--;
-            if(cmp(*(target + s), *(target + t)) < 0){
-                auto tmp = *(target + s);
-                *(target + s) = *(target + t);
-                *(target + t) = tmp;
-                s--;
-            }else{
-                break;
-            }
-        }while(t != 0);
-        
-    }
-}
-
-//cmp 1 if a > b
-//0 if a == b
-//-1 if a < b
-void insertSort4(int32 * target, int64 arraySize, int8 (*cmp)(void * a, void * b)){
-    for(uint32 i = 1; i < arraySize; i++){
-        uint32 s = i;
-        uint32 t = i;
-        do{
-            t--;
-            if(cmp(target + s, target + t) == -1){
-                swap4(target + s, target + t);
+            if(cmp(target[t], target[s]) > 0){
+                SWAP(target[s], target[t]);
                 s--;
             }else{
                 break;
@@ -77,7 +48,7 @@ void shuffle(byte * target, const uint16 elemsize, int64 arraySize){
 //0 if a == b
 //negative if a < b
 template<typename elemType, typename func>
-void mergeSort(elemType * target, int64 chunkSize, func cmp, elemType * temp = NULL){
+void mergeSort(elemType * target, int32 chunkSize, func cmp, elemType * temp = NULL){
     if(chunkSize <= 10){
         insertSort(target, chunkSize, cmp);
         return;
@@ -86,34 +57,29 @@ void mergeSort(elemType * target, int64 chunkSize, func cmp, elemType * temp = N
     if(uninit){
         temp = &PUSHA(elemType, chunkSize);
     }
-    int64 half = chunkSize/2;
-    if(chunkSize > 10){
-        mergeSort(target, half, cmp, temp);
-        mergeSort(target + half, chunkSize - half, cmp, temp + half);
-    }
+    int32 half = chunkSize/2;
+    mergeSort(target, half, cmp, temp);
+    mergeSort(target + half, chunkSize - half, cmp, temp + half);
     
-    int64 index1 = 0;
-    int64 index2 = 0;
-    
-    for(int64 index = 0; index < chunkSize; index++){
-        if(index1 != half && index2 != chunkSize - half){
-            if( cmp(*(target + index1), *(target+half + index2)) > 0){
-                temp[index] = (target+half)[index2];
-                index2++;
-            }
-            else{
-                temp[index] = target[index1];
-                index1++;
-            }
+    int32 index1 = 0;
+    int32 index2 = half;
+    int32 index = 0;
+    for(; index1 < half && index2 < chunkSize; index++){
+        if(cmp(target[index1], target[index2]) <= 0){
+            temp[index] = target[index1];
+            index1++;
         }else{
-            if(index1 == half){
-                temp[index] = (target+half)[index2];
-                index2++;
-            }
-            else{
-                temp[index] = target[index1];
-                index1++;
-            }
+            temp[index] = target[index2];
+            index2++;
+        }
+    }
+    if(index1 == half){
+        for(; index < chunkSize; index++, index2++){
+            temp[index] = target[index2];
+        }
+    }else{
+        for(; index < chunkSize; index++, index1++){
+            temp[index] = target[index1];
         }
     }
     //again slow copying

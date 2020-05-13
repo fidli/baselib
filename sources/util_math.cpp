@@ -536,6 +536,10 @@ dv3_64 DV3_64(int64 x, int64 y, int64 z){
     return res;
 }
 
+v2 V2(const dv2 & v){
+    v2 res = {CAST(float32, v.x), CAST(float32, v.y)};
+    return res;
+}
 
 v2 V2(float32 x, float32 y){
     v2 res = {x,y};
@@ -718,6 +722,13 @@ v3_64 & operator+=(v3_64 & a, const v3_64 & b){
 dv3 & operator+=(dv3 & a, const dv3 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
+    }
+    return a;
+}
+
+v2 & operator+=(v2 & a, const dv2 & b){
+    for(int i = 0; i < ARRAYSIZE(b.v); i++){
+        a.v[i] += CAST(float32, b.v[i]);
     }
     return a;
 }
@@ -928,6 +939,9 @@ v2 lerp(const v2 * origin, const v2 * target, float32 coeficient){
     return *origin + (*target-*origin) * coeficient;
 }
 
+v2 lerp(const dv2 * origin, const dv2 * target, float32 coeficient){
+    return *origin + (*target-*origin) * coeficient;
+}
 
 
 float32 dot(v3 a, v3 b){
