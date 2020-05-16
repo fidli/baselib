@@ -454,7 +454,7 @@ bool guiPopupRendering(){
 }
 
 bool guiClick(){
-    return guiValid(guiContext->currentHover) || guiPopupRendering() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown)) || guiContext->escapeClick;
+    return guiPopupRendering() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown)) || guiContext->escapeClick;
 }
 
 GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 width, int32 height){
@@ -710,125 +710,115 @@ void guiResetCaretVisually(){
 }
 
 void guiInputCharacters(const char * input, int32 len){
+    char digitRangeLow = 0;
+    char digitRangeHigh = 0;
+    char smallLetterRangeLow = 0;
+    char smallLetterRangeHigh = 0;
+    char capitalLetterRangeLow = 0;
+    char capitalLetterRangeHigh = 0;
+    const char* charlist[4] = {};
+    uint8 charlistLengths[4] = {};
+    uint8 charlistCount = 0;
+    bool inverted = false;
+    if(guiContext->inputCharlist != NULL){
+        //start parse format
+        const char * format = guiContext->inputCharlist;
+        int32 formatIndex = 0;
+        if(format[formatIndex] == '^'){
+            inverted = true;
+            formatIndex++;
+        }
+        
+        uint8 charlistLen = 0;
+        for(;format[formatIndex] != 0; formatIndex++){
+            if(format[formatIndex+1] == '-'){
+                if(charlistLen > 0){
+                    charlistLengths[charlistCount] = charlistLen;
+                    charlistLen = 0;
+                }
+                
+                if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
+                    capitalLetterRangeLow = format[formatIndex];                         
+                }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                    smallLetterRangeLow = format[formatIndex];                            
+                }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
+                    digitRangeLow = format[formatIndex];
+                }else{
+                    INV; //implement me maybe? makes sense? i havent been in these depths for long
+                }
+                
+                formatIndex += 2;
+                
+                if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
+                    capitalLetterRangeHigh = format[formatIndex];                    
+                    ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
+                }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
+                    smallLetterRangeHigh = format[formatIndex];
+                    ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
+                }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
+                    digitRangeHigh = format[formatIndex];
+                    ASSERT(digitRangeHigh > digitRangeLow);
+                }else{
+                    INV; //implement me maybe? makes sense?
+                }
+                
+            }else{
+                
+                if(charlistLen == 0){
+                    charlistCount++;
+                    charlist[charlistCount-1] = &format[formatIndex];
+                }
+                charlistLengths[charlistCount-1]++;
+                charlistLen++;
+                
+            }
+        }
+        //end parse format
+    }
     int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
     int32 ci = 0;
-    for(; ci < len; ci++){
+    bool isValid = true;
+    for(; ci < len && isValid; ci++){
         char c = input[ci];
-        bool isValid = true;
         if(guiContext->inputCharlist != NULL){
-            //start parse format
-            const char * format = guiContext->inputCharlist;
-            bool inverted = false;
-            int32 formatIndex = 0;
-            if(format[formatIndex] == '^'){
-                inverted = true;
-                formatIndex++;
-            }
-            char digitRangeLow = 0;
-            char digitRangeHigh = 0;
-            char smallLetterRangeLow = 0;
-            char smallLetterRangeHigh = 0;
-            char capitalLetterRangeLow = 0;
-            char capitalLetterRangeHigh = 0;
-            const char* charlist[4] = {};
-            uint8 charlistLengths[4] = {};
-            uint8 charlistCount = 0;
-            
-            uint8 charlistLen = 0;
-            for(;format[formatIndex] != 0; formatIndex++){
-                if(format[formatIndex+1] == '-'){
-                    if(charlistLen > 0){
-                        charlistLengths[charlistCount] = charlistLen;
-                        charlistLen = 0;
-                    }
-                    
-                    if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
-                        capitalLetterRangeLow = format[formatIndex];                         
-                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                        smallLetterRangeLow = format[formatIndex];                            
-                    }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
-                        digitRangeLow = format[formatIndex];
-                    }else{
-                        INV; //implement me maybe? makes sense? i havent been in these depths for long
-                    }
-                    
-                    formatIndex += 2;
-                    
-                    if(format[formatIndex] >= 'A' && format[formatIndex] <= 'Z'){
-                        capitalLetterRangeHigh = format[formatIndex];                    
-                        ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
-                    }else if(format[formatIndex] >= 'a' && format[formatIndex] <= 'z'){
-                        smallLetterRangeHigh = format[formatIndex];
-                        ASSERT(capitalLetterRangeHigh > capitalLetterRangeLow);
-                    }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
-                        digitRangeHigh = format[formatIndex];
-                        ASSERT(digitRangeHigh > digitRangeLow);
-                    }else{
-                        INV; //implement me maybe? makes sense?
-                    }
-                    
-                }else{
-                    
-                    if(charlistLen == 0){
-                        charlistCount++;
-                        charlist[charlistCount-1] = &format[formatIndex];
-                    }
-                    charlistLengths[charlistCount-1]++;
-                    charlistLen++;
-                    
-                }
-            }
-            //end parse format
             isValid = false;
             //start validate char
             {
                 if(digitRangeLow != '\0'){
                     if(c >= digitRangeLow && c <= digitRangeHigh && !inverted){
                         isValid = true;
-                        break;
                     }else if((c < digitRangeLow && c > digitRangeHigh) && inverted){
                         isValid = true;
-                        break;
                     }
                 }
                 if(capitalLetterRangeLow != '\0'){
                     if(c >= capitalLetterRangeLow && c <= capitalLetterRangeHigh && !inverted){
                         isValid = true;
-                        break;
                     }else if((c < capitalLetterRangeLow && c > capitalLetterRangeHigh) && inverted){
                         isValid = true;
-                        break;
                     }
                 }
                 if(smallLetterRangeLow != '\0'){
                     if(c >= smallLetterRangeLow && c <= smallLetterRangeHigh && !inverted){
                         isValid = true;
-                        break;
                     }else if((c < smallLetterRangeLow || c > smallLetterRangeHigh) && inverted){
                         isValid = true;
-                        break;
                     }                        
                 }
                 
                 bool found = false;
-                for(int charlistIndex = 0; charlistIndex < charlistCount; charlistIndex++){
+                for(int charlistIndex = 0; charlistIndex < charlistCount && !found; charlistIndex++){
                     for(int charIndex = 0; charIndex < charlistLengths[charlistIndex]; charIndex++){
                         if(c == charlist[charlistIndex][charIndex]){
                             isValid = true;
-                            break;
                         }
-                    }
-                    if(found){
-                        break;
                     }
                 }
                 
                 if(!inverted && found){
                     isValid = true;
-                    break;
                 }else if(inverted && !found){
                     isValid = true;
-                    break;
                 }
             }
             //end validate char
@@ -841,8 +831,6 @@ void guiInputCharacters(const char * input, int32 len){
                 guiContext->inputText[guiContext->caretPos + ci] = c;
                 textlen++;
             }
-        }else{
-            break;
         }
     }
     guiContext->inputText[textlen+1] = '\0';
