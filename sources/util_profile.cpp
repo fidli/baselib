@@ -88,7 +88,7 @@ inline ProfileStats * getCurrentProfileStats(){
             stat->totalCount = entry->callCountTotal;
             stat->totalTime = entry->timeSpentTotal;
             stat->avgTime = entry->timeSpentTotal/entry->callCountTotal;
-            stat->name = profile->names[count];
+            stat->name = profile->names[i];
             count++;
         }
     }
