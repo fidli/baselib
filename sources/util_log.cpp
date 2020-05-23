@@ -71,6 +71,7 @@ struct LoggerInfo{
         } file;
         struct{
             char lastStatus[255];
+            float32 lastStatusTime;
         } status;
     };
 };
@@ -127,6 +128,7 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
                 }break;
                 case LogTarget_Status:{
                     strncpy(info->status.lastStatus, loggers.messagebuffer, 255);
+                    info->status.lastStatusTime = getProcessCurrentTime();
                 }break;
                 case LogTarget_Count:
                 case LogTarget_Invalid:
@@ -155,6 +157,15 @@ const char * getLoggerStatus(const char * loggerName){
         }
     }
     return NULL;
+}
+
+float32 getLoggerStatusTime(const char * loggerName){
+    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
+        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
+            return loggers.loggers[i].status.lastStatusTime;
+        }
+    }
+    return 0;
 }
 
 bool createStatusLogger(const char * loggerName, LogLevel level){

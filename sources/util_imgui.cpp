@@ -263,11 +263,11 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
     initFlatShader();
     LOG(default, shaders, "Flat shaders loaded");
 #else
-    r &= loadAndCompileShaders(___sources_shaders_font_vert, ___sources_shaders_font_vert_len, ___sources_shaders_font_frag, ___sources_shaders_font_frag_len, &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
+    r &= compileShaders(___sources_shaders_font_vert, ___sources_shaders_font_vert_len, ___sources_shaders_font_frag, ___sources_shaders_font_frag_len, &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
     ASSERT(r);
     initFontShader();
     LOG(default, shaders, "Font shaders loaded");
-    r &= loadAndCompileShaders(___sources_shaders_flat_vert, ___sources_shaders_flat_vert_len, ___sources_shaders_flat_frag, ___sources_shaders_flat_frag_len, &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
+    r &= compileShaders(___sources_shaders_flat_vert, ___sources_shaders_flat_vert_len, ___sources_shaders_flat_frag, ___sources_shaders_flat_frag_len, &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
     ASSERT(r);
     initFlatShader();
     LOG(default, shaders, "Flat shaders loaded");
@@ -370,7 +370,7 @@ void guiBegin(int32 width, int32 height){
     glDepthFunc(GL_GEQUAL);
 }
 
-GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, int32 posX, int32 posY, int32 width = 0, int32 height = 0, const GuiElementStyle * overrideStyle = NULL, GuiJustify defaultJustify = GuiJustify_Default){
+GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, int32 posX, int32 posY, int32 width = 0, int32 height = 0, const GuiElementStyle * overrideStyle = NULL, GuiJustify defaultJustify = GuiJustify_Default, int32 zIndex = -1234){
     GuiContainer * result = &PUSH(GuiContainer);
     memset(CAST(void*, result), 0, sizeof(GuiContainer));
     if(!overrideStyle){
@@ -410,7 +410,11 @@ GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, in
         result->defaultCursor[i].x = result->cursor[i].x;
         result->defaultCursor[i].y = result->cursor[i].y;
     }
-    result->zIndex = parent->zIndex+1;
+    if(zIndex != -1234){
+        result->zIndex = zIndex;
+    }else{
+        result->zIndex = parent->zIndex+1;
+    }
     if(defaultJustify == GuiJustify_Default){
         result->defaultJustify = GuiJustify_Left;
     }else{

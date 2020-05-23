@@ -1,7 +1,7 @@
 #ifndef OPENGL_CPP
 #define OPENGL_CPP
 
-bool loadAndCompileShaders(const unsigned char * vertexContents, uint32 vertexContentsSize, const unsigned char * fragmentContents, uint32 fragmentContentsSize, GLint * vertexShader, GLint * fragmentShader, GLint * program){
+bool compileShaders(const unsigned char * vertexContents, uint32 vertexContentsSize, const unsigned char * fragmentContents, uint32 fragmentContentsSize, GLint * vertexShader, GLint * fragmentShader, GLint * program){
     bool r = true;    
     *vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(*vertexShader, 1, (const char **)&vertexContents, (GLint*) &vertexContentsSize);
@@ -15,7 +15,7 @@ bool loadAndCompileShaders(const unsigned char * vertexContents, uint32 vertexCo
         glGetShaderiv(*vertexShader, GL_INFO_LOG_LENGTH, &maxLength);
         char error[1024];
         glGetShaderInfoLog(*vertexShader, maxLength, &maxLength, error);
-        LOGE(default, "shaders", error);
+        LOGE(default, shaders, error);
         return false;
     }
     
@@ -32,7 +32,7 @@ bool loadAndCompileShaders(const unsigned char * vertexContents, uint32 vertexCo
         glGetShaderiv(*fragmentShader, GL_INFO_LOG_LENGTH, &maxLength);
         char error[1024];
         glGetShaderInfoLog(*fragmentShader, maxLength, &maxLength, error);
-        LOGE(default, "shaders", error);
+        LOGE(default, shaders, error);
         return false;
     }
     
@@ -50,7 +50,7 @@ bool loadAndCompileShaders(const unsigned char * vertexContents, uint32 vertexCo
         glGetProgramiv(*program, GL_INFO_LOG_LENGTH, &maxLength);
         char error[1024];
         glGetProgramInfoLog(*program, maxLength, &maxLength, error);
-        LOGE(default, "shaders", error);
+        LOGE(default, shaders, error);
         return false;
     }
     return r;
@@ -63,11 +63,11 @@ bool loadAndCompileShaders(const char * vertexShaderPath, const char * fragmentS
     FileContents fragmentContents = {};
     
     //shaders compilation
-    bool r = readFile(vertexShaderPath, &vertexContents);
-    ASSERT(r);
-    r = readFile(fragmentShaderPath, &fragmentContents);
-    ASSERT(r);
-    return loadAndCompileShaders(CAST(const unsigned char *, vertexContents.contents), CAST(uint32, vertexContents.size), CAST(const unsigned char *, fragmentContents.contents), CAST(uint32, fragmentContents.size), vertexShader, fragmentShader, program);
+    if(readFile(vertexShaderPath, &vertexContents) && readFile(fragmentShaderPath, &fragmentContents)){
+        return compileShaders(CAST(const unsigned char *, vertexContents.contents), CAST(uint32, vertexContents.size), CAST(const unsigned char *, fragmentContents.contents), CAST(uint32, fragmentContents.size), vertexShader, fragmentShader, program);
+    }
+    LOGE(default, shaders, "Failed to read shader files");
+    return false;
 }
 
 #endif

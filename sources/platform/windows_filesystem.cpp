@@ -25,6 +25,7 @@ bool readFile(const char * path, FileContents * target){
         target->contents = &PUSHA(char, target->size);
     }
     if(!ReadFile(file, (void *) target->contents, target->size, 0, 0)){
+        CloseHandle(file);
         return false;
     }
     target->head = 0;

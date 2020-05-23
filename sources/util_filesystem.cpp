@@ -146,16 +146,22 @@ bool acknowledgeWatch(FileWatchHandle * target)
 	return false;
 }
 
-bool hasFileChanged(FileWatchHandle * target)
+bool hasFileChanged(const FileWatchHandle * target)
 {
     LocalTime newTime;
     if(getFileChangeTime(target->path, &newTime)){
         if(newTime != target->lastChangeTime){
-            target->lastChangeTime = newTime;
             return true;
         }
     }
     return false;
+}
+
+void updateFileWatch(FileWatchHandle * target){
+    LocalTime newTime;
+    if(getFileChangeTime(target->path, &newTime)){
+        target->lastChangeTime = newTime;
+    }
 }
 
 void skipBytes(FileContents * contents, int32 amount)
