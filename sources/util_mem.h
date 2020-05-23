@@ -136,7 +136,7 @@ void initMemory(void * memoryStart){
 
 #define PUSHA_SCOPE(strct, size) *((strct *) allocate(&mem.temp, (size) * sizeof(strct))); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&mem.temp);
 
-#define PUSH_SCOPE(strct) *((strct *) allocate(&mem.temp, sizeof(strct)); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&mem.temp);
+#define PUSH_SCOPE(strct) *((strct *) allocate(&mem.temp, sizeof(strct))); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&mem.temp);
 
 #define PUSHI markAllocation(&mem.temp);
 
