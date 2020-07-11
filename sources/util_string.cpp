@@ -884,6 +884,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
+                        // TODO(fidli): scanReal()
                         int32 wholePart = 0;
                         scannedChars = scanNumber(source + sourceIndex, &wholePart, maxDigits);
                         *targetVar = (float32) wholePart;

@@ -1,10 +1,6 @@
 #pragma once 
 
-struct PersistentStackAllocator{
-	void * mem_start;
-	uint64 offset;
-	uint64 effectiveSize;
-};
+#include "mem_structs.h"
 
 inline
 void * allocate(PersistentStackAllocator * allocator, uint64 bytes)
@@ -15,22 +11,11 @@ void * allocate(PersistentStackAllocator * allocator, uint64 bytes)
 		{
 			return result;
 		}
+#ifndef RELEASE
 		INV;
+#endif
 		return NULL;
 }
-
-struct StackAllocator{
-    void * mem_start;
-    uint64 * offsets;
-    uint32 stackIndex;
-	uint32 stackSize;
-	
-    uint16 * bulkStackOffsets;
-    uint16 bulkStackIndex;
-	uint16 bulkStackSize;
-	
-	uint64 effectiveSize;
-};
 
 inline
 void * allocate(StackAllocator * allocator, uint64 bytes)
@@ -100,14 +85,6 @@ class ScopeAllocation
 			deallocate(allocator_);
 		}
 };
-
-// NOTE(fidli): more like list of allocators, but this is in every app
-struct Memory{
-    PersistentStackAllocator persistent;
-    StackAllocator temp;   
-};
-Memory mem;
-
 
 #define TEMP_MEM_STACK_SIZE 4096
 #define TEMP_MEM_BULK_STACK_SIZE 32

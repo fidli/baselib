@@ -1,5 +1,4 @@
 #pragma once
-
 #include "util_time.h"
 int32 logErrorCount;
 #ifndef RELEASE
@@ -7,7 +6,9 @@ int32 logErrorCount;
 #include "util_io.cpp"
 #else
 #include "math_macros.h"
+#include "mem_structs.h"
 uint32 snprintf(char * target, nint limit, const char * format, ...);
+inline void * allocate(PersistentStackAllocator * allocator, uint64 bytes);
 nint strlen_s(const char * target, nint limit);
 uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap);
 int printf(const char * format, ...);
@@ -55,9 +56,10 @@ enum LogLevel{
 enum LogTarget{
     LogTarget_Invalid,
     
-    LogTarget_Console,
+    LogTarget_Cli,
     LogTarget_File,
     LogTarget_Status,
+    LogTarget_Console,
     
     LogTarget_Count
 };
@@ -73,6 +75,13 @@ struct LoggerInfo{
             char lastStatus[255];
             float32 lastStatusTime;
         } status;
+        struct{
+            char lastStates[100][255];
+            float32 lastStatusTime;
+            int32 count;
+            int32 size;
+            int32 head;
+        } console;
     };
 };
 
@@ -86,7 +95,12 @@ struct Loggers{
     uint8 loggerCount;
 };
 
-static Loggers loggers;
+static Loggers * loggers;
+
+bool initLog(){
+    loggers = ((Loggers *) allocate(&mem.persistent, sizeof(Loggers)));
+    return true;
+}
 
 #define LOGE(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Error, STRINGIFY(resourceName), (message), __VA_ARGS__); logErrorCount++;
 #define LOGW(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Warning, STRINGIFY(resourceName), (message), __VA_ARGS__);
@@ -98,37 +112,44 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
     va_list ap;    
     va_start(ap, format);
     char format2[] = "[%02hu.%02hu.%04hu %02hu:%02hu:%02hu][%s][%c] %s\r\n";
-    loggers.lt = getLocalTime();
-    snprintf(loggers.formatbuffer, ARRAYSIZE(loggers.formatbuffer), format2, loggers.lt.day, loggers.lt.month, loggers.lt.year, loggers.lt.hour, loggers.lt.minute, loggers.lt.second, resourceName, map[CAST(int32, level)], format);
+    loggers->lt = getLocalTime();
+    snprintf(loggers->formatbuffer, ARRAYSIZE(loggers->formatbuffer), format2, loggers->lt.day, loggers->lt.month, loggers->lt.year, loggers->lt.hour, loggers->lt.minute, loggers->lt.second, resourceName, map[CAST(int32, level)], format);
 #if CRT_PRESENT
-    vsnprintf(loggers.messagebuffer, ARRAYSIZE(loggers.messagebuffer), loggers.formatbuffer, ap);
+    vsnprintf(loggers->messagebuffer, ARRAYSIZE(loggers->messagebuffer), loggers->formatbuffer, ap);
 #else
-    printFormatted(ARRAYSIZE(loggers.messagebuffer), loggers.messagebuffer, loggers.formatbuffer, ap);
+    printFormatted(ARRAYSIZE(loggers->messagebuffer), loggers->messagebuffer, loggers->formatbuffer, ap);
 #endif
     va_end(ap);
     LoggerInfo * info = NULL;
     //TODO(AK): Hash table this
-    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
-        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
-            info = &loggers.loggers[i];
+    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+        if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
+            info = &loggers->loggers[i];
         }
     }
     if(!info && !strncmp(loggerName, "default", 7)){
         //STD output
-        printf("%1024s", loggers.messagebuffer);
+        printf("%1024s", loggers->messagebuffer);
         return;
     }else if(info){
         if(info->level >= level){
             switch(info->target){
-                case LogTarget_Console:{
-                    printf("%1024s", loggers.messagebuffer);
+                case LogTarget_Cli:{
+                    printf("%1024s", loggers->messagebuffer);
                 }break;
                 case LogTarget_File:{
-                    appendFile(info->file.path, loggers.messagebuffer, strlen_s(loggers.messagebuffer, 1024));
+                    appendFile(info->file.path, loggers->messagebuffer, strlen_s(loggers->messagebuffer, 1024));
                 }break;
                 case LogTarget_Status:{
-                    strncpy(info->status.lastStatus, loggers.messagebuffer, 255);
+                    strncpy(info->status.lastStatus, loggers->messagebuffer, 255);
                     info->status.lastStatusTime = getProcessCurrentTime();
+                }break;
+                case LogTarget_Console:{
+                    int32 newIndex = (info->console.head + 1) % info->console.size;
+                    strncpy(info->console.lastStates[info->console.head], loggers->messagebuffer, 255);
+                    info->console.lastStatusTime = getProcessCurrentTime();
+                    info->console.head = newIndex;
+                    info->console.count = MIN(info->console.size, info->console.count+1);
                 }break;
                 case LogTarget_Count:
                 case LogTarget_Invalid:
@@ -150,57 +171,111 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
     
 }
 
-const char * getLoggerStatus(const char * loggerName){
-    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
-        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
-            return loggers.loggers[i].status.lastStatus;
+int32 getLoggerStatusCount(const char * loggerName){
+    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+        if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
+            if(loggers->loggers[i].target == LogTarget_Status){
+                return 1;
+            }else if(loggers->loggers[i].target == LogTarget_Console){
+                return loggers->loggers[i].console.count;
+            }else{
+#ifndef RELEASE
+        INV
+#endif
+            }
+        }
+    }
+    return NULL;
+}
+
+const char * getLoggerStatus(const char * loggerName, int32 recentMessageIndex = 0){
+    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+        if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
+            if(loggers->loggers[i].target == LogTarget_Status){
+#ifndef RELEASE
+                ASSERT(recentMessageIndex == 0);
+#endif
+                return loggers->loggers[i].status.lastStatus;
+            }else if(loggers->loggers[i].target == LogTarget_Console){
+                int32 index = (loggers->loggers[i].console.head - 1 - recentMessageIndex + loggers->loggers[i].console.size) % loggers->loggers[i].console.size;
+                return loggers->loggers[i].console.lastStates[index];
+            }else{
+#ifndef RELEASE
+        INV
+#endif
+            }
         }
     }
     return NULL;
 }
 
 float32 getLoggerStatusTime(const char * loggerName){
-    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
-        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
-            return loggers.loggers[i].status.lastStatusTime;
+    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+        if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
+            if(loggers->loggers[i].target == LogTarget_Status){
+                return loggers->loggers[i].status.lastStatusTime;
+            }else if(loggers->loggers[i].target == LogTarget_Console){
+                return loggers->loggers[i].console.lastStatusTime;
+            }
         }
     }
     return 0;
 }
 
 bool createStatusLogger(const char * loggerName, LogLevel level){
-    if(loggers.loggerCount >= ARRAYSIZE(loggers.loggers)){
+    if(loggers->loggerCount >= ARRAYSIZE(loggers->loggers)){
         return false;
     }
-    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
-        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
+    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+        if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             return false;
         }
     }
-    strncpy(loggers.loggerNames[loggers.loggerCount], loggerName, ARRAYSIZE(loggers.loggerNames[0]));
-    loggers.loggers[loggers.loggerCount].target = LogTarget_Status;
-    memset(loggers.loggers[loggers.loggerCount].status.lastStatus, 0, ARRAYSIZE(loggers.loggers[loggers.loggerCount].status.lastStatus));
-    loggers.loggers[loggers.loggerCount].level = level;
-    loggers.loggerCount++;
+    strncpy(loggers->loggerNames[loggers->loggerCount], loggerName, ARRAYSIZE(loggers->loggerNames[0]));
+    loggers->loggers[loggers->loggerCount].target = LogTarget_Status;
+    memset(loggers->loggers[loggers->loggerCount].status.lastStatus, 0, ARRAYSIZE(loggers->loggers[loggers->loggerCount].status.lastStatus));
+    loggers->loggers[loggers->loggerCount].level = level;
+    loggers->loggerCount++;
     return true;
 }
 
-bool createFileLogger(const char * loggerName, LogLevel level, const char * path){
-    if(loggers.loggerCount >= ARRAYSIZE(loggers.loggers)){
+bool createConsoleLogger(const char * loggerName, LogLevel level){
+    if(loggers->loggerCount >= ARRAYSIZE(loggers->loggers)){
         return false;
     }
-    for(int32 i = 0; i < ARRAYSIZE(loggers.loggerNames); i++){
-        if(!strncmp(loggerName, loggers.loggerNames[i], ARRAYSIZE(loggers.loggerNames[0]))){
+    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+        if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
+            return false;
+        }
+    }
+    strncpy(loggers->loggerNames[loggers->loggerCount], loggerName, ARRAYSIZE(loggers->loggerNames[0]));
+    loggers->loggers[loggers->loggerCount].target = LogTarget_Console;
+    memset(loggers->loggers[loggers->loggerCount].console.lastStates, 0, ARRAYSIZE(loggers->loggers[loggers->loggerCount].console.lastStates) * ARRAYSIZE(loggers->loggers[loggers->loggerCount].console.lastStates[0]));
+    loggers->loggers[loggers->loggerCount].console.size = ARRAYSIZE(loggers->loggers[loggers->loggerCount].console.lastStates);
+    loggers->loggers[loggers->loggerCount].console.head = 0;
+    loggers->loggers[loggers->loggerCount].console.count = 0;
+    loggers->loggers[loggers->loggerCount].level = level;
+    loggers->loggerCount++;
+    return true;
+
+}
+
+bool createFileLogger(const char * loggerName, LogLevel level, const char * path){
+    if(loggers->loggerCount >= ARRAYSIZE(loggers->loggers)){
+        return false;
+    }
+    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+        if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             return false;
         }
     }
     bool result = createEmptyFile(path);
     if(result){
-        strncpy(loggers.loggerNames[loggers.loggerCount], loggerName, ARRAYSIZE(loggers.loggerNames[0]));
-        strncpy(loggers.loggers[loggers.loggerCount].file.path, path, ARRAYSIZE(loggers.loggers[loggers.loggerCount].file.path));
-        loggers.loggers[loggers.loggerCount].target = LogTarget_File;
-        loggers.loggers[loggers.loggerCount].level = level;
-        loggers.loggerCount++;
+        strncpy(loggers->loggerNames[loggers->loggerCount], loggerName, ARRAYSIZE(loggers->loggerNames[0]));
+        strncpy(loggers->loggers[loggers->loggerCount].file.path, path, ARRAYSIZE(loggers->loggers[loggers->loggerCount].file.path));
+        loggers->loggers[loggers->loggerCount].target = LogTarget_File;
+        loggers->loggers[loggers->loggerCount].level = level;
+        loggers->loggerCount++;
     }
     return result;
 }
