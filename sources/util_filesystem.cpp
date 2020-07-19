@@ -43,7 +43,7 @@ bool getFileSize(const char * path, uint32 * result);
 bool getNextLine(FileContents * contents, char * line, uint32 linelen)
 {
 	int32 remains = contents->size-contents->head;
-	if(!remains) return false;
+	if(remains <= 0) return false;
     char format[30];
 	uint32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, remains+1));
     if(sscanf(contents->contents + contents->head, format, line) == 1)
@@ -59,6 +59,15 @@ bool getNextLine(FileContents * contents, char * line, uint32 linelen)
         return true;
     }
     return false;
+}
+
+bool readBytes(FileContents * contents, char * target, int32 bytesize){
+    
+	int32 remains = contents->size-contents->head;
+	if(remains < bytesize) return false;
+    memcpy(target, contents->contents + contents->head, bytesize);
+    contents->head += bytesize;
+    return true;
 }
 
 bool ungetLine(FileContents * contents){
@@ -85,6 +94,15 @@ bool ungetLine(FileContents * contents){
        newHead++;
     }
     contents->head = newHead;
+    return true;
+}
+
+bool appendBytes(FileContents * contents, char * bytes, int32 bytesize)
+{
+	int32 remains = contents->size-contents->head;
+	if(remains < bytesize) return false;
+    memcpy(contents->contents + contents->head, bytes, bytesize);
+	contents->head += bytesize;
     return true;
 }
 

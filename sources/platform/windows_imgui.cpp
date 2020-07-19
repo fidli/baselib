@@ -20,6 +20,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         }break;
         case WM_LBUTTONUP:{
             guiInput.mouse.buttons.leftUp = true;
+            guiInput.mouse.leftHold = false;
             inputHandled = guiAnyPopup();
         }break;
         case WM_LBUTTONDBLCLK:
@@ -27,6 +28,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
             guiInput.mouse.lastDoubleClickTime = getProcessCurrentTime();
         case WM_LBUTTONDOWN:{
             guiInput.mouse.buttons.leftDown = true;
+            guiInput.mouse.leftHold = true;
             if(message == WM_LBUTTONDOWN && CAST(uint32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastDoubleClickTime)) < GetDoubleClickTime()){
                 guiInput.mouse.buttons.leftTripleClick = true;
             }

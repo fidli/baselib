@@ -133,6 +133,7 @@ struct{
             bool leftDoubleClick;
             bool leftTripleClick;
         } buttons;
+        bool leftHold;
         float32 lastDoubleClickTime;
     } mouse;
 } guiInput;
@@ -612,6 +613,7 @@ static bool registerInputAndIsSelected(){
 bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
     PROFILE_SCOPE(gui_render_text);
     glUseProgram(guiGl->font.program);
+    glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
 
     int32 advance = 0;
     float32 resScaleY = 1.0f / (guiContext->height);
@@ -972,6 +974,59 @@ void guiSelectWholeInput(){
     nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
     guiContext->caretPos = 0;
     guiContext->caretWidth = textlen; 
+}
+
+static bool renderSlider(float32 * progress, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, int8 zIndex = 0){
+    GuiId id = {positionX, positionY, zIndex};
+    bool result = false;
+    bool isLastActive = guiEq(id, guiContext->lastActive);
+    int32 diameter = height/2;
+    int32 marginX = diameter/2 + height/10;
+    int32 marginY = MIN(10, height/10);
+    bool isHoverNow = guiInput.mouse.x >= positionX + marginX && guiInput.mouse.x <= positionX + width - marginX && guiInput.mouse.y >= positionY + marginY && guiInput.mouse.y <= positionY + height - marginY;
+    bool isSelected = registerInputAndIsSelected();
+    bool wasSubmitted = isSelected && guiContext->selection.activate;
+    if(isHoverNow){
+        if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
+            guiContext->currentHover = id;
+        }
+    }
+    bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
+    if(guiInput.mouse.leftHold && isLastActive){
+        // slider position
+        *progress = clamp(CAST(float32, CAST(float32, guiInput.mouse.x - (positionX + marginX)) / CAST(float32, width-2*marginX)), 0.0f, 1.0f);
+    }
+    if(isLastActive){
+        if(guiInput.mouse.buttons.leftUp){
+            if(isHoverBeforeAndNow){
+                result = true;
+                guiContext->activeInput = id;
+                // NOTE(fidli): slider position is adjusted on the way
+            }
+            guiInvalidate(&guiContext->lastActive);
+        }
+    }else if(isSelected){
+        result = true;
+        if(!guiEq(guiContext->activeInput, id)){
+            guiContext->activeInput = id;
+            // NOTE(fidli): slider position is adjusted on the way
+        }
+    }
+    
+    if(isHoverBeforeAndNow && !isLastActive){
+        if(guiInput.mouse.buttons.leftDown){
+            guiContext->lastActive = id;
+            guiContext->selection.elementIndex = guiContext->selection.inputsRendered - 1; 
+        }
+    }
+    
+    renderRect(positionX, positionY, width, height, boxBgColor, zIndex);
+    if(isSelected){
+        renderWireRect(positionX, positionY, width, height, fieldColor, zIndex + 0.1f);
+    }
+    renderRect(positionX+marginX, positionY + height/2, width-2*marginX, 2, fieldColor, zIndex);
+    renderRect(CAST(int32, positionX+marginX - diameter/2 + ((width-2*marginX)*(*progress))), CAST(int32, CAST(float32, positionY) + height/2 + 1 - diameter/2), diameter, diameter, fieldColor, zIndex);
+    return result;
 }
 
 static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 textMaxlen, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, const Color * selectBgColor, const Color * selectTextColor, int8 zIndex = 0){
@@ -1377,6 +1432,20 @@ bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * tex
     }
     calculateAndAdvanceCursor(&container, style, elementStyleActive, text, justify, &rei);
     return renderInput(style->font, style->pt, text, textMaxlen, dictionary, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStylePassive->bgColor, &elementStyleActive->bgColor, &elementStyleActive->fgColor, &elementStyleSelection->bgColor, &elementStyleSelection->fgColor, container->zIndex);
+}
+
+bool guiRenderSlider(GuiContainer * container, const GuiStyle * style, float leftValue, float rightValue, float * currentValue, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
+    PROFILE_SCOPE(gui_render_slider);
+    RenderElementInfo rei;
+    const GuiElementStyle * elementStyle = &style->input.passive;
+    if(overrideStyle != NULL){
+        elementStyle = overrideStyle;
+    }
+    calculateAndAdvanceCursor(&container, style, elementStyle, "SLIDER_TEXT", justify, &rei);
+    float32 relativeProgress = clamp((*currentValue - leftValue)/(rightValue-leftValue), 0.0f, 1.0f);
+    bool result = renderSlider(&relativeProgress, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStyle->bgColor, &elementStyle->fgColor, container->zIndex);
+    *currentValue = (relativeProgress * (rightValue-leftValue)) + leftValue;
+    return result;
 }
 
 bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, int32 searchMaxlen, const char * buttonText, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiElementStyle * overrideStyleSelection = NULL, const GuiJustify justify = GuiJustify_Default){

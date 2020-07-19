@@ -314,7 +314,6 @@ float32 fmodd(float32 value, uint32 modulus){
 }
 
 float64 fmodd64(float64 value, uint64 modulus){
-    float64 result = fmod(value, (double) modulus);
     return result;
 }
 
