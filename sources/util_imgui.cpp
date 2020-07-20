@@ -509,9 +509,18 @@ bool guiClosePopup(const char * key = NULL){
 void guiEndline(GuiContainer * container, GuiStyle * style){
     ASSERT(container);
     ASSERT(style);
+    // NOTE(fidli): not essentially correct, but surely enouht
+    int32 smallestAddition = 100000000;
     for(int32 i = 0; i < ARRAYSIZE(container->cursor); i++){
         container->cursor[i].x = container->defaultCursor[i].x;
-        container->cursor[i].y = container->defaultCursor[i].y + container->heightUsed + style->text.padding.b + style->text.margin.b + style->text.margin.t;
+        int32 newValue = container->defaultCursor[i].y + container->heightUsed + style->text.padding.b + style->text.margin.b + style->text.margin.t;
+        int32 addition = container->cursor[i].y - newValue;
+        smallestAddition = MIN(smallestAddition, addition);
+        container->cursor[i].y = newValue;
+    }
+    if(smallestAddition == 0){
+        container->heightUsed += ptToPx(CAST(float32, style->pt)) + style->text.margin.b + style->text.margin.t + style->text.padding.t + style->text.padding.b;
+        guiEndline(container, style);
     }
 }
 
@@ -840,7 +849,7 @@ void guiInputCharacters(const char * input, int32 len){
         }
     }
     guiContext->inputText[textlen+1] = '\0';
-    guiContext->caretPos += ci;
+    guiContext->caretPos += ci - !isValid;
     guiResetCaretVisually();
 }
 
@@ -995,6 +1004,7 @@ static bool renderSlider(float32 * progress, const int32 positionX, const int32 
     if(guiInput.mouse.leftHold && isLastActive){
         // slider position
         *progress = clamp(CAST(float32, CAST(float32, guiInput.mouse.x - (positionX + marginX)) / CAST(float32, width-2*marginX)), 0.0f, 1.0f);
+        result = true;
     }
     if(isLastActive){
         if(guiInput.mouse.buttons.leftUp){
@@ -1441,6 +1451,7 @@ bool guiRenderSlider(GuiContainer * container, const GuiStyle * style, float lef
     if(overrideStyle != NULL){
         elementStyle = overrideStyle;
     }
+    // TODO(fidli): use real width
     calculateAndAdvanceCursor(&container, style, elementStyle, "SLIDER_TEXT", justify, &rei);
     float32 relativeProgress = clamp((*currentValue - leftValue)/(rightValue-leftValue), 0.0f, 1.0f);
     bool result = renderSlider(&relativeProgress, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStyle->bgColor, &elementStyle->fgColor, container->zIndex);

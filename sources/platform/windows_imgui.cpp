@@ -224,6 +224,14 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
                         }
                         char c = wParam;//assuming ascii character
+                        // '.'
+                        if(wParam == 0xBE){
+                            c = '.';
+                        }
+                        // ','
+                        if(wParam == 0xBC){
+                            c = ',';
+                        }
                         
                         if(c == (char)0x6D || c == (char)0xBD){ //minus
                             c = '-';
