@@ -196,6 +196,8 @@ struct GuiContext{
     } selection;
     bool mouseInContainer;
     bool escapeClick;
+
+    int32 membraneIndex;
 };
 
 GuiContext * guiContext;
@@ -471,8 +473,9 @@ GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 wid
 	}
     ASSERT(i < guiContext->popupCount);
     GuiContainer * result = guiAddContainer(NULL, style, guiContext->width/2 - width/2, guiContext->height/2 - height/2, width, height);
-    result->zIndex = 100 + i + 1;
-	guiContext->popupLocked = false;
+    result->zIndex = 100 + (i+1)*5;
+    guiContext->membraneIndex = result->zIndex - 1;
+	guiContext->popupLocked = i != guiContext->popupCount - 1;
     return result;
 }
 
@@ -675,7 +678,7 @@ bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX
     return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - CAST(int32, ((CAST(float32, ptToPx(CAST(float32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, color, zOffset);
 }
 
-static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
+static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float32 zIndex = 0){
     PROFILE_SCOPE(gui_render_rect);
     glUseProgram(guiGl->flat.program);
     
@@ -683,7 +686,7 @@ static bool renderRect(const int32 positionX, const int32 positionY, const int32
     float32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    float32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
+    float32 zOffset = clamp(zIndex, CAST(float32, -INT8_MAX), CAST(float32, INT8_MAX)) / CAST(float32, INT8_MAX);
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
@@ -1520,9 +1523,9 @@ void guiEnd(){
         GuiElementStyle style;
         style.bgColor = black;
         GuiContainer * membrane = guiAddContainer(NULL, NULL, 0, 0, guiContext->width, guiContext->height, &style);
-        membrane->zIndex = 100;
+        membrane->zIndex = guiContext->membraneIndex;
     }
-    insertSort<GuiContainer*>(&guiContext->addedContainers[0], guiContext->addedContainersCount, [](GuiContainer * a, GuiContainer * b) -> int32 { return a->zIndex <= b->zIndex; });
+    insertSort(&guiContext->addedContainers[0], guiContext->addedContainersCount, [](GuiContainer * a, GuiContainer * b) -> int32 { return a->zIndex - b->zIndex; });
     for(int32 i = 0; i < guiContext->addedContainersCount; i++){
         GuiContainer * container = guiContext->addedContainers[i];
         int32 w = container->widthUsed;
@@ -1544,6 +1547,7 @@ void guiEnd(){
         }
         guiContext->selection.activate = false;
     }
+    guiContext->membraneIndex = 0;
 }
 
 void guiFinalize(){
