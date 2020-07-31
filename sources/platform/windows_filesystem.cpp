@@ -8,7 +8,7 @@ struct FileHandle{
 };
 
 bool getFileSize(const char * path, uint32 * result){
-    HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    HANDLE file = CreateFile(path, 0, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if(file ==  INVALID_HANDLE_VALUE) return false;
     DWORD r = GetFileSize(file, 0);
     if(r == INVALID_FILE_SIZE) return false;
@@ -18,7 +18,7 @@ bool getFileSize(const char * path, uint32 * result){
 }
 
 bool readFile(const char * path, FileContents * target){
-    HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, 0);
     if(file ==  INVALID_HANDLE_VALUE) return false;
     if(target->size == 0){
         target->size = GetFileSize(file, 0);

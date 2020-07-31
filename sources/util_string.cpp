@@ -783,7 +783,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                 ASSERT(info.width != 0); 
                 bool first = true;
                 uint32 i = 0;
-                for(; sourceIndex < maxread && i < info.width; sourceIndex++, i++){
+                for(; sourceIndex < maxread && i < info.width && source[sourceIndex] != '\0'; sourceIndex++, i++){
                     if(first) first = false;
                     if(!info.scan.dryRun)
                         *(targetVar+i) = source[sourceIndex];
@@ -793,7 +793,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                     successfullyScanned++;
                 if(info.type == FormatType_s)
                     if(!info.scan.dryRun)
-                    targetVar[i] = '\0';
+                    targetVar[MIN(i, MIN(info.width, maxread) - 1)] = '\0';
             }break;
             case FormatType_d:
             case FormatType_u:{

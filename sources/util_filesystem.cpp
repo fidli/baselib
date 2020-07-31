@@ -232,4 +232,14 @@ bool createEmptyFile(const char * path){
     return saveFile(path, &c);
 }
 
+const char * filename(const char *path){
+    int32 len = strlen(path);
+    for(int32 i = len-1; i >= 0; i--){
+        if(path[i] == '\\' || path[i] == '/'){
+            return &path[i+1];
+        }
+    }
+    return path;
+}
+
 #endif
