@@ -232,6 +232,7 @@ bool createEmptyFile(const char * path){
     return saveFile(path, &c);
 }
 
+// NOTE(fidli): this can be platform-split so you can check just one
 const char * filename(const char *path){
     int32 len = strlen(path);
     for(int32 i = len-1; i >= 0; i--){
@@ -240,6 +241,16 @@ const char * filename(const char *path){
         }
     }
     return path;
+}
+
+const char * extension(const char *path){
+    int32 len = strlen(path);
+    for(int32 i = len-1; i >= 0; i--){
+        if(path[i] == '.'){
+            return &path[i+1];
+        }
+    }
+    return &path[len];
 }
 
 #endif
