@@ -9,7 +9,7 @@ int32 logErrorCount;
 #include "mem_structs.h"
 uint32 snprintf(char * target, nint limit, const char * format, ...);
 inline void * allocate(PersistentStackAllocator * allocator, uint64 bytes);
-nint strlen_s(const char * target, nint limit);
+nint strnlen(const char * target, nint limit);
 uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap);
 int printf(const char * format, ...);
 
@@ -138,7 +138,7 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
                     printf("%1024s", loggers->messagebuffer);
                 }break;
                 case LogTarget_File:{
-                    appendFile(info->file.path, loggers->messagebuffer, strlen_s(loggers->messagebuffer, 1024));
+                    appendFile(info->file.path, loggers->messagebuffer, strnlen(loggers->messagebuffer, 1024));
                 }break;
                 case LogTarget_Status:{
                     strncpy(info->status.lastStatus, loggers->messagebuffer, 255);

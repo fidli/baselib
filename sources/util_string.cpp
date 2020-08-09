@@ -61,24 +61,24 @@ char * strcpy(char * target, const char * source){
     return target;
 }
 
-nint strlen_s(const char * source, nint limit){
-    nint length = 0;
+nint strnlen(const char * source, nint limit){
+    nint length = 1;
     if(source){
-        while(source[length] != '\0' && length < limit){
+        while(source[length-1] != '\0' && length-1 < limit){
             length++;
         }
     }
-    return length;
+    return length - 1;
 }
 
 nint strlen(const char * source){
-    nint length = 0;
+    nint length = 1;
     if(source){
-        while(source[length] != '\0'){
+        while(source[length-1] != '\0'){
             length++;
         }
     }
-    return length;
+    return length-1;
 }
 
 const char * strstr(const char * data, const char * searchFor){

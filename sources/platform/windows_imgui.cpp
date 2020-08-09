@@ -101,7 +101,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         inputHandled = true;
                     }break;
                     case 0x27:{ //right arrow
-                        nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+                        nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
                         if(!shiftDown){
                             guiCancelCaretPositioning();
                             if(ctrlDown){
@@ -133,7 +133,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         inputHandled = true;
                     }break;
                     case 0x23:{ // END
-                        nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+                        nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
                         if(!shiftDown){
                             guiCancelCaretPositioning();
                             guiContext->caretPos = textlen;
@@ -180,7 +180,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         if(wParam == 0x41 && ctrlDown){
                             guiSelectWholeInput();
                             guiCancelCaretPositioning();
-                            nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+                            nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
                             guiContext->caretPos = 0;
                             guiContext->caretWidth = textlen; 
                             inputHandled = true;

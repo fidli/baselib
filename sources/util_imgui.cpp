@@ -425,6 +425,7 @@ GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, in
     }
     guiContext->addedContainers[guiContext->addedContainersCount++] = result;
     ASSERT(guiContext->addedContainersCount <= ARRAYSIZE(guiContext->addedContainers));
+    result->parent = parent;
     return result;
 }
 
@@ -545,6 +546,9 @@ static void recalculateParentUsage(GuiContainer * container){
         }
         if(parent->startY + parent->heightUsed < thisMaxY){
             parent->heightUsed = thisMaxY - parent->startY;
+        }
+        for(int32 i = 0; i < ARRAYSIZE(parent->cursor); i++){
+            parent->cursor[i].x = MAX(container->cursor[i].x, parent->cursor[i].x);
         }
         recalculateParentUsage(container->parent);
     }
@@ -793,7 +797,7 @@ void guiInputCharacters(const char * input, int32 len){
         }
         //end parse format
     }
-    int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    int32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
     int32 ci = 0;
     bool isValid = true;
     for(; ci < len && isValid; ci++){
@@ -862,7 +866,7 @@ void guiDeleteInputCharacters(int32 from, int32 to){
     if(end < start){
         SWAP(end, start);
     }
-    int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    int32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
     start = clamp(start, 0, textlen);
     end = clamp(end, 0, textlen);
     if(start != end){
@@ -874,7 +878,7 @@ void guiDeleteInputCharacters(int32 from, int32 to){
 }
 
 static int32 guiFindNextWordCaret(int32 start){
-    int32 textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    int32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
     int32 caretPos = start;
     bool jumped = false;
     // inner word
@@ -983,7 +987,7 @@ void guiAppendPrevWordToSelection(){
 
 void guiSelectWholeInput(){
     guiCancelCaretPositioning();
-    nint textlen = strlen_s(guiContext->inputText, guiContext->inputMaxlen);
+    nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
     guiContext->caretPos = 0;
     guiContext->caretWidth = textlen; 
 }
