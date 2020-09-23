@@ -40,6 +40,23 @@ bool getFileChangeTime(const char * path, LocalTime * result);
 
 bool getFileSize(const char * path, uint32 * result);
 
+bool skipCurrentLine(FileContents * contents){
+	int32 remains = contents->size-contents->head;
+	if(remains <= 0) return false;
+    char trail = contents->contents[contents->head];
+    while(trail != '\r' && trail != '\n' && trail != '\0')
+    {
+        contents->head++;
+        trail = contents->contents[contents->head];
+    }
+    while((trail == '\r' || trail == '\n') && trail != '\0')
+    {
+        contents->head++;
+        trail = contents->contents[contents->head];
+    }
+    return true;
+}
+
 bool getNextLine(FileContents * contents, char * line, uint32 linelen)
 {
 	int32 remains = contents->size-contents->head;

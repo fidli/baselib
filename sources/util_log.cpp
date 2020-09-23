@@ -141,7 +141,7 @@ void log(char * loggerName, LogLevel level, char * resourceName, char * format, 
                     appendFile(info->file.path, loggers->messagebuffer, strnlen(loggers->messagebuffer, 1024));
                 }break;
                 case LogTarget_Status:{
-                    strncpy(info->status.lastStatus, loggers->messagebuffer, 255);
+                    strncpy(info->status.lastStatus, strstr(loggers->messagebuffer, "] ")+2, 255);
                     info->status.lastStatusTime = getProcessCurrentTime();
                 }break;
                 case LogTarget_Console:{

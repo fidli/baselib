@@ -465,7 +465,7 @@ bool guiClick(){
     return guiPopupRendering() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown)) || guiContext->escapeClick;
 }
 
-GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 width, int32 height){
+GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 width = 0, int32 height = 0){
     int32 i = 0;
 	for(; i < guiContext->popupCount; i++){
 		if(!strncmp(key, guiContext->popups[i], 20)){
