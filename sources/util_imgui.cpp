@@ -179,7 +179,7 @@ struct GuiContext{
     int32 messagePopupCount;
     char messagePopupTitles[10][50];
     char messagePopupMessages[10][255];
-    GuiStyle * messagePopupStyles[10];
+    GuiStyle messagePopupStyles[10];
     
     GuiContainer defaultContainer;
     int32 width;
@@ -1489,9 +1489,10 @@ void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * mess
     guiOpenPopup(title);
     
 	ASSERT(guiContext->messagePopupCount < ARRAYSIZE(guiContext->messagePopups));
+    ASSERT(style);
 	strncpy(guiContext->messagePopupTitles[guiContext->messagePopupCount], title, 50);
 	strncpy(guiContext->messagePopupMessages[guiContext->messagePopupCount], message, 255);
-	guiContext->messagePopupStyles[guiContext->messagePopupCount] = style;
+	memcpy(CAST(void *, &guiContext->messagePopupStyles[guiContext->messagePopupCount]), CAST(void *, style), sizeof(GuiStyle));
     guiContext->messagePopupCount++;
 }
 
@@ -1504,7 +1505,7 @@ void guiEnd(){
     bool close = false;
     for(int32 i = 0; i < guiContext->messagePopupCount; i++){
         if(guiIsPopupOpened(guiContext->messagePopupTitles[i])){
-            GuiStyle * style = guiContext->messagePopupStyles[i];
+            GuiStyle * style = &guiContext->messagePopupStyles[i];
             GuiContainer * popupContainer = guiBeginPopup(guiContext->messagePopupTitles[i], style, 500, 200);
                 
             guiRenderBoxText(popupContainer, style, guiContext->messagePopupTitles[i], NULL, GuiJustify_Middle);
