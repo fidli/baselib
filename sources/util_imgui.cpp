@@ -797,6 +797,7 @@ void guiInputCharacters(const char * input, int32 len){
         }
         //end parse format
     }
+    ASSERT(guiContext->inputText);
     int32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
     int32 ci = 0;
     bool isValid = true;
