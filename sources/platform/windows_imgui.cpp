@@ -21,20 +21,21 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         case WM_LBUTTONUP:{
             guiInput.mouse.buttons.leftUp = true;
             guiInput.mouse.leftHold = false;
-            inputHandled = guiAnyPopup();
+            return false;
         }break;
         case WM_LBUTTONDBLCLK:
             guiInput.mouse.buttons.leftDoubleClick = true;
             guiInput.mouse.lastDoubleClickTime = getProcessCurrentTime();
+            return false;
         case WM_LBUTTONDOWN:{
             guiInput.mouse.buttons.leftDown = true;
             guiInput.mouse.leftHold = true;
             if(message == WM_LBUTTONDOWN && CAST(uint32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastDoubleClickTime)) < GetDoubleClickTime()){
                 guiInput.mouse.buttons.leftTripleClick = true;
             }
-            inputHandled = guiAnyPopup();
             // NOTE(fidli): any input gets re-selected potentially
             guiDeselectInput();
+            return false;
         }break;
         case WM_KEYDOWN:{
             bool ctrlDown = GetKeyState(0x11) & (1 << 15);
