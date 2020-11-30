@@ -462,7 +462,7 @@ bool guiPopupRendering(){
 }
 
 bool guiClick(){
-    return guiPopupRendering() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown)) || guiContext->escapeClick;
+    return guiPopupRendering() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown || guiInput.mouse.leftHold)) || guiContext->escapeClick;
 }
 
 GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 width = 0, int32 height = 0){
@@ -1544,7 +1544,7 @@ void guiEnd(){
         }
         guiContext->mouseInContainer |= guiInput.mouse.x >= container->startX && guiInput.mouse.x < container->startX + w && guiInput.mouse.y >= container->startY && guiInput.mouse.y < container->startY + h;
         renderRect(container->startX, container->startY, w, h, &container->elementStyle.bgColor, container->zIndex-0.5f);
-    } 
+    }
     if(guiContext->selection.isActive){
         if(guiContext->selection.elementIndex >= guiContext->selection.inputsRendered){
             guiContext->selection.elementIndex = 0;
