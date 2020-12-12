@@ -75,7 +75,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                     }break;
                 }
             } 
-            if(!inputHandled && guiValid(guiContext->activeInput)){
+            if(!inputHandled && guiValid(guiContext->activeInput) && guiContext->inputText != NULL){
                 switch (wParam){
                     case 0x28: // down arrow
                     case 0x26:{ // up arrow
