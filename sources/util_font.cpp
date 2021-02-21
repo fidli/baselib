@@ -319,7 +319,7 @@ int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int32 p
     if(textLen != -1){
         len = textLen;
     }else{
-        len = strlen(text);
+        len = text ? strlen(text) : 0;
     }
     for(int i = 0; i < len; i++){
         uint8 c = text[i];

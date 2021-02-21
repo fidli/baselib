@@ -21,13 +21,14 @@ bool readFile(const char * path, FileContents * target){
     HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, 0);
     if(file ==  INVALID_HANDLE_VALUE) return false;
     if(target->size == 0){
-        target->size = GetFileSize(file, 0);
+        target->size = GetFileSize(file, 0) + 1;
         target->contents = &PUSHA(char, target->size);
     }
-    if(!ReadFile(file, (void *) target->contents, target->size, 0, 0)){
+    if(!ReadFile(file, (void *) target->contents, target->size-1, 0, 0)){
         CloseHandle(file);
         return false;
     }
+    target->contents[target->size-1] = '\0';
     target->head = 0;
     CloseHandle(file);
     return true;

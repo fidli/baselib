@@ -62,17 +62,18 @@ bool getNextLine(FileContents * contents, char * line, uint32 linelen)
 	int32 remains = contents->size-contents->head;
 	if(remains <= 0) return false;
     char format[30];
-	uint32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, remains+1));
+	uint32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, remains));
+    memset(line, 0, linelen);
     if(sscanf(contents->contents + contents->head, format, line) == 1)
     {
-        contents->head += strlen(line);
+        nint len = strlen(line);
+        contents->head += len;
         char trail = contents->contents[contents->head];
         while((trail == '\r' || trail == '\n') && trail != '\0')
         {
             contents->head++;
             trail = contents->contents[contents->head];
         }
-        
         return true;
     }
     return false;
@@ -114,7 +115,7 @@ bool ungetLine(FileContents * contents){
     return true;
 }
 
-bool appendBytes(FileContents * contents, char * bytes, int32 bytesize)
+bool appendBytes(FileContents * contents, const char * bytes, int32 bytesize)
 {
 	int32 remains = contents->size-contents->head;
 	if(remains < bytesize) return false;
@@ -123,7 +124,7 @@ bool appendBytes(FileContents * contents, char * bytes, int32 bytesize)
     return true;
 }
 
-bool appendLine(FileContents * contents, char * line)
+bool appendLine(FileContents * contents, const char * line)
 {
 	int32 remains = contents->size-contents->head;
 	int32 linelen = strlen(line);
@@ -133,7 +134,7 @@ bool appendLine(FileContents * contents, char * line)
     return res > 0;
 }
 
-bool appendLinef(FileContents * contents, char * format, ...)
+bool appendLinef(FileContents * contents, const char * format, ...)
     {
 	bool result = false;
 	char * formate = &PUSHA(char, strlen(format) + 2);

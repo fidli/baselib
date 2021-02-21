@@ -322,7 +322,6 @@ static uint8 printDigits(char * target, int64 number){
     return i;
 }
 
-#ifndef CRT_PRESENT
 
 enum FormatTypeSize{
     FormatTypeSize_Default,
@@ -489,7 +488,7 @@ static FormatInfo parseFormat(const char * format){
                     }else if(format[formatIndex] >= '0' && format[formatIndex] <= '9'){
                         info.charlist.digitRangeLow = format[formatIndex];
                     }else{
-                        INV; //implement me maybe? makes sense? i havent been in these depths for long
+                        //INV; //implement me maybe? makes sense? i havent been in these depths for long
                     }
                     
                     formatIndex += 2;
@@ -504,7 +503,7 @@ static FormatInfo parseFormat(const char * format){
                         info.charlist.digitRangeHigh = format[formatIndex];
                         ASSERT(info.charlist.digitRangeHigh > info.charlist.digitRangeLow);
                     }else{
-                        INV; //implement me maybe? makes sense?
+                        //INV; //implement me maybe? makes sense?
                     }
                     
                 }else{
@@ -589,10 +588,12 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
             case FormatType_c:
             case FormatType_s:{
                 char * source;
+                char sourceSlot;
                 int32 toPrint = 0x7FFFFFFF;
                 if(info.type == FormatType_c){
                     toPrint = 1;
-                    source = &va_arg(ap, char);
+                    sourceSlot = va_arg(ap, char);
+                    source = &sourceSlot;
                 }else{
                     source = va_arg(ap, char*);
                     if(!info.leftJustify){
@@ -628,7 +629,6 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                         uint64 source = va_arg(ap, uint64);
                         absValue = source;
                     }else{
-                        INV; //implement me or genuine error
                         return -1;
                     }
                 }else if(info.type == FormatType_d){
@@ -1057,6 +1057,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
     return successfullyScanned;
 }
 
+#ifndef CRT_PRESENT
 uint32 vsnprintf(char * target, nint limit, const char * format, va_list ap){
 	uint32 successfullyPrinted = printFormatted(limit, target, format, ap);
 	return successfullyPrinted;
@@ -1069,8 +1070,17 @@ uint32 snprintf(char * target, nint limit, const char * format, ...){
     va_end(ap);
     return successfullyPrinted;
 }
+#endif
 
+uint32 snscanf(const char * target, nint limit, const char * format, ...){
+    va_list ap;    
+    va_start(ap, format);
+    uint32 successfullyScanned  = scanFormatted(limit, target, format, ap);
+    va_end(ap);
+    return successfullyScanned;
+}
 
+#ifndef CRT_PRESENT
 
 uint32 sprintf(char * target, const char * format, ...){
     va_list ap;    
@@ -1088,13 +1098,6 @@ uint32 sscanf(const char * target, const char * format, ...){
     return successfullyScanned;
 }
 
-uint32 snscanf(const char * target, nint limit, const char * format, ...){
-    va_list ap;    
-    va_start(ap, format);
-    uint32 successfullyScanned  = scanFormatted(limit, target, format, ap);
-    va_end(ap);
-    return successfullyScanned;
-}
 #else
 #include <cstdio>
 #endif

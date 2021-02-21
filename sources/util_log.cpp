@@ -1,13 +1,16 @@
 #pragma once
 #include "util_time.h"
 int32 logErrorCount;
+#include <stdarg.h>
 #ifndef RELEASE
 #include "util_string.cpp"
 #include "util_io.cpp"
 #else
 #include "math_macros.h"
 #include "mem_structs.h"
+#ifndef CRT_PRESENT
 uint32 snprintf(char * target, nint limit, const char * format, ...);
+#endif
 inline void * allocate(PersistentStackAllocator * allocator, uint64 bytes);
 nint strnlen(const char * target, nint limit);
 uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap);
@@ -101,14 +104,15 @@ bool initLog(){
     loggers = ((Loggers *) allocate(&mem.persistent, sizeof(Loggers)));
     return true;
 }
-
-#define LOGE(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Error, STRINGIFY(resourceName), (message), __VA_ARGS__); logErrorCount++;
-#define LOGW(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Warning, STRINGIFY(resourceName), (message), __VA_ARGS__);
-#define LOG(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Notice, STRINGIFY(resourceName), (message), __VA_ARGS__);
+// NOTE(fidli): stupid linux hak
+#define VA_ARGS(...) , ##__VA_ARGS__
+#define LOGE(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Error, STRINGIFY(resourceName), (message) VA_ARGS(__VA_ARGS__)); logErrorCount++;
+#define LOGW(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Warning, STRINGIFY(resourceName), (message) VA_ARGS( __VA_ARGS__));
+#define LOG(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Notice, STRINGIFY(resourceName), (message) VA_ARGS(__VA_ARGS__));
 
 char map[3] = {'E', 'W', 'N'};
 
-void log(char * loggerName, LogLevel level, char * resourceName, char * format, ...){
+void log(const char * loggerName, LogLevel level, const char * resourceName, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
     char format2[] = "[%02hu.%02hu.%04hu %02hu:%02hu:%02hu][%s][%c] %s\r\n";
@@ -185,7 +189,7 @@ int32 getLoggerStatusCount(const char * loggerName){
             }
         }
     }
-    return NULL;
+    return 0;
 }
 
 const char * getLoggerStatus(const char * loggerName, int32 recentMessageIndex = 0){

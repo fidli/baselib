@@ -10,8 +10,9 @@ static timespec clock_;
 
 static float32 startTime;
 
-void initTime(){
+bool initTime(){
     startTime = getProcessCurrentTime();
+    return true;
 }
 
 

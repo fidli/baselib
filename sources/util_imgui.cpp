@@ -135,6 +135,7 @@ struct{
         } buttons;
         bool leftHold;
         float32 lastDoubleClickTime;
+        float32 lastClickTime;
     } mouse;
 } guiInput;
 
@@ -637,7 +638,7 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
     int32 targetSize = ptToPx(CAST(float32, pt));
     float32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
-    int32 len = strlen(text);
+    int32 len = text ? strlen(text) : 0;
     for(int i = 0; i < len; i++){
         const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
         if(!glyph->valid){
