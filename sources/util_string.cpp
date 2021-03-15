@@ -592,7 +592,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 int32 toPrint = 0x7FFFFFFF;
                 if(info.type == FormatType_c){
                     toPrint = 1;
-                    sourceSlot = va_arg(ap, char);
+                    sourceSlot = CAST(char, va_arg(ap, int));
                     source = &sourceSlot;
                 }else{
                     source = va_arg(ap, char*);
@@ -620,10 +620,10 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                         uint32 source = va_arg(ap, uint32);
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
-                        uint16 source = va_arg(ap, uint16);
+                        uint16 source = CAST(uint16, va_arg(ap, int));
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        uint8 source = va_arg(ap, uint8);
+                        uint8 source = CAST(uint8, va_arg(ap, int));
                         absValue = source;
                     }else if(info.typeLength == FormatTypeSize_ll){
                         uint64 source = va_arg(ap, uint64);
@@ -640,14 +640,14 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                         }
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
-                        int16 source = va_arg(ap, int16);
+                        int16 source = CAST(int16, va_arg(ap, int));
                         if(source < 0){
                             source *= -1;
                             negative = true;
                         }
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        int8 source = va_arg(ap, int8);
+                        int8 source = CAST(int8, va_arg(ap, int));
                         if(source < 0){
                             source *= -1;
                             negative = true;

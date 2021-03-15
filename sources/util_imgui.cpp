@@ -1293,7 +1293,7 @@ static bool renderDropdown(const AtlasFont * font, int32 pt, char * searchtext, 
             {
                 int32 buttonPositionX = positionX;
                 int32 buttonPositionY = positionY + (rendered+2)*height;
-                GuiId id = {buttonPositionX, buttonPositionY, zIndex+1};
+                GuiId id = {buttonPositionX, buttonPositionY, CAST(int8, zIndex+1)};
                 bool isLastActive = guiEq(id, guiContext->lastActive);
                 bool result = false;
                 bool isHoverNow = guiInput.mouse.x >= buttonPositionX && guiInput.mouse.x <= buttonPositionX + width && guiInput.mouse.y >= buttonPositionY && guiInput.mouse.y <= buttonPositionY + height;

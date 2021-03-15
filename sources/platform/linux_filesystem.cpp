@@ -111,11 +111,11 @@ bool fileExists(const char * path){
 }
 
 bool dirExists(const char * path){
-    return fileExists;
+    return fileExists(path);
 }
 
 bool createDirectory(const char * path){
-    return dirExists(path) || mkdir(path, 0) == 0;
+    return dirExists(path) || mkdir(path, S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP | S_IROTH | S_IWOTH) == 0;
 }
 
 
