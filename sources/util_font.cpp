@@ -40,8 +40,8 @@ struct AtlasFont{
     GlyphData glyphs[256];
 };
 
-int32 platformGetDpi();
-int32 ptToPx(f32 pt){
+i32 platformGetDpi();
+i32 ptToPx(f32 pt){
     return CAST(i32, (pt * CAST(f32, platformGetDpi())) / 72.0f);
 }
 
@@ -275,7 +275,7 @@ bool printToBitmap(Image * target, u32 startX, u32 startY, const char * asciiTex
     return true;
 }
 
-int32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text, i32 pt, i32 pxPosition){
+i32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text, i32 pt, i32 pxPosition){
     if(pxPosition < 0){
         return 0;
     }
@@ -310,7 +310,7 @@ int32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text,
 }
 
 
-int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, i32 pt, i32 textLen = -1){
+i32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, i32 pt, i32 textLen = -1){
     i32 width = 0;
     i32 targetSize = ptToPx(CAST(f32, pt));
     f32 fontScale = (f32)targetSize / font->pixelSize;

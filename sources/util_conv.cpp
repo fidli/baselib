@@ -4,7 +4,7 @@
 #include "util_image.cpp"
 
 //returns number of unmached chars
-uint32 convUTF8toAscii(const byte * source, const u32 bytesize, char ** target, u32 * targetSize){
+u32 convUTF8toAscii(const byte * source, const u32 bytesize, char ** target, u32 * targetSize){
     
     *targetSize = 0;
     

@@ -1,6 +1,6 @@
 #pragma once
 #include "util_time.h"
-int32 logErrorCount;
+i32 logErrorCount;
 #include <stdarg.h>
 #ifndef RELEASE
 #include "util_string.cpp"
@@ -9,16 +9,16 @@ int32 logErrorCount;
 #include "math_macros.h"
 #include "mem_structs.h"
 #ifndef CRT_PRESENT
-uint32 snprintf(char * target, nint limit, const char * format, ...);
+u32 snprintf(char * target, nint limit, const char * format, ...);
 #endif
 inline void * allocate(PersistentStackAllocator * allocator, u64 bytes);
 nint strnlen(const char * target, nint limit);
-uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list ap);
+u32 printFormatted(u32 maxprint, char * target, const char * format, va_list ap);
 int printf(const char * format, ...);
 
-uint8 numlen(i64 number);
-float64 powd64(f64 base, i16 power);
-float32 powd(f32 base, i16 power);
+u8 numlen(i64 number);
+f64 powd64(f64 base, i16 power);
+f32 powd(f32 base, i16 power);
 
 bool appendFile(const char * path, char * data, u32 length);
 bool createEmptyFile(const char * path);
@@ -175,7 +175,7 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
     
 }
 
-int32 getLoggerStatusCount(const char * loggerName){
+i32 getLoggerStatusCount(const char * loggerName){
     for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             if(loggers->loggers[i].target == LogTarget_Status){
@@ -213,7 +213,7 @@ const char * getLoggerStatus(const char * loggerName, i32 recentMessageIndex = 0
     return NULL;
 }
 
-float32 getLoggerStatusTime(const char * loggerName){
+f32 getLoggerStatusTime(const char * loggerName){
     for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             if(loggers->loggers[i].target == LogTarget_Status){

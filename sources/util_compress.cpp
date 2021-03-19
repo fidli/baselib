@@ -106,7 +106,7 @@ static inline u16 readBits(ReadHeadBit * head, const u8 bits){
     return result;
 }
 
-uint32 decompressLZW(const byte * source, const u32 sourceSize, byte * target){
+u32 decompressLZW(const byte * source, const u32 sourceSize, byte * target){
     //http://www.fileformat.info/format/tiff/corion-lzw.htm
     //every message begins with clear code and ends with end of information code
     
@@ -247,7 +247,7 @@ static inline void writeBits(WriteHeadBit * head, u16 data, const u8 bits){
 }
 
 
-uint32 compressLZW(byte * source, const u32 sourceSize, byte * target){
+u32 compressLZW(byte * source, const u32 sourceSize, byte * target){
     //http://www.fileformat.info/format/tiff/corion-lzw.htm
     //every message begins with clear code and ends with end of information code
     WriteHeadBit compressedDataHead = {};

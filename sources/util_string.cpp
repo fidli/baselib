@@ -7,7 +7,7 @@
 
 #ifndef CRT_PRESENT
 
-int32 strcmp(const char * a, const char * b){
+i32 strcmp(const char * a, const char * b){
     i32 result = 0;
     for(u32 index = 0; ;index++){
         
@@ -22,7 +22,7 @@ int32 strcmp(const char * a, const char * b){
     return result;
 }
 
-int32 strncmp(const char * a, const char * b, nint maxlen){
+i32 strncmp(const char * a, const char * b, nint maxlen){
     i32 result = 0;
     for(u32 index = 0; index < maxlen;index++){
         
@@ -563,14 +563,14 @@ static FormatInfo parseFormat(const char * format){
 }
 
 //returns printed characters
-int32 printPrepend(char * target, char value, i32 len){
+i32 printPrepend(char * target, char value, i32 len){
     if(len > 0){
         memset(target, value, len);
         return len;
     }
     return 0;
 }
-uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list ap){
+u32 printFormatted(u32 maxprint, char * target, const char * format, va_list ap){
     
     
     u32 targetIndex = 0;
@@ -763,7 +763,7 @@ uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list 
 
 
 
-uint32 scanFormatted(i32 limit, const char * source, const char * format, va_list ap){
+u32 scanFormatted(i32 limit, const char * source, const char * format, va_list ap){
     u32 formatOffset = 0;
     u32 sourceIndex = 0;
     u32 successfullyScanned = 0;
@@ -1058,12 +1058,12 @@ uint32 scanFormatted(i32 limit, const char * source, const char * format, va_lis
 }
 
 #ifndef CRT_PRESENT
-uint32 vsnprintf(char * target, nint limit, const char * format, va_list ap){
+u32 vsnprintf(char * target, nint limit, const char * format, va_list ap){
 	u32 successfullyPrinted = printFormatted(limit, target, format, ap);
 	return successfullyPrinted;
 }
 
-uint32 snprintf(char * target, nint limit, const char * format, ...){
+u32 snprintf(char * target, nint limit, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
 	u32 successfullyPrinted = vsnprintf(target, limit, format, ap);
@@ -1072,7 +1072,7 @@ uint32 snprintf(char * target, nint limit, const char * format, ...){
 }
 #endif
 
-uint32 snscanf(const char * target, nint limit, const char * format, ...){
+u32 snscanf(const char * target, nint limit, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
     u32 successfullyScanned  = scanFormatted(limit, target, format, ap);
@@ -1082,7 +1082,7 @@ uint32 snscanf(const char * target, nint limit, const char * format, ...){
 
 #ifndef CRT_PRESENT
 
-uint32 sprintf(char * target, const char * format, ...){
+u32 sprintf(char * target, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
     u32 successfullyPrinted = printFormatted(-1, target, format, ap);
@@ -1090,7 +1090,7 @@ uint32 sprintf(char * target, const char * format, ...){
     return successfullyPrinted;
 }
 
-uint32 sscanf(const char * target, const char * format, ...){
+u32 sscanf(const char * target, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
     u32 successfullyScanned  = scanFormatted(-1, target, format, ap);

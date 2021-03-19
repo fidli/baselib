@@ -45,7 +45,7 @@ struct MPU6050Handle{
 void write8Reg(MPU6050Handle * handle, int reg, u8 data){
     wiringPiI2CWriteReg8(handle->fd, reg, (int)data);
 }
-uint8 read8Reg(MPU6050Handle * handle, int reg){
+u8 read8Reg(MPU6050Handle * handle, int reg){
     return (u8) wiringPiI2CReadReg8(handle->fd, reg);
 }
 
@@ -53,7 +53,7 @@ uint8 read8Reg(MPU6050Handle * handle, int reg){
 void write8Reg(MPU6050Handle * handle, int reg, u8 data){
     INV;
 }
-uint8 read8Reg(MPU6050Handle * handle, int reg){
+u8 read8Reg(MPU6050Handle * handle, int reg){
     INV;
     return 0;
 }
@@ -146,18 +146,18 @@ void mpu6050_setup(MPU6050Handle * handle, const MPU6050Settings settings){
     
 }
 
-uint16 mpu6050_fifoCount(MPU6050Handle * handle){
+u16 mpu6050_fifoCount(MPU6050Handle * handle){
     u8 high = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_H);
     u8 low = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_L);
     return (((u16) high) << 8) + low;
 }
 
-uint8 mpu6050_readFifoByte(MPU6050Handle * handle){
+u8 mpu6050_readFifoByte(MPU6050Handle * handle){
     return read8Reg(handle, MPU6050_REGISTER_FIFO_R_W);
 }
 
 
-uint16 mpu6050_getAccDivisor(const MPU6050Settings * setting){
+u16 mpu6050_getAccDivisor(const MPU6050Settings * setting){
     switch(setting->accPrecision){
         case AccPrecision_2:{
             return 16384; 
@@ -178,7 +178,7 @@ uint16 mpu6050_getAccDivisor(const MPU6050Settings * setting){
     return 0;
 }
 
-float32 mpu6050_getGyroDivisor(const MPU6050Settings * setting){
+f32 mpu6050_getGyroDivisor(const MPU6050Settings * setting){
     switch(setting->gyroPrecision){
         case GyroPrecision_250:{
             return 131; 
@@ -199,7 +199,7 @@ float32 mpu6050_getGyroDivisor(const MPU6050Settings * setting){
     return 0;
 }
 
-int16 mpu6050_getGyroDivisorTimes10(const MPU6050Settings * setting){
+i16 mpu6050_getGyroDivisorTimes10(const MPU6050Settings * setting){
     switch(setting->gyroPrecision){
         case GyroPrecision_250:{
             return 1310; 
@@ -281,11 +281,11 @@ void mpu6050_gyro32_float64(const MPU6050Settings setting, const i32 x, const i3
 }
 
 
-float32 mpu6050_getTimeDelta(const u16 sampleRate){
+f32 mpu6050_getTimeDelta(const u16 sampleRate){
     return 1.0f / sampleRate;
 }
 
-float64 mpu6050_getTimeDelta64(const u16 sampleRate){
+f64 mpu6050_getTimeDelta64(const u16 sampleRate){
     return 1.0f / sampleRate;
 }
 

@@ -50,7 +50,7 @@ static void waitForMessage(XBS2Handle * module, char * responseBuffer, const cha
     
 }
 
-int32 xbs2_waitForAnyMessage(XBS2Handle * module, char * responseBuffer, u32 bufferLength, f32 timeout = -1){
+i32 xbs2_waitForAnyMessage(XBS2Handle * module, char * responseBuffer, u32 bufferLength, f32 timeout = -1){
     i32 offset = 0;
     if(timeout == -1){
         while((offset == 0 || responseBuffer[offset-1] != '\r') && offset < bufferLength){
@@ -67,7 +67,7 @@ int32 xbs2_waitForAnyMessage(XBS2Handle * module, char * responseBuffer, u32 buf
     return offset;
 }
 
-int32 xbs2_waitForAnyByte(XBS2Handle * module, char * response, f32 timeout = -1){
+i32 xbs2_waitForAnyByte(XBS2Handle * module, char * response, f32 timeout = -1){
     return readSerial(module, response, 1, timeout);
 }
 

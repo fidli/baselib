@@ -10,7 +10,7 @@
 
 //-----------------------------------------------------------------------NUMBERS
 
-bool32 isOdd(const u64 a){
+b32 isOdd(const u64 a){
     return (a & (u64) 1);
 }
 
@@ -51,7 +51,7 @@ bool aseqr64(f64 test, f64 fixedpoint, f64 delta = 0.000005f){
 
 #ifndef PRECISE_MATH
 
-float32 ceil(f32 value){
+f32 ceil(f32 value){
     i64 i = CAST(i64, value);
     f32 result = CAST(f32, i);
     if(result != value && value >= 0){
@@ -60,7 +60,7 @@ float32 ceil(f32 value){
     return result;
 }
 
-float32 floor(f32 value){
+f32 floor(f32 value){
     i64 i = CAST(i64, value);
     f32 result = CAST(f32, i);
     if(result != value && value <= 0){
@@ -70,7 +70,7 @@ float32 floor(f32 value){
     
 }
 
-float32 round(f32 value){
+f32 round(f32 value){
     if((u32)(value * 10) % 10 >= 5){
         return ceil(value);
     }else{
@@ -78,7 +78,7 @@ float32 round(f32 value){
     }
 }
 
-float32 powd(f32 base, i16 power = 2){
+f32 powd(f32 base, i16 power = 2){
     //todo square mult
     if(power == 0){
         return 1;
@@ -90,7 +90,7 @@ float32 powd(f32 base, i16 power = 2){
     return (power < 0) ? (1.0f / result) : result;
 }
 
-float64 powd64(f64 base, i16 power = 2){
+f64 powd64(f64 base, i16 power = 2){
     //todo square mult
     if(power == 0){
         return 1;
@@ -138,20 +138,20 @@ static f64 subSqrt64(f64 value, f64 guess, f64 prec = 0.0001f){
 
 
 
-float32 sqrt(f32 value){
+f32 sqrt(f32 value){
     if(aseq(value, 0)) return 0;
     if(value < 0) INV;
     return subSqrt(value, value / 2, value < 1 ? 0.000001f : 0.01f);
 }
 
-float64 sqrt64(f64 value){
+f64 sqrt64(f64 value){
     if(aseq64(value, 0)) return 0;
     if(value < 0) INV;
     return subSqrt64(value, value / 2, value < 1 ? 0.000001f : 0.01f);
 }
 
 /* e N
-float32 sqrt(f32 value){
+f32 sqrt(f32 value){
     ASSERT(value > 0);
     f32 result = 65536;
     while(true){
@@ -167,34 +167,34 @@ float32 sqrt(f32 value){
 */
 
 
-float32 atan2(f32, float32){
+f32 atan2(f32, float32){
     ASSERT(!"implement me");
     return 0;
 }
 
-float32 sin(f32 xRad){
+f32 sin(f32 xRad){
     return xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19;
 }
 
-float32 sin64(f64 xRad){
+f32 sin64(f64 xRad){
     return xRad - powd64(xRad,3)/6.0 + powd64(xRad,5)/120.0 - powd64(xRad,7)/5040.0 +  powd64(xRad,9)/362880.0 - powd64(xRad,11)/39916800.0 + powd64(xRad,13)/6227020800.0 - powd64(xRad,15)/1307674368000.0 +  powd64(xRad,17)/355687428096000.0 - powd64(xRad,19)/1.216451e+17 + powd64(xRad,21)/5.1090942e+19;
 }
 
-float32 cos(f32 xRad){
+f32 cos(f32 xRad){
     return 1 - powd(xRad,2)/2.0 + powd(xRad,4)/24.0 - powd(xRad,6)/720.0 + powd(xRad,8)/40320.0 - powd(xRad,10)/3628800.0 + powd(xRad,12)/479001600.0 - powd(xRad,14)/87178291200.0 + powd(xRad,16)/20922789888000.0 - powd(xRad,18)/6.402373705728e+15 + powd(xRad,20)/2.43290200817664e+18;
 }
 
-float64 cos64(f64 xRad){
+f64 cos64(f64 xRad){
     return 1 - powd64(xRad,2)/2.0 + powd64(xRad,4)/24.0 - powd64(xRad,6)/720.0 + powd64(xRad,8)/40320.0 - powd64(xRad,10)/3628800.0 + powd64(xRad,12)/479001600.0 - powd64(xRad,14)/87178291200.0 + powd64(xRad,16)/20922789888000.0 - powd64(xRad,18)/6.402373705728e+15 + powd64(xRad,20)/2.43290200817664e+18;
 }
 
-float32 tan(f32 rad){
+f32 tan(f32 rad){
 	ASSERT(!"something better");
 	return sin(rad) / cos(rad);
 }
 
 
-float32 acos(f32 cos){
+f32 acos(f32 cos){
     //https://stackoverflow.com/questions/3380628/fast-arc-cos-algorithm/36387954#36387954
     f32 a = -0.939115566365855f;
     f32 b =  0.9217841528914573f;
@@ -204,7 +204,7 @@ float32 acos(f32 cos){
     
 }
 
-float64 acos64(f64 cos){
+f64 acos64(f64 cos){
     //https://stackoverflow.com/questions/3380628/fast-arc-cos-algorithm/36387954#36387954
     f64 a = -0.939115566365855f;
     f64 b =  0.9217841528914573f;
@@ -222,7 +222,7 @@ static f32 agMean(f32 a, f32 b){
     return agMean((a+b)/2, sqrt(a*b));
 }
 
-float32 ln(f32 number, u8 precisionBits = 32){
+f32 ln(f32 number, u8 precisionBits = 32){
     //Arithmetic-geometric mean approximation
     ASSERT(precisionBits > 0);
     const f32 ln2 = 0.6931471f;
@@ -233,7 +233,7 @@ float32 ln(f32 number, u8 precisionBits = 32){
     return (PI / (2*agMean(1, meanB))) - m * ln2;
 }
 
-float32 epow(f32 power){
+f32 epow(f32 power){
     if(aseq(power, 0, 0.000000005f)) return 1;
     //taylor
     f32 abspow = ABS(power) - (u32) ABS(power);
@@ -242,12 +242,12 @@ float32 epow(f32 power){
     return (power < 0) ? (1.0 / result) : result;
 }
 
-float32 pow(f32 base, f32 power){
+f32 pow(f32 base, f32 power){
     return epow(power * ln(base));
 }
 
 
-float32 log(f32 number, f32 base = 10){
+f32 log(f32 number, f32 base = 10){
     ASSERT(number != 0);
     f32 temp = ABS(number);
     f32 result = ln(number) / ln(base);
@@ -256,7 +256,7 @@ float32 log(f32 number, f32 base = 10){
 }
 
 
-float32 clamp(f32 originalValue, f32 min, f32 max){
+f32 clamp(f32 originalValue, f32 min, f32 max){
     if(originalValue < min){
         return min;
     }else if(originalValue > max){
@@ -266,7 +266,7 @@ float32 clamp(f32 originalValue, f32 min, f32 max){
 }
 
 
-int32 clamp(i32 originalValue, i32 min, i32 max){
+i32 clamp(i32 originalValue, i32 min, i32 max){
     if(originalValue < min){
         return min;
     }else if(originalValue > max){
@@ -276,17 +276,17 @@ int32 clamp(i32 originalValue, i32 min, i32 max){
 }
 
 
-float32 normalize(f32 value, f32 min, f32 max){
+f32 normalize(f32 value, f32 min, f32 max){
     return (value - min) / (max - min);
 }
 
-float32 fmodd(f32 value, u32 modulus){
+f32 fmodd(f32 value, u32 modulus){
     i32 wholePart = (i32) value;
     f32 preResult = (f32)(wholePart % modulus) + (value - wholePart);
     return preResult; 
 }
 
-float64 fmodd64(f64 value, u64 modulus){
+f64 fmodd64(f64 value, u64 modulus){
     i64 wholePart = (i64) value;
     f64 preResult = (f64)(wholePart % modulus) + (value - wholePart);
     return preResult; 
@@ -296,36 +296,36 @@ float64 fmodd64(f64 value, u64 modulus){
 
 //this is just interface
 
-float32 powd(f32 base, i16 power = 2){
+f32 powd(f32 base, i16 power = 2){
     return (f32)pow((double) base, (double) power);
 }
 
-float64 powd64(f64 base, i16 power = 2){
+f64 powd64(f64 base, i16 power = 2){
     return (f64)pow(base, (double) power);
 }
 
-float64 sqrt64(f64 value){
+f64 sqrt64(f64 value){
     return (f64)sqrt((double) value);
 }
 
-float32 fmodd(f32 value, u32 modulus){
+f32 fmodd(f32 value, u32 modulus){
     f32 result = (f32) fmod((double) value, (double) modulus);
     return result;
 }
 
-float64 fmodd64(f64 value, u64 modulus){
+f64 fmodd64(f64 value, u64 modulus){
     return result;
 }
 
-float64 acos64(f64 cos64){
+f64 acos64(f64 cos64){
     return (f64)acos((double)cos64);
 }
 
-float64 cos64(f64 radAngle){
+f64 cos64(f64 radAngle){
     return (f64)cos((double)radAngle);
 }
 
-float64 sin64(f64 radAngle){
+f64 sin64(f64 radAngle){
     return (f64)sin((double)radAngle);
 }
 
@@ -333,7 +333,7 @@ float64 sin64(f64 radAngle){
 
 #endif
 
-uint8 numlen(i64 number){
+u8 numlen(i64 number){
     int result = 1;
     if(number < 0){
         result++;
@@ -943,39 +943,39 @@ v2 lerp(const dv2 * origin, const dv2 * target, f32 coeficient){
 }
 
 
-float32 dot(v3 a, v3 b){
+f32 dot(v3 a, v3 b){
     return a.x*b.x + a.y * b.y + a.z * b.z;
 }
 
-float64 dot64(v3_64 a, v3_64 b){
+f64 dot64(v3_64 a, v3_64 b){
     return a.x*b.x + a.y * b.y + a.z * b.z;
 }
 
-float32 dot(v4 a, v4 b){
+f32 dot(v4 a, v4 b){
     return a.x*b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
-float64 dot64(v4_64 a, v4_64 b){
+f64 dot64(v4_64 a, v4_64 b){
     return a.x*b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
-float32 dot(v2 a, v2 b){
+f32 dot(v2 a, v2 b){
     return a.x*b.x + a.y * b.y;
 }
 
-float64 dot64(v2_64 a, v2_64 b){
+f64 dot64(v2_64 a, v2_64 b){
     return a.x*b.x + a.y * b.y;
 }
 
-uint64 dot64(dv3_64 a, dv3_64 b){
+u64 dot64(dv3_64 a, dv3_64 b){
     return a.x*b.x + a.y * b.y + b.z * b.z;
 }
 
-float32 dot(dv2 a, dv2 b){
+f32 dot(dv2 a, dv2 b){
     return (f32)(a.x*b.x + a.y * b.y);
 }
 
-float32 dot(vN a, vN b){
+f32 dot(vN a, vN b){
     ASSERT(a.size == b.size);
     f32 result = 0;
     for(int i = 0; i < a.size; i++){
@@ -985,58 +985,58 @@ float32 dot(vN a, vN b){
 }
 
 
-float32 det(v2 a, v2 b){
+f32 det(v2 a, v2 b){
     return a.x*b.y - b.x*a.y;
 }
 
-float32 length(v3 a){
+f32 length(v3 a){
     return sqrt(dot(a,a));
 }
 
-float64 length64(v3_64 a){
+f64 length64(v3_64 a){
     return sqrt64(dot64(a,a));
 }
 
-float64 length64(dv3_64 a){
+f64 length64(dv3_64 a){
     return sqrt64((f64)dot64(a,a));
 }
 
-float32 length(vN a){
+f32 length(vN a){
     return sqrt(dot(a,a));
 }
 
-float32 length(v4 a){
+f32 length(v4 a){
     return sqrt(dot(a,a));
 }
 
-float64 length64(v4_64 a){
+f64 length64(v4_64 a){
     return sqrt64(dot64(a,a));
 }
 
-float32 length(v2 a){
+f32 length(v2 a){
     return sqrt(dot(a,a));
 }
 
-float64 length64(v2_64 a){
+f64 length64(v2_64 a){
     return sqrt64(dot64(a,a));
 }
 
 
-float32 length(dv2 a){
+f32 length(dv2 a){
     return sqrt(dot(a,a));
 }
 
-float32 radAngleFull(v2 a, v2 b){
+f32 radAngleFull(v2 a, v2 b){
     f32 result = atan2(det(a,b), dot(a,b));
     return result;
 }
 
-float32 radAngle(v2 a, v2 b){
+f32 radAngle(v2 a, v2 b){
     f32 cos = dot(a,b) / (length(a) * length(b));
     return acos(cos);
 }
 
-float64 radAngle64(v2_64 a, v2_64 b){
+f64 radAngle64(v2_64 a, v2_64 b){
     f64 cos = dot64(a,b) / (length64(a) * length64(b));
     return acos64(cos);
 }
@@ -1128,7 +1128,7 @@ v3_64 hadamard64(const v3_64 & A, const v3_64 & B){
     return V3_64(A.x * B.x, A.y * B.y, A.z * B.z);
 }
 
-float32 sum(const vN * A){
+f32 sum(const vN * A){
     f32 result = 0;
     for(int i = 0; i < A->size; i++){
         result += A->v[i];
@@ -1255,7 +1255,7 @@ mat4 operator*(const f32 alfa, const mat4 & matrix){
 
 
 
-float32 determinant(const mat3 * matrix){
+f32 determinant(const mat3 * matrix){
     return matrix->cells[0][0] * matrix->cells[1][1] * matrix->cells[2][2]
         + matrix->cells[0][1] * matrix->cells[1][2] * matrix->cells[2][0]
         + matrix->cells[1][0] * matrix->cells[2][1] * matrix->cells[0][2]
@@ -1321,19 +1321,19 @@ mat4 inverseMatrix(const mat4 * originalMatrix){
 
 //-----------------------------------------------------------------------GEOMETRY
 
-float32 degToRad(f32 degAngle){
+f32 degToRad(f32 degAngle){
     return  degAngle * PI / 180.0f;
 }
 
-float64 degToRad64(f64 degAngle){
+f64 degToRad64(f64 degAngle){
     return  degAngle * PI_64 / 180.0f;
 }
 
-float32 radToDeg(f32 radAngle){
+f32 radToDeg(f32 radAngle){
     return radAngle * 180.0f / PI;
 }
 
-float64 radToDeg64(f64 radAngle){
+f64 radToDeg64(f64 radAngle){
     return radAngle * 180.0f / PI_64;
 }
 

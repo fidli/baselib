@@ -236,7 +236,7 @@ char identification[20];
 //not supporting groups
 struct meshFile{
 //mirrors array buffer in opengl //vertices, normals
-float32 arrayBuffer[1000000];
+f32 arrayBuffer[1000000];
 Uint32 arrayBufferCount;
 //mirriors array elements buffer, order {index, index, index[, index]^j}^n
 Uint32 indexBuffer[500000];

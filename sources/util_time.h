@@ -40,13 +40,13 @@ bool operator!=(const LocalTime a, const LocalTime b){
 }
 
 
-uint64 getTick();
+u64 getTick();
 
-float64 translateTickToTime(const u64 tick, const u64 tickDivisor);
+f64 translateTickToTime(const u64 tick, const u64 tickDivisor);
 
-uint64 getTickDivisor();
+u64 getTickDivisor();
 
-float32 getProcessCurrentTime();
+f32 getProcessCurrentTime();
 
 
 LocalTime getLocalTime();

@@ -15,24 +15,24 @@ bool initTime(){
     return false;
 }
 
-float32 getProcessCurrentTime(){
+f32 getProcessCurrentTime(){
     LARGE_INTEGER counter;
     QueryPerformanceCounter(&counter);
     return ((f32)counter.QuadPart / frequencyF);
     
 }
 
-uint64 getTick(){
+u64 getTick(){
     LARGE_INTEGER counter;
     QueryPerformanceCounter(&counter);
     return counter.QuadPart;
 }
 
-uint64 getTickDivisor(){
+u64 getTickDivisor(){
     return frequency.QuadPart;
 }
 
-float64 translateTickToTime(const u64 tick, u64 divisor = getTickDivisor()){
+f64 translateTickToTime(const u64 tick, u64 divisor = getTickDivisor()){
     return (f64)tick / divisor;
 }
 

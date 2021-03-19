@@ -60,7 +60,7 @@ bool clearSerialPort(SerialHandle * target){
 }
 
 
-int32 writeSerial(SerialHandle * target, const char * buffer, u32 length){
+i32 writeSerial(SerialHandle * target, const char * buffer, u32 length){
     DWORD written;
     OVERLAPPED result = {};
     result.Offset =  0xFFFFFFFF;
@@ -92,7 +92,7 @@ void writeSerialQuick(SerialHandle * target, const char * buffer, u32 length){
 }
 
 
-int32 readSerial(SerialHandle * source, char * buffer, u32 maxRead, f32 timeout){
+i32 readSerial(SerialHandle * source, char * buffer, u32 maxRead, f32 timeout){
     DWORD read;
     OVERLAPPED result = {};
     DWORD readOp = ReadFile(source->handle, buffer, maxRead, NULL, &result);
