@@ -1,20 +1,16 @@
-#ifndef LINUX_TYPES_H
-#define LINUX_TYPES_H
-
+#pragma once
 #include <cstddef>
 
-#define float32 float
-#define float64 double
-#define uint32 unsigned int
-#define uint8 unsigned char
-#define int8 char
-#define int16 short
-#define int32 int
-#define int64 long long
-#define byte unsigned char
-#define uint16 unsigned short
-#define uint64 unsigned long long
-#define bool32 int32
+#define f32 float
+#define f64 double
+#define u32 unsigned int32_t
+#define u8 unsigned char
+#define i8 int8_t
+#define i16 int16_t
+#define i32 int32_t
+#define i64 int64_t
+#define u16 int16_t
+#define u64 uint64_t
+#define b32 int32_t
 #define nint size_t
 
-#endif
