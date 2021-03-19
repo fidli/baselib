@@ -167,7 +167,7 @@ f32 sqrt(f32 value){
 */
 
 
-f32 atan2(f32, float32){
+f32 atan2(f32, f32){
     ASSERT(!"implement me");
     return 0;
 }

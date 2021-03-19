@@ -93,6 +93,6 @@ inline ProfileStats * getCurrentProfileStats(){
         }
     }
     r->count = count;
-    mergeSort(&r->entries[0], r->count, [] (ProfileStats::Entry & a, ProfileStats::Entry & b) -> int32{float64 diff = a.avgTime - b.avgTime;if(diff < 0) return 1; return -1;});
+    mergeSort(&r->entries[0], r->count, [] (ProfileStats::Entry & a, ProfileStats::Entry & b) -> i32{f64 diff = a.avgTime - b.avgTime;if(diff < 0) return 1; return -1;});
     return r;
 }

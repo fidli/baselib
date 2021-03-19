@@ -203,28 +203,28 @@ bool decodeBMP(const FileContents * source, Image * target){
     }else if(infoheader->compression == 3){
         if(infoheader->bitsPerPixel == 32){
             ASSERT(infoheader->compression == 3);
-            u32 redMask = *(((uint32*)(infoheader+1))+0);
+            u32 redMask = *(CAST(u32*, infoheader+1)+0);
             u32 redMaskFallShift = redMask > 0xFF ? (redMask > 0xFF00 ? (redMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            u32 greenMask = *(((uint32*)(infoheader+1))+1);
+            u32 greenMask = *(CAST(u32*,infoheader+1)+1);
             u32 greenMaskFallShift = greenMask > 0xFF ? (greenMask > 0xFF00 ? (greenMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            u32 blueMask = *(((uint32*)(infoheader+1))+2);
+            u32 blueMask = *(CAST(u32*,infoheader+1)+2);
             u32 blueMaskFallShift = blueMask > 0xFF ? (blueMask > 0xFF00 ? (blueMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            u32 alfaMask = *(((uint32*)(infoheader+1))+3);
+            u32 alfaMask = *(CAST(u32*,infoheader+1)+3);
             u32 alfaMaskFallShift = alfaMask > 0xFF ? (alfaMask > 0xFF00 ? (alfaMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
             target->info.interpretation = BitmapInterpretationType_RGBA;
             
             target->data = &PUSHA(byte, infoheader->datasize);
-            u32 * pixelData = (u32 *) target->data;
+            u32 * pixelData = CAST(u32 *, target->data);
             
             //NOTE(AK): 32 bit pixels will always be 32 bit aligned
             for(u32 h = 0; h < target->info.height; h++){
                 u32 pitch = h * target->info.width;
                 for(u32 w = 0; w < target->info.width; w++){
-                    u32 sourceData = ((uint32*)(source->contents + dataOffset))[pitch + w];
+                    u32 sourceData = CAST(u32*,source->contents + dataOffset)[pitch + w];
                     pixelData[pitch + w] = 0 | (((redMask & sourceData) >> redMaskFallShift)) | (((greenMask & sourceData) >> greenMaskFallShift) << 8)  | (((blueMask & sourceData) >> blueMaskFallShift) << 16) | (((alfaMask & sourceData) >> alfaMaskFallShift) << 24);
                 }
             }

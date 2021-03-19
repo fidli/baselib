@@ -13,3 +13,4 @@
 #define u64 unsigned __int64
 #define b32 int32
 #define nint size_t
+#define byte unsigned char
