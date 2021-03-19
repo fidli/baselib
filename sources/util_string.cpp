@@ -1017,8 +1017,12 @@ u32 scanFormatted(i32 limit, const char * source, const char * format, va_list a
                     
                     
                     if(!info.charlist.inverted && !found){
+                        if(!scanned)
+                            exit = true;
                         break;    
                     }else if(info.charlist.inverted && found){
+                        if(!scanned)
+                            exit = true;
                         break;
                     }
                     

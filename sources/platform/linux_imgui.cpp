@@ -15,6 +15,7 @@ bool guiHandleInputLinux(XEvent * event){
         return false;
     }
     bool inputHandled = false;
+    int trash;
     switch(event->type)
     {
         case MotionNotify:{
@@ -49,7 +50,7 @@ bool guiHandleInputLinux(XEvent * event){
         case KeyPress:{
             bool ctrlDown = event->xkey.state & ControlMask;
             bool shiftDown = event->xkey.state & ShiftMask;
-            switch (event->xkey.keycode){
+            switch(*XGetKeyboardMapping(display, event->xkey.keycode, 1, &trash)){
                 case XK_Tab:{// tab
                     if(shiftDown){
                         guiSelectPreviousInput();
@@ -77,7 +78,7 @@ bool guiHandleInputLinux(XEvent * event){
                 }break;
             }
             if(guiAnyInputSelected()){
-                switch (event->xkey.keycode){
+                switch(*XGetKeyboardMapping(display, event->xkey.keycode, 1, &trash)){
                     case XK_Return:{// enter
                         guiActivateSelection();
                         inputHandled = true;
@@ -85,7 +86,7 @@ bool guiHandleInputLinux(XEvent * event){
                 }
             } 
             if(!inputHandled && guiValid(guiContext->activeInput) && guiContext->inputText != NULL){
-                switch (event->xkey.keycode){
+                switch(*XGetKeyboardMapping(display, event->xkey.keycode, 1, &trash)){
                     case XK_Down: // down arrow
                     case XK_Up:{ // up arrow
                     }break;
@@ -186,8 +187,9 @@ bool guiHandleInputLinux(XEvent * event){
                         inputHandled = true;
                     }break;
                     default:{
+                        int keysym = *XGetKeyboardMapping(display, event->xkey.keycode, 1, &trash);
                         // ctrl-a
-                        if(event->xkey.keycode == XK_a && ctrlDown){
+                        if(keysym == XK_a && ctrlDown){
                             guiSelectWholeInput();
                             guiCancelCaretPositioning();
                             nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
@@ -203,7 +205,7 @@ bool guiHandleInputLinux(XEvent * event){
                         if(guiContext->caretWidth != 0){
                             guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
                         }
-                        char c = event->xkey.keycode;//assuming ascii character
+                        char c = keysym;//assuming ascii character
                         // '.'
                         // ','
                         // minus

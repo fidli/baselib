@@ -475,7 +475,7 @@ GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, i32 width
 	}
     ASSERT(i < guiContext->popupCount);
     GuiContainer * result = guiAddContainer(NULL, style, guiContext->width/2 - width/2, guiContext->height/2 - height/2, width, height);
-    result->zIndex = 100 + (i+1)*5;
+    result->zIndex = INT8_MAX/2 + (i+1)*5;
     guiContext->membraneIndex = result->zIndex - 1;
 	guiContext->popupLocked = i != guiContext->popupCount - 1;
     return result;
@@ -683,7 +683,7 @@ bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX
     return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - CAST(i32, ((CAST(f32, ptToPx(CAST(f32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, color, zOffset);
 }
 
-static bool renderRect(const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * color, f32 zIndex = 0){
+static bool renderRect(const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * color, i8 zIndex = 0){
     PROFILE_SCOPE(gui_render_rect);
     glUseProgram(guiGl->flat.program);
     
@@ -691,7 +691,7 @@ static bool renderRect(const i32 positionX, const i32 positionY, const i32 width
     f32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    f32 zOffset = clamp(zIndex, CAST(f32, -INT8_MAX), CAST(f32, INT8_MAX)) / CAST(f32, INT8_MAX);
+    f32 zOffset = clamp(CAST(f32, zIndex), CAST(f32, -INT8_MAX), CAST(f32, INT8_MAX)) / CAST(f32, INT8_MAX);
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
