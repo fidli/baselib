@@ -1,7 +1,7 @@
 #ifndef OPENGL_CPP
 #define OPENGL_CPP
 
-bool compileShaders(const unsigned char * vertexContents, uint32 vertexContentsSize, const unsigned char * fragmentContents, uint32 fragmentContentsSize, GLint * vertexShader, GLint * fragmentShader, GLint * program){
+bool compileShaders(const unsigned char * vertexContents, u32 vertexContentsSize, const unsigned char * fragmentContents, u32 fragmentContentsSize, GLint * vertexShader, GLint * fragmentShader, GLint * program){
     bool r = true;    
     *vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(*vertexShader, 1, (const char **)&vertexContents, (GLint*) &vertexContentsSize);

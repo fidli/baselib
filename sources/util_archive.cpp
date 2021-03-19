@@ -10,54 +10,54 @@
 #pragma pack(push)
 #pragma pack(1)
 struct ZipCentralDirectoryHeader{
-    uint32 signature;
-    uint16 compressVersion;
-    uint16 minExtractVersion;
-    uint16 gpFlags;
-    uint16 compressionMethod;
-    uint16 mtime;
-    uint16 mdate;
-    uint32 crc32;
-    uint32 compressedSize;
-    uint32 uncompressedSize;
-    uint16 fileNameLength;
-    uint16 extraFieldLength;
-    uint16 fileCommentLength;
-    uint16 diskNumberOfFileStart;
-    uint16 internalFileAttributes;
-    uint32 externalFileAttributes;
-    uint32 localFileHeaderOffset;
+    u32 signature;
+    u16 compressVersion;
+    u16 minExtractVersion;
+    u16 gpFlags;
+    u16 compressionMethod;
+    u16 mtime;
+    u16 mdate;
+    u32 crc32;
+    u32 compressedSize;
+    u32 uncompressedSize;
+    u16 fileNameLength;
+    u16 extraFieldLength;
+    u16 fileCommentLength;
+    u16 diskNumberOfFileStart;
+    u16 internalFileAttributes;
+    u32 externalFileAttributes;
+    u32 localFileHeaderOffset;
     char fileName[1];
     
 };
 
 
 struct ZipEndOfCentralDirectory{
-    uint32 signature;
-    uint16 diskIndex;
-    uint16 centralDirectoryStartDiskIndex;
-    uint16 centralDirectoryRecordOnThisDiskCount;
-    uint16 centralDirectoryRecordCount;
-    uint32 centralDirectoryByteSize;
-    uint32 centralDirectoryOffset;
-    uint16 commentLength;
+    u32 signature;
+    u16 diskIndex;
+    u16 centralDirectoryStartDiskIndex;
+    u16 centralDirectoryRecordOnThisDiskCount;
+    u16 centralDirectoryRecordCount;
+    u32 centralDirectoryByteSize;
+    u32 centralDirectoryOffset;
+    u16 commentLength;
     char comment[1];
     
     
 };
 
 struct ZipLocalFileHeader{
-    uint32 signature;
-    uint16 minExtractVersion;
-    uint16 gpFlags;
-    uint16 compressionMethod;
-    uint16 mtime;
-    uint16 mdate;
-    uint32 crc32;
-    uint32 compressedSize;
-    uint32 uncompressedSize;
-    uint16 fileNameLength;
-    uint16 extraFieldLength;
+    u32 signature;
+    u16 minExtractVersion;
+    u16 gpFlags;
+    u16 compressionMethod;
+    u16 mtime;
+    u16 mdate;
+    u32 crc32;
+    u32 compressedSize;
+    u32 uncompressedSize;
+    u16 fileNameLength;
+    u16 extraFieldLength;
     char fileName[1];
 };
 
@@ -66,7 +66,7 @@ struct ZipLocalFileHeader{
 struct ZipDirectory{
     char ** fileNames;
     FileContents * files;
-    uint16 count;
+    u16 count;
 };
 
 ZipDirectory * parseZipArchive(const FileContents * zipArchive){
@@ -86,14 +86,14 @@ ZipDirectory * parseZipArchive(const FileContents * zipArchive){
     result->count = endStruct->centralDirectoryRecordCount;
     result->fileNames = &PPUSHA(char *, result->count);
     result->files = &PPUSHA(FileContents, result->count);
-    uint32 customOffset = 0;
+    u32 customOffset = 0;
     char * firstDirectory = zipArchive->contents + endStruct->centralDirectoryOffset;
-    for(uint16 ei = 0; ei < endStruct->centralDirectoryRecordCount; ei++){
+    for(u16 ei = 0; ei < endStruct->centralDirectoryRecordCount; ei++){
         ZipCentralDirectoryHeader * centralHeader = (ZipCentralDirectoryHeader *) (firstDirectory + customOffset + ei*(sizeof(ZipCentralDirectoryHeader)-1));
         ASSERT(centralHeader->signature == 0x02014b50);
         
         result->fileNames[ei] = &PPUSHA(char, centralHeader->fileNameLength+1);
-        for(uint16 si = 0; si < centralHeader->fileNameLength; si++){
+        for(u16 si = 0; si < centralHeader->fileNameLength; si++){
             result->fileNames[ei][si] = centralHeader->fileName[si];
         }
         result->fileNames[ei][centralHeader->fileNameLength] = '\0';

@@ -8,7 +8,7 @@
 static timespec clock_;
 
 
-static float32 startTime;
+static f32 startTime;
 
 bool initTime(){
     startTime = getProcessCurrentTime();

@@ -49,7 +49,7 @@ void loadAudio(const WCHAR * path, Audio * target){
     IMFMediaBuffer *buffer;
     buffersample * queue = &PUSH(buffersample);
     buffersample * current = queue;
-    uint32 totalSize = 0;
+    u32 totalSize = 0;
     while(true){
         //read samples till you die,
         ASSERT(SUCCEEDED(reader->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, NULL, &outflags, NULL, &sample)));

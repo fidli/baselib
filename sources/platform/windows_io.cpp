@@ -14,7 +14,7 @@ bool initIo(){
     return (consoleOut.handle != INVALID_HANDLE_VALUE && consoleOut.handle != NULL) && (consoleIn.handle != INVALID_HANDLE_VALUE && consoleIn.handle != NULL);
 }
 
-int readConsole(char * buffer, uint16 maxsize){
+int readConsole(char * buffer, u16 maxsize){
     //< check whether redirection requires read file instead of 
     FlushConsoleInputBuffer(consoleIn.handle);
     bool done = false;

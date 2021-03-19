@@ -6,7 +6,7 @@
 
 FileHandle getStdOut();
 bool writeConsole(const FileContents * source);
-int readConsole(char * buffer, uint16 maxlen);
+int readConsole(char * buffer, u16 maxlen);
 bool initIo();
 
 #ifndef CRT_PRESENT
@@ -18,7 +18,7 @@ int printf(const char * format, ...){
     
     FileContents con;
     con.contents = buffer;
-    uint32 successfullyPrinted = printFormatted(ARRAYSIZE(buffer), con.contents, format, ap);
+    u32 successfullyPrinted = printFormatted(ARRAYSIZE(buffer), con.contents, format, ap);
     con.size = strlen(con.contents);
     ASSERT(con.size < 1024);
     va_end(ap);
@@ -43,7 +43,7 @@ int scanf(const char * format, ...){
     int res = readConsole(buffer, 1024);
     ASSERT(res > 0);
     
-    uint32 succesfullyScanned = scanFormatted(1024, buffer, format, ap);
+    u32 succesfullyScanned = scanFormatted(1024, buffer, format, ap);
     va_end(ap);
     
     return succesfullyScanned;

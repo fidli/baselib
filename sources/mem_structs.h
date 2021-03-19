@@ -2,21 +2,21 @@
 
 struct PersistentStackAllocator{
 	void * mem_start;
-	uint64 offset;
-	uint64 effectiveSize;
+	u64 offset;
+	u64 effectiveSize;
 };
 
 struct StackAllocator{
     void * mem_start;
-    uint64 * offsets;
-    uint32 stackIndex;
-	uint32 stackSize;
+    u64 * offsets;
+    u32 stackIndex;
+	u32 stackSize;
 	
-    uint16 * bulkStackOffsets;
-    uint16 bulkStackIndex;
-	uint16 bulkStackSize;
+    u16 * bulkStackOffsets;
+    u16 bulkStackIndex;
+	u16 bulkStackSize;
 	
-	uint64 effectiveSize;
+	u64 effectiveSize;
 };
 
 // NOTE(fidli): more like list of allocators, but this is in every app

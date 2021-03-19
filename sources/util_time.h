@@ -3,18 +3,18 @@
 
 
 struct LocalTime{
-    uint16 day;
-    uint16 month;
-    uint16 year;
+    u16 day;
+    u16 month;
+    u16 year;
     
-    uint16 hour;
-    uint16 minute;
-    uint16 second;
+    u16 hour;
+    u16 minute;
+    u16 second;
     
-    uint16 millisecond;
+    u16 millisecond;
 };
 
-static bool transitionYear(const uint16 year){
+static bool transitionYear(const u16 year){
     return (year % 4) == 0 || (year / 100) * 100 == year;
 }
 
@@ -42,7 +42,7 @@ bool operator!=(const LocalTime a, const LocalTime b){
 
 uint64 getTick();
 
-float64 translateTickToTime(const uint64 tick, const uint64 tickDivisor);
+float64 translateTickToTime(const u64 tick, const u64 tickDivisor);
 
 uint64 getTickDivisor();
 

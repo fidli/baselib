@@ -11,20 +11,20 @@ struct XBS2InitSettings{
 
 struct XBS2Handle : SerialHandle{
     char sidLower[9];
-    float32 guardTime;
-    uint32 baudrate;
-    uint16 frequency;
+    f32 guardTime;
+    u32 baudrate;
+    u16 frequency;
     char channel[3];
     char pan[5];
 };
 
 
-void wait(float32 seconds){
-    float32 start = getProcessCurrentTime();
+void wait(f32 seconds){
+    f32 start = getProcessCurrentTime();
     while(aseqr(getProcessCurrentTime() - start, seconds, 0.00005f)){}
 }
 
-static int32 xbs2_sendByte(XBS2Handle * module, const char byteContents){
+static i32 xbs2_sendByte(XBS2Handle * module, const char byteContents){
     return writeSerial(module, &byteContents, 1);
 }
 
@@ -33,7 +33,7 @@ static void xbs2_sendByteQuick(XBS2Handle * module, const char byteContents){
 }
 
 
-static int32 xbs2_sendMessage(XBS2Handle * module, const char * buffer){
+static i32 xbs2_sendMessage(XBS2Handle * module, const char * buffer){
     return writeSerial(module, buffer, strlen(buffer));
 }
 
@@ -41,24 +41,24 @@ static void xbs2_sendMessageQuick(XBS2Handle * module, const char * buffer){
     writeSerialQuick(module, buffer, strlen(buffer));
 }
 
-static void waitForMessage(XBS2Handle * module, char * responseBuffer, const char * message, float32 timeout = -1){
-    int32 offset = 0;
-    uint32 msglen = strlen(message);
+static void waitForMessage(XBS2Handle * module, char * responseBuffer, const char * message, f32 timeout = -1){
+    i32 offset = 0;
+    u32 msglen = strlen(message);
     while(offset < msglen || strncmp(responseBuffer + offset - 3, message, msglen)){
         offset += readSerial(module, responseBuffer + offset, 70 - offset, timeout);
     }
     
 }
 
-int32 xbs2_waitForAnyMessage(XBS2Handle * module, char * responseBuffer, uint32 bufferLength, float32 timeout = -1){
-    int32 offset = 0;
+int32 xbs2_waitForAnyMessage(XBS2Handle * module, char * responseBuffer, u32 bufferLength, f32 timeout = -1){
+    i32 offset = 0;
     if(timeout == -1){
         while((offset == 0 || responseBuffer[offset-1] != '\r') && offset < bufferLength){
             offset += readSerial(module, responseBuffer + offset, 1, timeout);
         }
     }else{
         while((offset == 0 || responseBuffer[offset-1] != '\r') && offset < bufferLength){
-            int32 res = readSerial(module, responseBuffer + offset, 1, timeout);
+            i32 res = readSerial(module, responseBuffer + offset, 1, timeout);
             if(res <= 0) return offset;
             offset += res;
         }
@@ -67,7 +67,7 @@ int32 xbs2_waitForAnyMessage(XBS2Handle * module, char * responseBuffer, uint32 
     return offset;
 }
 
-int32 xbs2_waitForAnyByte(XBS2Handle * module, char * response, float32 timeout = -1){
+int32 xbs2_waitForAnyByte(XBS2Handle * module, char * response, f32 timeout = -1){
     return readSerial(module, response, 1, timeout);
 }
 
@@ -113,8 +113,8 @@ static void xbs2_exitCommandModeQuick(XBS2Handle * module){
 bool xbs2_detectAndSetStandardBaudRate(XBS2Handle * module){
     module->guardTime = 1.1f;
     //sorted by default/popularity?
-    uint32 rates[] = {9600, 115200,  19200, 38400, 57600, 4800, 2400, 1200};
-    for(uint8 rateIndex = 0; rateIndex < ARRAYSIZE(rates); rateIndex++){
+    u32 rates[] = {9600, 115200,  19200, 38400, 57600, 4800, 2400, 1200};
+    for(u8 rateIndex = 0; rateIndex < ARRAYSIZE(rates); rateIndex++){
         if(setBaudRate(module, rates[rateIndex])){
             if(clearSerialPort(module)){
                 if(xbs2_enterCommandMode(module)){

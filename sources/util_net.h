@@ -17,13 +17,13 @@ enum NetResultType{
 
 struct NetRecvResult{
     char * buffer;
-    int32 bufferLength;
-    int32 resultLength;
+    i32 bufferLength;
+    i32 resultLength;
 };
 
 struct NetSendSource{
     char * buffer;
-    int32 bufferLength;
+    i32 bufferLength;
 };
 
 
@@ -38,7 +38,7 @@ bool openSocket(NetSocket * target, const NetSocketSettings * settings);
 bool initSocket(NetSocket * target, const char * ipAddress, const char * port, const NetSocketSettings * settings);
 bool closeSocket(NetSocket * target);
 
-bool tcpListen(const NetSocket * server, uint16 maxConnections);
+bool tcpListen(const NetSocket * server, u16 maxConnections);
 bool tcpAccept(const NetSocket * server, NetSocket * client, const NetSocketSettings * clientSettings);
 bool tcpConnect(const NetSocket * source, const char * ip, const char * port);
 

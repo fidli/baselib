@@ -150,7 +150,7 @@ bool initSocket(NetSocket * target, const char * ipAddress, const char * port, c
 
 
 
-bool tcpListen(const NetSocket * server, uint16 maxConnections){
+bool tcpListen(const NetSocket * server, u16 maxConnections){
     return listen(server->socket, maxConnections) == 0;
 }
 

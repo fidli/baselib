@@ -23,7 +23,7 @@ enum AccPrecision{
 struct MPU6050Settings{
     GyroPrecision gyroPrecision;
     AccPrecision accPrecision;
-    uint16 sampleRate;
+    u16 sampleRate;
 };
 #pragma pack(pop)
 
@@ -42,7 +42,7 @@ struct MPU6050Handle{
 #include "wiringPiI2C.h"
 
 //replace these two with whatever I2C implementation that you fancy
-void write8Reg(MPU6050Handle * handle, int reg, uint8 data){
+void write8Reg(MPU6050Handle * handle, int reg, u8 data){
     wiringPiI2CWriteReg8(handle->fd, reg, (int)data);
 }
 uint8 read8Reg(MPU6050Handle * handle, int reg){
@@ -50,7 +50,7 @@ uint8 read8Reg(MPU6050Handle * handle, int reg){
 }
 
 #else
-void write8Reg(MPU6050Handle * handle, int reg, uint8 data){
+void write8Reg(MPU6050Handle * handle, int reg, u8 data){
     INV;
 }
 uint8 read8Reg(MPU6050Handle * handle, int reg){
@@ -82,9 +82,9 @@ uint8 read8Reg(MPU6050Handle * handle, int reg){
 
 
 void mpu6050_resetFifo(MPU6050Handle * handle){
-    uint8 currentReg = read8Reg(handle, MPU6050_REGISTER_USER_CONTROL);
+    u8 currentReg = read8Reg(handle, MPU6050_REGISTER_USER_CONTROL);
     write8Reg(handle, MPU6050_REGISTER_USER_CONTROL, currentReg | 4);
-    uint8 reg;
+    u8 reg;
     while((reg = read8Reg(handle, MPU6050_REGISTER_USER_CONTROL)) != currentReg){
 #if DEBUG
         printf("reseting device fifo  %hhu\n", reg);
@@ -98,7 +98,7 @@ void mpu6050_reset(MPU6050Handle * handle){
     write8Reg(handle, MPU6050_REGISTER_PWR_MGMT_1, 128);
     //wait untill device resets
     //64 is default value of this register
-    uint8 reg;
+    u8 reg;
     while((reg = read8Reg(handle, MPU6050_REGISTER_PWR_MGMT_1)) != 64){
 #if DEBUG
         printf("reseting device  %hhu\n", reg);
@@ -117,7 +117,7 @@ void mpu6050_setup(MPU6050Handle * handle, const MPU6050Settings settings){
     //use fifo buffer, no slaves, reset FIFO
     write8Reg(handle, MPU6050_REGISTER_USER_CONTROL, 64);
     
-    uint8 reg;
+    u8 reg;
     while((reg = read8Reg(handle, MPU6050_REGISTER_USER_CONTROL)) != 64){
 #if DEBUG
         printf("reseting fifo %hhu\n", reg);
@@ -135,7 +135,7 @@ void mpu6050_setup(MPU6050Handle * handle, const MPU6050Settings settings){
     //no FSYNC, NO lfp
     write8Reg(handle, MPU6050_REGISTER_CONFIG, 0);
     //sample rate = (8khz / (settings->sampleRate+1))
-    uint8 param = (8000 / settings.sampleRate) - 1;
+    u8 param = (8000 / settings.sampleRate) - 1;
     write8Reg(handle, MPU6050_REGISTER_SAMPLE_RATE, param);
     
     //sensitivity
@@ -147,8 +147,8 @@ void mpu6050_setup(MPU6050Handle * handle, const MPU6050Settings settings){
 }
 
 uint16 mpu6050_fifoCount(MPU6050Handle * handle){
-    uint8 high = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_H);
-    uint8 low = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_L);
+    u8 high = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_H);
+    u8 low = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_L);
     return (((uint16) high) << 8) + low;
 }
 
@@ -221,71 +221,71 @@ int16 mpu6050_getGyroDivisorTimes10(const MPU6050Settings * setting){
 }
 
 
-void mpu6050_acc16_float32(const MPU6050Settings setting, const int16 x, const int16 y, const int16 z, float32 * result_x, float32 * result_y,float32 * result_z){
-    float32 attun = 1.0f / mpu6050_getAccDivisor(&setting);
+void mpu6050_acc16_float32(const MPU6050Settings setting, const i16 x, const i16 y, const i16 z, f32 * result_x, f32 * result_y,float32 * result_z){
+    f32 attun = 1.0f / mpu6050_getAccDivisor(&setting);
     *result_x = attun * x;
     *result_y = attun * y;
     *result_z = attun * z;
 }
 
-void mpu6050_acc16_float64(const MPU6050Settings setting, const int16 x, const int16 y, const int16 z, float64 * result_x, float64 * result_y,float64 * result_z){
-    float64 attun = 1.0f / mpu6050_getAccDivisor(&setting);
+void mpu6050_acc16_float64(const MPU6050Settings setting, const i16 x, const i16 y, const i16 z, f64 * result_x, f64 * result_y,float64 * result_z){
+    f64 attun = 1.0f / mpu6050_getAccDivisor(&setting);
     *result_x = attun * x;
     *result_y = attun * y;
     *result_z = attun * z;
 }
 
-void mpu6050_acc32_float32(const MPU6050Settings setting, const int32 x, const int32 y, const int32 z, float32 * result_x, float32 * result_y,float32 * result_z){
-    float32 attun = 1.0f / mpu6050_getAccDivisor(&setting);
+void mpu6050_acc32_float32(const MPU6050Settings setting, const i32 x, const i32 y, const i32 z, f32 * result_x, f32 * result_y,float32 * result_z){
+    f32 attun = 1.0f / mpu6050_getAccDivisor(&setting);
     
     *result_x = attun * x;
     *result_y = attun * y;
     *result_z = attun * z;
 }
 
-void mpu6050_acc32_float64(const MPU6050Settings setting, const int32 x, const int32 y, const int32 z, float64 * result_x, float64 * result_y,float64 * result_z){
-    float64 attun = 1.0f / mpu6050_getAccDivisor(&setting);
+void mpu6050_acc32_float64(const MPU6050Settings setting, const i32 x, const i32 y, const i32 z, f64 * result_x, f64 * result_y,float64 * result_z){
+    f64 attun = 1.0f / mpu6050_getAccDivisor(&setting);
     *result_x = attun * x;
     *result_y = attun * y;
     *result_z = attun * z;
 }
 
 
-void mpu6050_gyro16_float32(const MPU6050Settings setting, const int16 x, const int16 y, const int16 z, float32 * result_x, float32 * result_y, float32 * result_z){
-    float32 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
+void mpu6050_gyro16_float32(const MPU6050Settings setting, const i16 x, const i16 y, const i16 z, f32 * result_x, f32 * result_y, f32 * result_z){
+    f32 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
     *result_x = attun * x;
     *result_y = attun * y;
     *result_z = attun * z;
 }
 
-void mpu6050_gyro16_float64(const MPU6050Settings setting, const int16 x, const int16 y, const int16 z, float64 * result_x, float64 * result_y, float64 * result_z){
-    float64 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
-    *result_x = attun * x;
-    *result_y = attun * y;
-    *result_z = attun * z;
-}
-
-
-void mpu6050_gyro32_float32(const MPU6050Settings setting, const int32 x, const int32 y, const int32 z, float32 * result_x, float32 * result_y, float32 * result_z){
-    float32 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
-    *result_x = attun * x;
-    *result_y = attun * y;
-    *result_z = attun * z;
-}
-
-void mpu6050_gyro32_float64(const MPU6050Settings setting, const int32 x, const int32 y, const int32 z, float64 * result_x, float64 * result_y, float64 * result_z){
-    float64 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
+void mpu6050_gyro16_float64(const MPU6050Settings setting, const i16 x, const i16 y, const i16 z, f64 * result_x, f64 * result_y, f64 * result_z){
+    f64 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
     *result_x = attun * x;
     *result_y = attun * y;
     *result_z = attun * z;
 }
 
 
-float32 mpu6050_getTimeDelta(const uint16 sampleRate){
+void mpu6050_gyro32_float32(const MPU6050Settings setting, const i32 x, const i32 y, const i32 z, f32 * result_x, f32 * result_y, f32 * result_z){
+    f32 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
+    *result_x = attun * x;
+    *result_y = attun * y;
+    *result_z = attun * z;
+}
+
+void mpu6050_gyro32_float64(const MPU6050Settings setting, const i32 x, const i32 y, const i32 z, f64 * result_x, f64 * result_y, f64 * result_z){
+    f64 attun = 1.0f / mpu6050_getGyroDivisor(&setting);
+    *result_x = attun * x;
+    *result_y = attun * y;
+    *result_z = attun * z;
+}
+
+
+float32 mpu6050_getTimeDelta(const u16 sampleRate){
     return 1.0f / sampleRate;
 }
 
-float64 mpu6050_getTimeDelta64(const uint16 sampleRate){
+float64 mpu6050_getTimeDelta64(const u16 sampleRate){
     return 1.0f / sampleRate;
 }
 

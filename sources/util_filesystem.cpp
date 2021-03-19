@@ -23,25 +23,25 @@ struct FileWatchHandle
 struct FileContents
 {
     //internal, do not use
-    uint32 head;
+    u32 head;
     
     //end of internal
-    uint32 size;
+    u32 size;
     char * contents;
 };
 
 struct DirectoryContents
 {
-    uint32 count;
+    u32 count;
     char ** files;
 };
 
 bool getFileChangeTime(const char * path, LocalTime * result);
 
-bool getFileSize(const char * path, uint32 * result);
+bool getFileSize(const char * path, u32 * result);
 
 bool skipCurrentLine(FileContents * contents){
-	int32 remains = contents->size-contents->head;
+	i32 remains = contents->size-contents->head;
 	if(remains <= 0) return false;
     char trail = contents->contents[contents->head];
     while(trail != '\r' && trail != '\n' && trail != '\0')
@@ -57,12 +57,12 @@ bool skipCurrentLine(FileContents * contents){
     return true;
 }
 
-bool getNextLine(FileContents * contents, char * line, uint32 linelen)
+bool getNextLine(FileContents * contents, char * line, u32 linelen)
 {
-	int32 remains = contents->size-contents->head;
+	i32 remains = contents->size-contents->head;
 	if(remains <= 0) return false;
     char format[30];
-	uint32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, remains));
+	u32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, remains));
     memset(line, 0, linelen);
     if(sscanf(contents->contents + contents->head, format, line) == 1)
     {
@@ -79,9 +79,9 @@ bool getNextLine(FileContents * contents, char * line, uint32 linelen)
     return false;
 }
 
-bool readBytes(FileContents * contents, char * target, int32 bytesize){
+bool readBytes(FileContents * contents, char * target, i32 bytesize){
     
-	int32 remains = contents->size-contents->head;
+	i32 remains = contents->size-contents->head;
 	if(remains < bytesize) return false;
     memcpy(target, contents->contents + contents->head, bytesize);
     contents->head += bytesize;
@@ -104,7 +104,7 @@ bool ungetLine(FileContents * contents){
     if(contents->head == 0){
         return true;
     }
-    int64 newHead = contents->head;
+    i64 newHead = contents->head;
     while(newHead > 0 && contents->contents[newHead] != '\n'){
         newHead--;
     }
@@ -115,9 +115,9 @@ bool ungetLine(FileContents * contents){
     return true;
 }
 
-bool appendBytes(FileContents * contents, const char * bytes, int32 bytesize)
+bool appendBytes(FileContents * contents, const char * bytes, i32 bytesize)
 {
-	int32 remains = contents->size-contents->head;
+	i32 remains = contents->size-contents->head;
 	if(remains < bytesize) return false;
     memcpy(contents->contents + contents->head, bytes, bytesize);
 	contents->head += bytesize;
@@ -126,10 +126,10 @@ bool appendBytes(FileContents * contents, const char * bytes, int32 bytesize)
 
 bool appendLine(FileContents * contents, const char * line)
 {
-	int32 remains = contents->size-contents->head;
-	int32 linelen = strlen(line);
+	i32 remains = contents->size-contents->head;
+	i32 linelen = strlen(line);
 	if(remains < linelen) return false;
-	uint32 res = sprintf(contents->contents + contents->head, "%s\r\n", line);
+	u32 res = sprintf(contents->contents + contents->head, "%s\r\n", line);
 	contents->head += linelen + 2;
     return res > 0;
 }
@@ -141,12 +141,12 @@ bool appendLinef(FileContents * contents, const char * format, ...)
 	nint res = sprintf(formate, "%s\r\n", format);
 	if(res > 0)
     {
-		int32 remains = contents->size-contents->head;
+		i32 remains = contents->size-contents->head;
 		if(remains > 0)
         {
 			va_list ap;    
 			va_start(ap, format);
-			uint32 res = vsnprintf(contents->contents + contents->head, remains, formate, ap);
+			u32 res = vsnprintf(contents->contents + contents->head, remains, formate, ap);
 			va_end(ap);
 			if(res > 0)
             {
@@ -200,28 +200,28 @@ void updateFileWatch(FileWatchHandle * target){
     }
 }
 
-void skipBytes(FileContents * contents, int32 amount)
+void skipBytes(FileContents * contents, i32 amount)
 {
     contents->head += amount;
 }
 
 uint8 readUint8(FileContents * contents)
 {
-    uint16 result = CAST(uint8, *(contents->contents + contents->head));
+    u16 result = CAST(uint8, *(contents->contents + contents->head));
     contents->head += 1;
     return result;
 }
 
 uint16 readUint16(FileContents * contents)
 {
-    uint16 result = ((CAST(uint16, *(contents->contents + contents->head)) << 8) & 0xFF00) | ((CAST(uint16, *(contents->contents + 1 + contents->head)) & 0x00FF));
+    u16 result = ((CAST(uint16, *(contents->contents + contents->head)) << 8) & 0xFF00) | ((CAST(uint16, *(contents->contents + 1 + contents->head)) & 0x00FF));
     contents->head += 2;
     return result;
 }
 
 uint32 readUint32(FileContents * contents)
 {
-    uint32 result = ((CAST(uint32, *(contents->contents + contents->head)) << 24) & 0xFF000000) | ((CAST(uint32, *(contents->contents + 1 + contents->head)) << 16) & 0x00FF0000)
+    u32 result = ((CAST(uint32, *(contents->contents + contents->head)) << 24) & 0xFF000000) | ((CAST(uint32, *(contents->contents + 1 + contents->head)) << 16) & 0x00FF0000)
                     | ((CAST(uint32, *(contents->contents + 2 + contents->head)) << 8) & 0x0000FF00) | ((CAST(uint32, *(contents->contents + 3 + contents->head) & 0x000000FF)));
     contents->head += 4;
     return result;
@@ -238,7 +238,7 @@ bool deleteFile(const char * path);
 bool moveFile(const char * oldPath, const char * newPath);
 bool createDirectory(const char *path);
 
-bool appendFile(const char * path, char * data, uint32 length){
+bool appendFile(const char * path, char * data, u32 length){
     FileContents c = {};
     c.size = length;
     c.contents = data;
@@ -252,8 +252,8 @@ bool createEmptyFile(const char * path){
 
 // NOTE(fidli): this can be platform-split so you can check just one
 const char * filename(const char *path){
-    int32 len = strlen(path);
-    for(int32 i = len-1; i >= 0; i--){
+    i32 len = strlen(path);
+    for(i32 i = len-1; i >= 0; i--){
         if(path[i] == '\\' || path[i] == '/'){
             return &path[i+1];
         }
@@ -262,8 +262,8 @@ const char * filename(const char *path){
 }
 
 const char * extension(const char *path){
-    int32 len = strlen(path);
-    for(int32 i = len-1; i >= 0; i--){
+    i32 len = strlen(path);
+    for(i32 i = len-1; i >= 0; i--){
         if(path[i] == '.'){
             return &path[i+1];
         }

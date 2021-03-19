@@ -11,16 +11,16 @@ int32 logErrorCount;
 #ifndef CRT_PRESENT
 uint32 snprintf(char * target, nint limit, const char * format, ...);
 #endif
-inline void * allocate(PersistentStackAllocator * allocator, uint64 bytes);
+inline void * allocate(PersistentStackAllocator * allocator, u64 bytes);
 nint strnlen(const char * target, nint limit);
-uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap);
+uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list ap);
 int printf(const char * format, ...);
 
-uint8 numlen(int64 number);
-float64 powd64(float64 base, int16 power);
-float32 powd(float32 base, int16 power);
+uint8 numlen(i64 number);
+float64 powd64(f64 base, i16 power);
+float32 powd(f32 base, i16 power);
 
-bool appendFile(const char * path, char * data, uint32 length);
+bool appendFile(const char * path, char * data, u32 length);
 bool createEmptyFile(const char * path);
 #endif
 //NOTE(AK):
@@ -76,14 +76,14 @@ struct LoggerInfo{
         } file;
         struct{
             char lastStatus[255];
-            float32 lastStatusTime;
+            f32 lastStatusTime;
         } status;
         struct{
             char lastStates[100][255];
-            float32 lastStatusTime;
-            int32 count;
-            int32 size;
-            int32 head;
+            f32 lastStatusTime;
+            i32 count;
+            i32 size;
+            i32 head;
         } console;
     };
 };
@@ -95,7 +95,7 @@ struct Loggers{
     
     LoggerInfo loggers[20];
     char loggerNames[20][20];
-    uint8 loggerCount;
+    u8 loggerCount;
 };
 
 static Loggers * loggers;
@@ -126,7 +126,7 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
     va_end(ap);
     LoggerInfo * info = NULL;
     //TODO(AK): Hash table this
-    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+    for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             info = &loggers->loggers[i];
         }
@@ -149,7 +149,7 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
                     info->status.lastStatusTime = getProcessCurrentTime();
                 }break;
                 case LogTarget_Console:{
-                    int32 newIndex = (info->console.head + 1) % info->console.size;
+                    i32 newIndex = (info->console.head + 1) % info->console.size;
                     strncpy(info->console.lastStates[info->console.head], loggers->messagebuffer, 255);
                     info->console.lastStatusTime = getProcessCurrentTime();
                     info->console.head = newIndex;
@@ -176,7 +176,7 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
 }
 
 int32 getLoggerStatusCount(const char * loggerName){
-    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+    for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             if(loggers->loggers[i].target == LogTarget_Status){
                 return 1;
@@ -192,8 +192,8 @@ int32 getLoggerStatusCount(const char * loggerName){
     return 0;
 }
 
-const char * getLoggerStatus(const char * loggerName, int32 recentMessageIndex = 0){
-    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+const char * getLoggerStatus(const char * loggerName, i32 recentMessageIndex = 0){
+    for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             if(loggers->loggers[i].target == LogTarget_Status){
 #ifndef RELEASE
@@ -201,7 +201,7 @@ const char * getLoggerStatus(const char * loggerName, int32 recentMessageIndex =
 #endif
                 return loggers->loggers[i].status.lastStatus;
             }else if(loggers->loggers[i].target == LogTarget_Console){
-                int32 index = (loggers->loggers[i].console.head - 1 - recentMessageIndex + loggers->loggers[i].console.size) % loggers->loggers[i].console.size;
+                i32 index = (loggers->loggers[i].console.head - 1 - recentMessageIndex + loggers->loggers[i].console.size) % loggers->loggers[i].console.size;
                 return loggers->loggers[i].console.lastStates[index];
             }else{
 #ifndef RELEASE
@@ -214,7 +214,7 @@ const char * getLoggerStatus(const char * loggerName, int32 recentMessageIndex =
 }
 
 float32 getLoggerStatusTime(const char * loggerName){
-    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+    for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             if(loggers->loggers[i].target == LogTarget_Status){
                 return loggers->loggers[i].status.lastStatusTime;
@@ -230,7 +230,7 @@ bool createStatusLogger(const char * loggerName, LogLevel level){
     if(loggers->loggerCount >= ARRAYSIZE(loggers->loggers)){
         return false;
     }
-    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+    for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             return false;
         }
@@ -247,7 +247,7 @@ bool createConsoleLogger(const char * loggerName, LogLevel level){
     if(loggers->loggerCount >= ARRAYSIZE(loggers->loggers)){
         return false;
     }
-    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+    for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             return false;
         }
@@ -268,7 +268,7 @@ bool createFileLogger(const char * loggerName, LogLevel level, const char * path
     if(loggers->loggerCount >= ARRAYSIZE(loggers->loggers)){
         return false;
     }
-    for(int32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
+    for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             return false;
         }

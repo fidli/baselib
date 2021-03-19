@@ -42,7 +42,7 @@ bool openHandle(const char * addr, SerialHandle * result){
     return false;
 }
 
-bool setBaudRate(SerialHandle * target, int32 rate){
+bool setBaudRate(SerialHandle * target, i32 rate){
     DCB settings;
     if(GetCommState(target->handle, &settings)){
         if(settings.BaudRate != rate){
@@ -60,7 +60,7 @@ bool clearSerialPort(SerialHandle * target){
 }
 
 
-int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
+int32 writeSerial(SerialHandle * target, const char * buffer, u32 length){
     DWORD written;
     OVERLAPPED result = {};
     result.Offset =  0xFFFFFFFF;
@@ -83,7 +83,7 @@ int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
 OVERLAPPED trashPool[50];
 int trashIndex = 0;
 
-void writeSerialQuick(SerialHandle * target, const char * buffer, uint32 length){
+void writeSerialQuick(SerialHandle * target, const char * buffer, u32 length){
     OVERLAPPED * trash = &trashPool[trashIndex];
     trashIndex = (trashIndex + 1) % ARRAYSIZE(trashPool);
     trash->Offset =  0xFFFFFFFF;
@@ -92,7 +92,7 @@ void writeSerialQuick(SerialHandle * target, const char * buffer, uint32 length)
 }
 
 
-int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 timeout){
+int32 readSerial(SerialHandle * source, char * buffer, u32 maxRead, f32 timeout){
     DWORD read;
     OVERLAPPED result = {};
     DWORD readOp = ReadFile(source->handle, buffer, maxRead, NULL, &result);

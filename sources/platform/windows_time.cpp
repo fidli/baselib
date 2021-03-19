@@ -4,7 +4,7 @@
 #include "util_time.h"
 
 static LARGE_INTEGER frequency;
-static float32 frequencyF;
+static f32 frequencyF;
 
 bool initTime(){
     int result = QueryPerformanceFrequency(&frequency);
@@ -32,7 +32,7 @@ uint64 getTickDivisor(){
     return frequency.QuadPart;
 }
 
-float64 translateTickToTime(const uint64 tick, uint64 divisor = getTickDivisor()){
+float64 translateTickToTime(const u64 tick, u64 divisor = getTickDivisor()){
     return (float64)tick / divisor;
 }
 

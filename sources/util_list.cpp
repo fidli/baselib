@@ -9,14 +9,14 @@ struct DoubleLinkedListElement{
 };
 
 struct DoubleLinkedList{
-	uint32 size;
+	u32 size;
 	DoubleLinkedListElement ** elements;
 	DoubleLinkedListElement * head;
 	DoubleLinkedListElement * first;
 	
 	
 	DoubleLinkedListElement * slots;
-	uint32 slotsUsed;
+	u32 slotsUsed;
 };
 
 void nextInDoubleLinkedList(DoubleLinkedList * target){
@@ -38,7 +38,7 @@ void clearDoubleLinkedList(DoubleLinkedList * target){
 	target->slotsUsed = 0;
 }
 
-bool createDoubleLinkedList(DoubleLinkedList * target, int32 size){
+bool createDoubleLinkedList(DoubleLinkedList * target, i32 size){
 	target->size = size;
 	target->slots = &PPUSHA(DoubleLinkedListElement, target->size);
 	target->elements = &PPUSHA(DoubleLinkedListElement *, target->size);
@@ -102,7 +102,7 @@ bool insertIntoDoubleLinkedList(DoubleLinkedList * target, const char * key, voi
 bool removeFromDoubleLinkedList(DoubleLinkedList * target, DoubleLinkedListElement * toDelete){
     ASSERT(target->slotsUsed > 0);
     ASSERT(CAST(char *, toDelete) >= CAST(char *, target->slots) && CAST(char *, toDelete) <= CAST(char *, target->slots)+ (target->slotsUsed-1)*sizeof(DoubleLinkedListElement));
-    for(int32 i = 0; i < target->slotsUsed; i++){
+    for(i32 i = 0; i < target->slotsUsed; i++){
         DoubleLinkedListElement * e = &target->slots[i];
         if(e->previous == toDelete){
             e->previous = toDelete->previous;
@@ -124,7 +124,7 @@ bool removeFromDoubleLinkedList(DoubleLinkedList * target, DoubleLinkedListEleme
     if(target->slotsUsed > 1){
         memcpy(CAST(void *, toDelete), CAST(void *, toDelete+1), CAST(char *, &target->slots[target->slotsUsed]) - CAST(char *, toDelete+1));
         target->slotsUsed--;
-        for(int32 i = 0; i < target->slotsUsed; i++){
+        for(i32 i = 0; i < target->slotsUsed; i++){
             DoubleLinkedListElement * e = &target->slots[i];
             if(e->previous >= toDelete){
                 e->previous--;

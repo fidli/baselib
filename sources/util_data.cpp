@@ -7,13 +7,13 @@
 struct XMLNode{
     char name[64];
     char * value;
-    uint32 valueLength;
+    u32 valueLength;
     char attributeNames[64][50];
     char attributeValues[64][50];
-    uint32 attributesCount;
+    u32 attributesCount;
     
     XMLNode * children[256];
-    uint32 childrenCount;
+    u32 childrenCount;
 };
 
 struct XMLHeader{
@@ -25,8 +25,8 @@ static inline bool isWhitespace(const char input){
 	return input == ' ' || input == '\t' || input == '\r' || input == '\n';
 }
 
-static void trimWhitespace(char * buffer, uint32 * readIndex, uint32 max){
-	uint32 skip = 0;
+static void trimWhitespace(char * buffer, u32 * readIndex, u32 max){
+	u32 skip = 0;
 	while(isWhitespace(*(buffer + *readIndex)) && skip < max){
 		(*readIndex)++;
 		skip++;
@@ -34,7 +34,7 @@ static void trimWhitespace(char * buffer, uint32 * readIndex, uint32 max){
 }
 
 
-static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, uint32 * readIndex, XMLNode * target){
+static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, u32 * readIndex, XMLNode * target){
     
     //STEP1: read <node> with parameters and such 
     //TODO(AK): arbitrary length node name and attributes
@@ -42,7 +42,7 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, uint32 * r
     newNode->childrenCount = 0;
     newNode->attributesCount = 0;
     buffer[0] = '\0';
-    int32 r = sscanf(xml->contents + *readIndex, "<%64[^/ >]", newNode->name);
+    i32 r = sscanf(xml->contents + *readIndex, "<%64[^/ >]", newNode->name);
     ASSERT(r >= 1);
     *readIndex += strlen(newNode->name) + 1;
     
@@ -131,7 +131,7 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, uint32 * r
 }
 
 XMLNode * parseXML(const FileContents * xml){
-    uint32 readIndex = 0;
+    u32 readIndex = 0;
     XMLHeader header;
     
     char * buffer = &PUSHA(char, 1024);

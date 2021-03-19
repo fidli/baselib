@@ -44,7 +44,7 @@ bool openHandle(const char * addr, SerialHandle * result){
     return result->handle != -1;
 }
 
-bool setBaudRate(SerialHandle * target, int32 rate){
+bool setBaudRate(SerialHandle * target, i32 rate){
     speed_t rateConst;
     if(rate == 50){
         rateConst = B50;
@@ -97,7 +97,7 @@ bool clearSerialPort(SerialHandle * target){
 }
 
 
-int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
+int32 writeSerial(SerialHandle * target, const char * buffer, u32 length){
     ssize_t written = 0;
     while(written != length){
         ssize_t subRes = write(target->handle, buffer, length);
@@ -108,13 +108,13 @@ int32 writeSerial(SerialHandle * target, const char * buffer, uint32 length){
     
 }
 
-void writeSerialQuick(SerialHandle * target, const char * buffer, uint32 length){
+void writeSerialQuick(SerialHandle * target, const char * buffer, u32 length){
     write(target->handle, buffer, length);
 }
 
-int32 readSerial(SerialHandle * source, char * buffer, uint32 maxRead, float32 timeout){
+int32 readSerial(SerialHandle * source, char * buffer, u32 maxRead, f32 timeout){
     ssize_t readBytes = 0;
-    float32 startTime = getProcessCurrentTime();
+    f32 startTime = getProcessCurrentTime();
     while(readBytes != maxRead){
         ssize_t subRes = read(source->handle, buffer, maxRead - readBytes);
         if(subRes == -1 && errno != EAGAIN) return -1;

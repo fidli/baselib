@@ -7,7 +7,7 @@ struct FileHandle{
     HANDLE handle;
 };
 
-bool getFileSize(const char * path, uint32 * result){
+bool getFileSize(const char * path, u32 * result){
     HANDLE file = CreateFile(path, 0, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if(file ==  INVALID_HANDLE_VALUE) return false;
     DWORD r = GetFileSize(file, 0);
@@ -81,19 +81,19 @@ bool readDirectory(const char * path, DirectoryContents * target){
     WIN32_FIND_DATA result;
     
     //pathlen
-    uint32 pathlen = 0;
+    u32 pathlen = 0;
     for(;path[pathlen] != 0; pathlen++){
     }
     //strcat
     char append[] = "\\*";
     //pathlen and array size both include terminating symbol
     char * fullpath = &PUSHA(char, pathlen + ARRAYSIZE(append) - 1);
-    uint32 index = 0;
+    u32 index = 0;
     while(path[index] != '\0'){
         fullpath[index] = path[index];
         index++;
     }
-    uint32 index2 = 0;
+    u32 index2 = 0;
     while(append[index2] != '\0'){
         fullpath[index + index2] = append[index2];
         index2++;
@@ -114,7 +114,7 @@ bool readDirectory(const char * path, DirectoryContents * target){
         //strcmp & copy
         if((result.cFileName[0] != '.' && result.cFileName[1] != 0) && (result.cFileName[0] != '.' && result.cFileName[1] != '.' && result.cFileName[2] != 0)){
             target->files[target->count] = &PUSHA(char, 255);
-            uint16 i = 0;
+            u16 i = 0;
             for(; result.cFileName[i] != 0; i++){
                 if(i == 255) return false;
                 target->files[target->count][i] = result.cFileName[i];

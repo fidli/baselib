@@ -20,7 +20,7 @@ struct Box_64{
 
 struct Sphere_64{
     v3_64 origin;
-    float64 radius;
+    f64 radius;
 };
 
 struct Plane_64{
@@ -30,7 +30,7 @@ struct Plane_64{
 
 struct Circle3D_64{
     v3_64 origin;
-    float64 radius;
+    f64 radius;
     Plane_64 plane;
 };
 
@@ -54,7 +54,7 @@ bool isInBox64(const Box_64 * check, const v3_64 * point){
 }
 
 struct PointOnSegment1D_64{
-    const float64 * point;
+    const f64 * point;
     const Segment1D_64 * segment;
 };
 
@@ -74,7 +74,7 @@ bool intersect1DSegments64(const Segment1D_64 * A, const Segment1D_64 * B, Segme
     points[3].segment = B;
     
     //insert sort, is not stable, but we do not care
-    insertSort((byte*)points, sizeof(PointOnSegment1D_64), ARRAYSIZE(points), [](void * a, void *b) -> int8 {
+    insertSort((byte*)points, sizeof(PointOnSegment1D_64), ARRAYSIZE(points), [](void * a, void *b) -> i8 {
                return *(((PointOnSegment1D_64 *) a)->point) > *(((PointOnSegment1D_64 *) b)->point) ? 1 : -1;
                });
     
@@ -120,7 +120,7 @@ bool intersectBoxes64(const Box_64 * A, const Box_64 * B, Box_64 * result){
 
 bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box_64 * result){
     
-    float64 distance = length64(A->origin - B->origin);
+    f64 distance = length64(A->origin - B->origin);
     //the spheres are too far
     if(aseqr64(B->radius + A->radius, distance)){
         return false;
@@ -145,12 +145,12 @@ bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box_64 * r
     v3_64 A1 = A->origin + AtoBNormalised * A->radius;
     v3_64 B1 = B->origin + AtoBNormalised * (-1) * B->radius;
     
-    float64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
+    f64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
     
     v3_64 origin = B1 + AtoBNormalised * halfIntersectionWidth;
-    float64 upperAndBackwards = sqrt64(powd(A->radius) - powd(A->radius - halfIntersectionWidth));
+    f64 upperAndBackwards = sqrt64(powd(A->radius) - powd(A->radius - halfIntersectionWidth));
     
-    float64 sideways = halfIntersectionWidth;
+    f64 sideways = halfIntersectionWidth;
     
     result->upperCorner = origin + V3_64(sideways, upperAndBackwards, upperAndBackwards);
     result->lowerCorner = origin - V3_64(sideways, upperAndBackwards, upperAndBackwards);
@@ -159,7 +159,7 @@ bool intersectSpheresAABB64(const Sphere_64 * A, const Sphere_64 * B, Box_64 * r
 }
 
 bool intersectSpheres64(const Sphere_64 * A, const Sphere_64 * B, Circle3D_64 * result){
-    float64 distance = length64(A->origin - B->origin);
+    f64 distance = length64(A->origin - B->origin);
     //the spheres are too far
     if(aseqr64(B->radius + A->radius, distance)){
         return false;
@@ -175,7 +175,7 @@ bool intersectSpheres64(const Sphere_64 * A, const Sphere_64 * B, Circle3D_64 * 
     v3_64 A1 = A->origin + AtoBNormalised * A->radius;
     v3_64 B1 = B->origin + AtoBNormalised * (-1) * B->radius;
     
-    float64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
+    f64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
     
     result->origin = B1 + AtoBNormalised * halfIntersectionWidth;
     result->radius = sqrt64(powd(A->radius) - powd(A->radius - halfIntersectionWidth));
@@ -202,7 +202,7 @@ bool intersectCircles3D64(const Circle3D_64 * A, const Circle3D_64 * B, Segment3
     ||
     aseq64(dot64(A->plane.point - B->plane.point, planeBNorm), 0)){
     //they are the same, this is circle intersect in plane 
-    float64 circlesDistance = length64(A->origin - B->origin);
+    f64 circlesDistance = length64(A->origin - B->origin);
     //the circles are too far
     if(aseqr64(B->radius + A->radius, circlesDistance)){
     return false;
@@ -218,10 +218,10 @@ bool intersectCircles3D64(const Circle3D_64 * A, const Circle3D_64 * B, Segment3
     v3_64 A1 = A->origin + AtoBNormalised * A->radius;
     v3_64 B1 = B->origin + AtoBNormalised * (-1) * B->radius;
     
-    float64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
+    f64 halfIntersectionWidth = length64(A1-B1) / 2.0f;
     
     v3_64 halfSegmentPoint = B1 + AtoBNormalised * halfIntersectionWidth;
-    float64 halfSegmentLength= sqrt64(powd(A->radius) - powd(A->radius - halfIntersectionWidth));
+    f64 halfSegmentLength= sqrt64(powd(A->radius) - powd(A->radius - halfIntersectionWidth));
     v3_64 AtoHalfSegmentPoint = halfSegmentPoint - A->origin;
     
     v4_64 eq1 = V4_64(planeANorm.x, planeANorm.y, planeANorm.z, A->origin.x*planeANorm.x + A->origin.y*planeANorm.y + A->origin.z*planeANorm.z);
@@ -313,7 +313,7 @@ bool intersectCircles3D64(const Circle3D_64 * A, const Circle3D_64 * B, Segment3
     }
     }else{
     //eq1 and eq2.x != 0 
-    float64 attun = eq3.x / eq1.x;
+    f64 attun = eq3.x / eq1.x;
     eq3 -= attun * eq1;
     if(aseq64(eq3.y, 0)){
     
@@ -402,7 +402,7 @@ box check = target->AABB;
 check.lowerCorner += target->position;
 check.upperCorner += target->position;
 //stupid naive, bruteforce technique get rid of it as soon as possible
-for(float32 c = 0; c < 1.0f; c += 0.0025f){
+for(f32 c = 0; c < 1.0f; c += 0.0025f){
 v3 point = lerp(rayBegin, rayEnd, c);
 if(isInBox(&check, &point)){
 if(found){

@@ -4,7 +4,7 @@
 #include "util_time.h"
 
 struct Lcg{
-    uint32 state;
+    u32 state;
 };
 
 static Lcg lcgen;
@@ -38,13 +38,13 @@ uint16 randlcg(){
 }
 
 uint32 randlcgd(){
-    uint32 a = randlcg();
+    u32 a = randlcg();
     a = a << 16;
     a = a | randlcg();
     return a;
 }
 
-uint16 randlcgRange(uint16 spanSize){
+uint16 randlcgRange(u16 spanSize){
     return (uint16)(((float32) randlcg() / (uint16) -1) * spanSize);
 }
 

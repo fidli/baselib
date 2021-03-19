@@ -52,21 +52,21 @@ static inline void initFlatShader(){
 
 struct GuiElementStyle{
     struct {
-        int32 t;
-        int32 r;
-        int32 b;
-        int32 l;
+        i32 t;
+        i32 r;
+        i32 b;
+        i32 l;
     } padding;
     struct {
-        int32 t;
-        int32 r;
-        int32 b;
-        int32 l;
+        i32 t;
+        i32 r;
+        i32 b;
+        i32 l;
     } margin;
     Color fgColor;
     Color bgColor;
-    int32 minWidth;
-    int32 minHeight;
+    i32 minWidth;
+    i32 minHeight;
 };
 
 struct GuiStyle{
@@ -82,7 +82,7 @@ struct GuiStyle{
     GuiElementStyle container;
     GuiElementStyle text;
     AtlasFont * font;
-    int32 pt;
+    i32 pt;
 };
 
 enum GuiJustify{
@@ -98,22 +98,22 @@ enum GuiJustify{
 struct GuiContainer{
     GuiContainer * parent;
     struct {
-        int32 x;
-        int32 y;
+        i32 x;
+        i32 y;
     } cursor[3];
     struct {
-        int32 x;
-        int32 y;
+        i32 x;
+        i32 y;
     } defaultCursor[3];
-    int32 startX;
-    int32 startY;
-    int32 widthUsed;
-    int32 heightUsed;
-    int32 bgWidth;
-    int32 bgHeight;
-    int8 zIndex;
-    int32 width;
-    int32 height;
+    i32 startX;
+    i32 startY;
+    i32 widthUsed;
+    i32 heightUsed;
+    i32 bgWidth;
+    i32 bgHeight;
+    i8 zIndex;
+    i32 width;
+    i32 height;
     GuiJustify defaultJustify;
     GuiElementStyle elementStyle;
 };
@@ -125,8 +125,8 @@ struct GuiBool{
 
 struct{
     struct{
-        int32 x;
-        int32 y;
+        i32 x;
+        i32 y;
         struct {
             bool leftUp;
             bool leftDown;
@@ -134,25 +134,25 @@ struct{
             bool leftTripleClick;
         } buttons;
         bool leftHold;
-        float32 lastDoubleClickTime;
-        float32 lastClickTime;
+        f32 lastDoubleClickTime;
+        f32 lastClickTime;
     } mouse;
 } guiInput;
 
 
 struct GuiId{
-    int32 x;
-    int32 y;
+    i32 x;
+    i32 y;
     
-    int8 z;
+    i8 z;
 };
 
 #define CARET_TICK 0.5f
 
 struct GuiContext{
     AtlasFont font;
-    int8 minZ;
-    int8 maxZ;
+    i8 minZ;
+    i8 maxZ;
     
     GuiId lastActive;
     GuiId lastHover;
@@ -161,44 +161,44 @@ struct GuiContext{
     GuiId activeDropdown;
     
     GuiId activeInput;
-    float32 activeInputLastTimestamp;
-    float32 activeInputTimeAccumulator;
-    int32 caretPos;
-    int32 caretWidth;
+    f32 activeInputLastTimestamp;
+    f32 activeInputTimeAccumulator;
+    i32 caretPos;
+    i32 caretWidth;
     bool caretPositioning;
     bool caretVisible;
     char * inputText;
-    int32 inputMaxlen;
+    i32 inputMaxlen;
     const char * inputCharlist;
 	
 	char popups[10][20];
-	int32 popupCount;
+	i32 popupCount;
 	bool popupLocked;
     bool dropdownLocked;
 
     char messagePopups[10][20];
-    int32 messagePopupCount;
+    i32 messagePopupCount;
     char messagePopupTitles[10][50];
     char messagePopupMessages[10][255];
     GuiStyle messagePopupStyles[10];
     
     GuiContainer defaultContainer;
-    int32 width;
-    int32 height;
+    i32 width;
+    i32 height;
 
     GuiContainer * addedContainers[20];
-    int32 addedContainersCount;
+    i32 addedContainersCount;
     
     struct {
         bool isActive;
-        int32 elementIndex;
-        int32 inputsRendered;
+        i32 elementIndex;
+        i32 inputsRendered;
         bool activate;
     } selection;
     bool mouseInContainer;
     bool escapeClick;
 
-    int32 membraneIndex;
+    i32 membraneIndex;
 };
 
 GuiContext * guiContext;
@@ -291,7 +291,7 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
     {
         glGenBuffers(1, &guiGl->quad);
         glBindBuffer(GL_ARRAY_BUFFER, guiGl->quad);
-        const float32 box[] = {
+        const f32 box[] = {
             // triangle
             1, 0,// 0.0f, 1.0f,
             0, 0,// 0.0f, 1.0f,
@@ -347,9 +347,9 @@ void guiSelectPreviousInput(){
 }
 
 
-void guiBegin(int32 width, int32 height){
+void guiBegin(i32 width, i32 height){
     PROFILE_SCOPE(gui_begin);
-    float64 currentTimestamp = getProcessCurrentTime();
+    f64 currentTimestamp = getProcessCurrentTime();
     guiContext->activeInputTimeAccumulator += currentTimestamp - guiContext->activeInputLastTimestamp;
     guiContext->activeInputLastTimestamp = currentTimestamp;
     guiInvalidate(&guiContext->currentHover);
@@ -374,7 +374,7 @@ void guiBegin(int32 width, int32 height){
     glDepthFunc(GL_GEQUAL);
 }
 
-GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, int32 posX, int32 posY, int32 width = 0, int32 height = 0, const GuiElementStyle * overrideStyle = NULL, GuiJustify defaultJustify = GuiJustify_Default, int32 zIndex = -1234){
+GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, i32 posX, i32 posY, i32 width = 0, i32 height = 0, const GuiElementStyle * overrideStyle = NULL, GuiJustify defaultJustify = GuiJustify_Default, i32 zIndex = -1234){
     GuiContainer * result = &PUSH(GuiContainer);
     memset(CAST(void*, result), 0, sizeof(GuiContainer));
     if(!overrideStyle){
@@ -410,7 +410,7 @@ GuiContainer * guiAddContainer(GuiContainer * parent, const GuiStyle * style, in
     result->cursor[GuiJustify_Right].x = result->startX + result->width + result->elementStyle.padding.l;
     result->cursor[GuiJustify_Right].y = result->startY + result->elementStyle.padding.t;
     
-    for(int32 i = 0; i < ARRAYSIZE(result->cursor); i++){
+    for(i32 i = 0; i < ARRAYSIZE(result->cursor); i++){
         result->defaultCursor[i].x = result->cursor[i].x;
         result->defaultCursor[i].y = result->cursor[i].y;
     }
@@ -446,7 +446,7 @@ void guiOpenPopup(const char * key){
 
 
 bool guiIsPopupOpened(const char * key){
-	for(int32 i = 0; i < guiContext->popupCount; i++){
+	for(i32 i = 0; i < guiContext->popupCount; i++){
 		if(!strncmp(key, guiContext->popups[i], 20)){
 			return true;
 		}
@@ -466,8 +466,8 @@ bool guiClick(){
     return guiPopupRendering() || (guiContext->mouseInContainer && (guiInput.mouse.buttons.leftUp || guiInput.mouse.buttons.leftDown || guiInput.mouse.leftHold)) || guiContext->escapeClick;
 }
 
-GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, int32 width = 0, int32 height = 0){
-    int32 i = 0;
+GuiContainer * guiBeginPopup(const char * key, const GuiStyle * style, i32 width = 0, i32 height = 0){
+    i32 i = 0;
 	for(; i < guiContext->popupCount; i++){
 		if(!strncmp(key, guiContext->popups[i], 20)){
             break;
@@ -515,11 +515,11 @@ void guiEndline(GuiContainer * container, GuiStyle * style){
     ASSERT(container);
     ASSERT(style);
     // NOTE(fidli): not essentially correct, but surely enouht
-    int32 smallestAddition = 100000000;
-    for(int32 i = 0; i < ARRAYSIZE(container->cursor); i++){
+    i32 smallestAddition = 100000000;
+    for(i32 i = 0; i < ARRAYSIZE(container->cursor); i++){
         container->cursor[i].x = container->defaultCursor[i].x;
-        int32 newValue = container->defaultCursor[i].y + container->heightUsed + style->text.padding.b + style->text.margin.b + style->text.margin.t;
-        int32 addition = container->cursor[i].y - newValue;
+        i32 newValue = container->defaultCursor[i].y + container->heightUsed + style->text.padding.b + style->text.margin.b + style->text.margin.t;
+        i32 addition = container->cursor[i].y - newValue;
         smallestAddition = MIN(smallestAddition, addition);
         container->cursor[i].y = newValue;
     }
@@ -530,25 +530,25 @@ void guiEndline(GuiContainer * container, GuiStyle * style){
 }
 
 struct RenderElementInfo{
-    int32 startX;
-    int32 startY;
-    int32 renderWidth;
-    int32 renderHeight;
+    i32 startX;
+    i32 startY;
+    i32 renderWidth;
+    i32 renderHeight;
 };
 
 static void recalculateParentUsage(GuiContainer * container){
     // TODO(fidli): check that this considers padding/margin as well
     if(container->parent){
         GuiContainer * parent = container->parent;
-        int32 thisMaxX = container->widthUsed + container->startX;
-        int32 thisMaxY = container->heightUsed + container->startY;
+        i32 thisMaxX = container->widthUsed + container->startX;
+        i32 thisMaxY = container->heightUsed + container->startY;
         if(parent->startX + parent->widthUsed < thisMaxX){
             parent->widthUsed = thisMaxX - parent->startX;
         }
         if(parent->startY + parent->heightUsed < thisMaxY){
             parent->heightUsed = thisMaxY - parent->startY;
         }
-        for(int32 i = 0; i < ARRAYSIZE(parent->cursor); i++){
+        for(i32 i = 0; i < ARRAYSIZE(parent->cursor); i++){
             parent->cursor[i].x = MAX(container->cursor[i].x, parent->cursor[i].x);
         }
         recalculateParentUsage(container->parent);
@@ -563,11 +563,11 @@ static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle 
     if(justify == GuiJustify_Default){
         justify = (*container)->defaultJustify;
     }
-    int32 textWidth = MAX(calculateAtlasTextWidth(style->font, text, style->pt), elementStyle->minWidth);
-    int32 textHeight = MAX(CAST(int32, style->font->lineHeight*ptToPx(CAST(float32, style->pt))/style->font->pixelSize), elementStyle->minHeight);
-    int32 startX = (*container)->cursor[justify].x;
-    int32 startY = (*container)->cursor[justify].y;
-    int32 advanceX = textWidth + elementStyle->margin.r + elementStyle->margin.l + elementStyle->padding.l + elementStyle->padding.r;
+    i32 textWidth = MAX(calculateAtlasTextWidth(style->font, text, style->pt), elementStyle->minWidth);
+    i32 textHeight = MAX(CAST(int32, style->font->lineHeight*ptToPx(CAST(float32, style->pt))/style->font->pixelSize), elementStyle->minHeight);
+    i32 startX = (*container)->cursor[justify].x;
+    i32 startY = (*container)->cursor[justify].y;
+    i32 advanceX = textWidth + elementStyle->margin.r + elementStyle->margin.l + elementStyle->padding.l + elementStyle->padding.r;
     switch(justify){
         case GuiJustify_Right:{
             startX -= textWidth - elementStyle->margin.r;
@@ -582,9 +582,9 @@ static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle 
     }
     // advanceCursor
     (*container)->cursor[justify].x += advanceX;
-    int32 heightUsed = 0;
-    int32 widthUsed = 0;
-    for(int32 i = 0; i < ARRAYSIZE((*container)->cursor); i++){
+    i32 heightUsed = 0;
+    i32 widthUsed = 0;
+    for(i32 i = 0; i < ARRAYSIZE((*container)->cursor); i++){
         heightUsed = MAX(heightUsed, (*container)->cursor[i].y - (*container)->defaultCursor[i].y + elementStyle->padding.t + elementStyle->padding.b + elementStyle->margin.t + elementStyle->margin.b + textHeight);
     }
     if((*container)->cursor[GuiJustify_Right].x != (*container)->defaultCursor[GuiJustify_Right].x){
@@ -627,32 +627,32 @@ static bool registerInputAndIsSelected(){
     }
 }
 
-bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, int32 zIndex = 0){
+bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, i32 zIndex = 0){
     PROFILE_SCOPE(gui_render_text);
     glUseProgram(guiGl->font.program);
     glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
 
-    int32 advance = 0;
-    float32 resScaleY = 1.0f / (guiContext->height);
-    float32 resScaleX = 1.0f / (guiContext->width);
-    int32 targetSize = ptToPx(CAST(float32, pt));
-    float32 fontScale = (float32)targetSize / font->pixelSize;
+    i32 advance = 0;
+    f32 resScaleY = 1.0f / (guiContext->height);
+    f32 resScaleX = 1.0f / (guiContext->width);
+    i32 targetSize = ptToPx(CAST(float32, pt));
+    f32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
-    int32 len = text ? strlen(text) : 0;
+    i32 len = text ? strlen(text) : 0;
     for(int i = 0; i < len; i++){
         const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
         if(!glyph->valid){
             continue;
         }
-        int32 positionX = startX + CAST(int32, fontScale*(advance + glyph->marginX));
-        int32 positionY = startY + CAST(int32, fontScale*glyph->marginY);
+        i32 positionX = startX + CAST(int32, fontScale*(advance + glyph->marginX));
+        i32 positionY = startY + CAST(int32, fontScale*glyph->marginY);
         //kerning
         if(prevGlyph){
             positionX += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
             advance += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
         }
         
-        float32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
+        f32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
         //position
         glUniform3f(guiGl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
         //scale
@@ -679,19 +679,19 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
     return true;
 }
 
-bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX, int centerY, int pt, const Color * color, int32 zOffset = 0){
+bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX, int centerY, int pt, const Color * color, i32 zOffset = 0){
     return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - CAST(int32, ((CAST(float32, ptToPx(CAST(float32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, color, zOffset);
 }
 
-static bool renderRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float32 zIndex = 0){
+static bool renderRect(const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * color, f32 zIndex = 0){
     PROFILE_SCOPE(gui_render_rect);
     glUseProgram(guiGl->flat.program);
     
-    float32 resScaleY = 1.0f / (guiContext->height);
-    float32 resScaleX = 1.0f / (guiContext->width);
+    f32 resScaleY = 1.0f / (guiContext->height);
+    f32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    float32 zOffset = clamp(zIndex, CAST(float32, -INT8_MAX), CAST(float32, INT8_MAX)) / CAST(float32, INT8_MAX);
+    f32 zOffset = clamp(zIndex, CAST(float32, -INT8_MAX), CAST(float32, INT8_MAX)) / CAST(float32, INT8_MAX);
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
@@ -705,14 +705,14 @@ static bool renderRect(const int32 positionX, const int32 positionY, const int32
     return true;
 }
 
-static bool renderWireRect(const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * color, float zIndex = 0){
+static bool renderWireRect(const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * color, float zIndex = 0){
     glUseProgram(guiGl->flat.program);
     
-    float32 resScaleY = 1.0f / (guiContext->height);
-    float32 resScaleX = 1.0f / (guiContext->width);
+    f32 resScaleY = 1.0f / (guiContext->height);
+    f32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    float32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
+    f32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width-1) * resScaleX * 2, resScaleY * (height-1) * 2);
@@ -732,7 +732,7 @@ void guiResetCaretVisually(){
     guiContext->caretVisible = true;
 }
 
-void guiInputCharacters(const char * input, int32 len){
+void guiInputCharacters(const char * input, i32 len){
     char digitRangeLow = 0;
     char digitRangeHigh = 0;
     char smallLetterRangeLow = 0;
@@ -740,19 +740,19 @@ void guiInputCharacters(const char * input, int32 len){
     char capitalLetterRangeLow = 0;
     char capitalLetterRangeHigh = 0;
     const char* charlist[4] = {};
-    uint8 charlistLengths[4] = {};
-    uint8 charlistCount = 0;
+    u8 charlistLengths[4] = {};
+    u8 charlistCount = 0;
     bool inverted = false;
     if(guiContext->inputCharlist != NULL){
         //start parse format
         const char * format = guiContext->inputCharlist;
-        int32 formatIndex = 0;
+        i32 formatIndex = 0;
         if(format[formatIndex] == '^'){
             inverted = true;
             formatIndex++;
         }
         
-        uint8 charlistLen = 0;
+        u8 charlistLen = 0;
         for(;format[formatIndex] != 0; formatIndex++){
             if(format[formatIndex+1] == '-'){
                 if(charlistLen > 0){
@@ -799,8 +799,8 @@ void guiInputCharacters(const char * input, int32 len){
         //end parse format
     }
     ASSERT(guiContext->inputText);
-    int32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
-    int32 ci = 0;
+    i32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+    i32 ci = 0;
     bool isValid = true;
     for(; ci < len && isValid; ci++){
         char c = input[ci];
@@ -849,7 +849,7 @@ void guiInputCharacters(const char * input, int32 len){
         }
         if(isValid){
             if(textlen + 2 < guiContext->inputMaxlen){
-                for(int32 i = textlen; i > guiContext->caretPos + ci; i--){
+                for(i32 i = textlen; i > guiContext->caretPos + ci; i--){
                     guiContext->inputText[i] = guiContext->inputText[i-1];
                 } 
                 guiContext->inputText[guiContext->caretPos + ci] = c;
@@ -862,13 +862,13 @@ void guiInputCharacters(const char * input, int32 len){
     guiResetCaretVisually();
 }
 
-void guiDeleteInputCharacters(int32 from, int32 to){
-    int32 start = from;
-    int32 end = to;
+void guiDeleteInputCharacters(i32 from, i32 to){
+    i32 start = from;
+    i32 end = to;
     if(end < start){
         SWAP(end, start);
     }
-    int32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+    i32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
     start = clamp(start, 0, textlen);
     end = clamp(end, 0, textlen);
     if(start != end){
@@ -879,9 +879,9 @@ void guiDeleteInputCharacters(int32 from, int32 to){
     guiCancelCaretPositioning();
 }
 
-static int32 guiFindNextWordCaret(int32 start){
-    int32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
-    int32 caretPos = start;
+static i32 guiFindNextWordCaret(i32 start){
+    i32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+    i32 caretPos = start;
     bool jumped = false;
     // inner word
     while(caretPos < textlen){
@@ -909,8 +909,8 @@ static int32 guiFindNextWordCaret(int32 start){
     return caretPos;
 }
 
-static int32 guiFindPrevWordCaret(int32 start){
-    int32 caretPos = start - 1;
+static i32 guiFindPrevWordCaret(i32 start){
+    i32 caretPos = start - 1;
     if(caretPos <= 1){
         caretPos = 0;
     }else{
@@ -958,20 +958,20 @@ static int32 guiFindPrevWordCaret(int32 start){
 }
 
 void guiJumpToNextWord(){
-    int32 caretPos = guiFindNextWordCaret(MAX(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth));
+    i32 caretPos = guiFindNextWordCaret(MAX(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth));
     guiContext->caretPos = caretPos;
     guiContext->caretWidth = 0;
 }
 
 void guiJumpToPrevWord(){
-    int32 caretPos = guiFindPrevWordCaret(MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth));
+    i32 caretPos = guiFindPrevWordCaret(MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth));
     guiContext->caretPos = caretPos;
     guiContext->caretWidth = 0;
 }
 
 void guiAppendNextWordToSelection(){
-    int32 oldWidth = guiContext->caretWidth;
-    int32 caretPos = guiFindNextWordCaret(guiContext->caretPos + guiContext->caretWidth);
+    i32 oldWidth = guiContext->caretWidth;
+    i32 caretPos = guiFindNextWordCaret(guiContext->caretPos + guiContext->caretWidth);
     guiContext->caretWidth = caretPos - guiContext->caretPos;
     if(oldWidth * guiContext->caretWidth < 0){
         guiContext->caretWidth = 0;
@@ -979,8 +979,8 @@ void guiAppendNextWordToSelection(){
 }
 
 void guiAppendPrevWordToSelection(){
-    int32 oldWidth = guiContext->caretWidth;
-    int32 caretPos = guiFindPrevWordCaret(guiContext->caretPos + guiContext->caretWidth);
+    i32 oldWidth = guiContext->caretWidth;
+    i32 caretPos = guiFindPrevWordCaret(guiContext->caretPos + guiContext->caretWidth);
     guiContext->caretWidth = caretPos - guiContext->caretPos;
     if(oldWidth * guiContext->caretWidth < 0){
         guiContext->caretWidth = 0;
@@ -994,13 +994,13 @@ void guiSelectWholeInput(){
     guiContext->caretWidth = textlen; 
 }
 
-static bool renderSlider(float32 * progress, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, int8 zIndex = 0){
+static bool renderSlider(f32 * progress, const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * boxBgColor, const Color * fieldColor, i8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext->lastActive);
-    int32 diameter = height/2;
-    int32 marginX = diameter/2 + height/10;
-    int32 marginY = MIN(10, height/10);
+    i32 diameter = height/2;
+    i32 marginX = diameter/2 + height/10;
+    i32 marginY = MIN(10, height/10);
     bool isHoverNow = guiInput.mouse.x >= positionX + marginX && guiInput.mouse.x <= positionX + width - marginX && guiInput.mouse.y >= positionY + marginY && guiInput.mouse.y <= positionY + height - marginY;
     bool isSelected = registerInputAndIsSelected();
     bool wasSubmitted = isSelected && guiContext->selection.activate;
@@ -1048,11 +1048,11 @@ static bool renderSlider(float32 * progress, const int32 positionX, const int32 
     return result;
 }
 
-static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 textMaxlen, const char * charlist, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, const Color * selectBgColor, const Color * selectTextColor, int8 zIndex = 0){
+static bool renderInput(const AtlasFont * font, i32 pt, char * text, i32 textMaxlen, const char * charlist, const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * boxBgColor, const Color * fieldColor, const Color * inputTextColor, const Color * selectBgColor, const Color * selectTextColor, i8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext->lastActive);
-    int32 margin = MIN(height/10, 10);
+    i32 margin = MIN(height/10, 10);
     bool isHoverNow = guiInput.mouse.x >= positionX + margin && guiInput.mouse.x <= positionX + width - margin && guiInput.mouse.y >= positionY + margin && guiInput.mouse.y <= positionY + height - margin;
     bool isSelected = registerInputAndIsSelected();
     bool wasSubmitted = isSelected && guiContext->selection.activate;
@@ -1063,8 +1063,8 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
     }
 
     bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
-    int32 textPxWidthHalf = calculateAtlasTextWidth(font, text, pt)/2;
-    int32 textPxStartX = positionX + width/2 - textPxWidthHalf;
+    i32 textPxWidthHalf = calculateAtlasTextWidth(font, text, pt)/2;
+    i32 textPxStartX = positionX + width/2 - textPxWidthHalf;
     if(guiInput.mouse.buttons.leftTripleClick && isHoverNow){
         guiSelectWholeInput();
     }else if(guiInput.mouse.buttons.leftDoubleClick && isHoverNow){
@@ -1121,8 +1121,8 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
     const Color * textColor = inputTextColor;
 	if(guiEq(guiContext->activeInput, id) || (isLastActive && guiContext->caretPositioning)){
         if(guiContext->caretWidth != 0){
-            int32 caretXStart = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos);
-            int32 caretXEnd = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos + guiContext->caretWidth);
+            i32 caretXStart = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos);
+            i32 caretXEnd = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos + guiContext->caretWidth);
             if(caretXEnd < caretXStart){
                 SWAP(caretXStart, caretXEnd);
             }
@@ -1141,8 +1141,8 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
         }
         //draw for now?
         if(guiContext->caretWidth == 0 && guiContext->caretVisible){
-            int32 carretXOffset = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos);
-            int32 textXOffset = (width-2*margin)/2-textPxWidthHalf;
+            i32 carretXOffset = calculateAtlasTextWidth(font, text, pt, guiContext->caretPos);
+            i32 textXOffset = (width-2*margin)/2-textPxWidthHalf;
             renderRect(positionX+margin+carretXOffset+textXOffset, positionY + 2*margin, 4, height - 4*margin, inputTextColor, zIndex);
         }        
     }
@@ -1150,7 +1150,7 @@ static bool renderInput(const AtlasFont * font, int32 pt, char * text, int32 tex
     return result;
 }
 
-static bool renderButton(const AtlasFont * font, int32 pt, const char * text, const int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, int8 zIndex = 0){
+static bool renderButton(const AtlasFont * font, i32 pt, const char * text, const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, i8 zIndex = 0){
     GuiId id = {positionX, positionY, zIndex};
     bool result = false;
     bool isLastActive = guiEq(id, guiContext->lastActive);
@@ -1205,7 +1205,7 @@ static bool renderButton(const AtlasFont * font, int32 pt, const char * text, co
 }
 
 
-static bool renderDropdown(const AtlasFont * font, int32 pt, char * searchtext, int32 searchMaxlen, const char * buttonText, const char ** list, int32 listSize, int32 * resultIndex, int32 positionX, const int32 positionY, const int32 width, const int32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, const Color * selectBgColor, const Color * selectTextColor, int8 zIndex = 0){
+static bool renderDropdown(const AtlasFont * font, i32 pt, char * searchtext, i32 searchMaxlen, const char * buttonText, const char ** list, i32 listSize, i32 * resultIndex, i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * inactiveBgColor, const Color * inactiveTextColor, const Color * activeBgColor, const Color * activeTextColor, const Color * selectBgColor, const Color * selectTextColor, i8 zIndex = 0){
     bool isHeadLastActive;
     bool isDropdownActive;
     GuiId headId = {positionX, positionY, zIndex};
@@ -1286,13 +1286,13 @@ static bool renderDropdown(const AtlasFont * font, int32 pt, char * searchtext, 
     if(isDropdownActive){
         guiContext->dropdownLocked = true;
         renderInput(font, pt, searchtext, searchMaxlen, NULL, positionX, positionY + height, width, height, inactiveBgColor, activeBgColor, activeTextColor, selectBgColor, selectTextColor, zIndex+1); 
-        int32 rendered = 0;
-        for(int32 i = 0; i < listSize; i++){
+        i32 rendered = 0;
+        for(i32 i = 0; i < listSize; i++){
             if(strstr(list[i], searchtext))
             //start individual buttons
             {
-                int32 buttonPositionX = positionX;
-                int32 buttonPositionY = positionY + (rendered+2)*height;
+                i32 buttonPositionX = positionX;
+                i32 buttonPositionY = positionY + (rendered+2)*height;
                 GuiId id = {buttonPositionX, buttonPositionY, CAST(int8, zIndex+1)};
                 bool isLastActive = guiEq(id, guiContext->lastActive);
                 bool result = false;
@@ -1434,7 +1434,7 @@ bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool
     return r;
 }
 
-bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * text, int32 textMaxlen, const char * dictionary, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiElementStyle * overrideStyleSelection = NULL, const GuiJustify justify = GuiJustify_Default){
+bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * text, i32 textMaxlen, const char * dictionary, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiElementStyle * overrideStyleSelection = NULL, const GuiJustify justify = GuiJustify_Default){
     PROFILE_SCOPE(gui_render_input);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
@@ -1462,13 +1462,13 @@ bool guiRenderSlider(GuiContainer * container, const GuiStyle * style, float lef
     }
     // TODO(fidli): use real width
     calculateAndAdvanceCursor(&container, style, elementStyle, "SLIDER_TEXT", justify, &rei);
-    float32 relativeProgress = clamp((*currentValue - leftValue)/(rightValue-leftValue), 0.0f, 1.0f);
+    f32 relativeProgress = clamp((*currentValue - leftValue)/(rightValue-leftValue), 0.0f, 1.0f);
     bool result = renderSlider(&relativeProgress, rei.startX, rei.startY, rei.renderWidth, rei.renderHeight, &elementStyle->bgColor, &elementStyle->fgColor, container->zIndex);
     *currentValue = (relativeProgress * (rightValue-leftValue)) + leftValue;
     return result;
 }
 
-bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, int32 searchMaxlen, const char * buttonText, const char ** fullList, int32 listSize, int32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiElementStyle * overrideStyleSelection = NULL, const GuiJustify justify = GuiJustify_Default){
+bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, i32 searchMaxlen, const char * buttonText, const char ** fullList, i32 listSize, i32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiElementStyle * overrideStyleSelection = NULL, const GuiJustify justify = GuiJustify_Default){
     PROFILE_SCOPE(gui_render_dropdown);
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
@@ -1505,7 +1505,7 @@ void guiEnd(){
     }
     // messages
     bool close = false;
-    for(int32 i = 0; i < guiContext->messagePopupCount; i++){
+    for(i32 i = 0; i < guiContext->messagePopupCount; i++){
         if(guiIsPopupOpened(guiContext->messagePopupTitles[i])){
             GuiStyle * style = &guiContext->messagePopupStyles[i];
             GuiContainer * popupContainer = guiBeginPopup(guiContext->messagePopupTitles[i], style, 500, 200);
@@ -1532,11 +1532,11 @@ void guiEnd(){
         GuiContainer * membrane = guiAddContainer(NULL, NULL, 0, 0, guiContext->width, guiContext->height, &style);
         membrane->zIndex = guiContext->membraneIndex;
     }
-    insertSort(&guiContext->addedContainers[0], guiContext->addedContainersCount, [](GuiContainer * a, GuiContainer * b) -> int32 { return a->zIndex - b->zIndex; });
-    for(int32 i = 0; i < guiContext->addedContainersCount; i++){
+    insertSort(&guiContext->addedContainers[0], guiContext->addedContainersCount, [](GuiContainer * a, GuiContainer * b) -> i32 { return a->zIndex - b->zIndex; });
+    for(i32 i = 0; i < guiContext->addedContainersCount; i++){
         GuiContainer * container = guiContext->addedContainers[i];
-        int32 w = container->widthUsed;
-        int32 h = container->heightUsed;
+        i32 w = container->widthUsed;
+        i32 h = container->heightUsed;
         if(container->bgWidth){
             w = container->bgWidth;
         }

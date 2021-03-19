@@ -192,7 +192,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             if(OpenClipboard(window)){
                                 HGLOBAL contentsHandle = GlobalAlloc(GMEM_MOVEABLE, ABS(guiContext->width) * sizeof(char));
                                 void * contents = GlobalLock(contentsHandle);
-                                int32 start = MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
+                                i32 start = MIN(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
                                 memcpy(contents, guiContext->inputText + start, ABS(guiContext->caretWidth));
                                 CAST(char*, contents)[ABS(guiContext->caretWidth)] = '\0';
                                 GlobalUnlock(contentsHandle);

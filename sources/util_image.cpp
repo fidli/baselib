@@ -22,11 +22,11 @@ enum BitmapOriginType{
 
 struct Image{
     struct{
-        uint32 width;
-        uint32 height;
-        uint8 bitsPerSample;
-        uint8 samplesPerPixel;
-        uint32 totalSize;
+        u32 width;
+        u32 height;
+        u8 bitsPerSample;
+        u8 samplesPerPixel;
+        u32 totalSize;
         BitmapInterpretationType interpretation;
         BitmapOriginType origin;
     } info;
@@ -41,30 +41,30 @@ union Color{
     //@Cleanup
     union{
         struct{
-            uint8 r;
-            uint8 g;
-            uint8 b;
-            uint8 a;
+            u8 r;
+            u8 g;
+            u8 b;
+            u8 a;
         };
         struct{
-            uint8 x;
-            uint8 y;
-            uint8 z;
-            uint8 w;
+            u8 x;
+            u8 y;
+            u8 z;
+            u8 w;
         };
     };
-    uint8 channel[4];
-    uint32 full;
-    uint8 intensity;
+    u8 channel[4];
+    u32 full;
+    u8 intensity;
 };
 
 struct NearestNeighbourColor{
     Color color;
-    uint8 times;
+    u8 times;
 };
 
 
-bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
+bool cropImageX(Image * image, u32 leftCrop, u32 rightCrop){
     Image temp;
     temp.info = image->info;
     temp.info.width = rightCrop-leftCrop;
@@ -73,21 +73,21 @@ bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
         return false;
     }
     if(leftCrop > rightCrop){
-        uint32 tmp = leftCrop;
+        u32 tmp = leftCrop;
         leftCrop = rightCrop;
         rightCrop = tmp;
     }
     temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
     
-    for(uint32 h = 0; h < temp.info.height; h++){
-        uint32 i = h*temp.info.width;
-        for(uint32 w = leftCrop; w < rightCrop; w++, i++){
+    for(u32 h = 0; h < temp.info.height; h++){
+        u32 i = h*temp.info.width;
+        for(u32 w = leftCrop; w < rightCrop; w++, i++){
             temp.data[i] = image->data[h * image->info.width + w];
         }
     }
     
     image->info.width = temp.info.width;
-    for(uint32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
+    for(u32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
         image->data[i] = temp.data[i];
     }
     
@@ -100,15 +100,15 @@ bool cropImageX(Image * image, uint32 leftCrop, uint32 rightCrop){
 bool flipY(Image * target){
     ASSERT(target->info.bitsPerSample % 8 == 0);
     ASSERT(target->info.samplesPerPixel == 1);
-    uint32 bytesize = target->info.width * target->info.height * (target->info.bitsPerSample/8) * target->info.samplesPerPixel;
-    uint8 * tmp = &PUSHA(uint8, bytesize);
+    u32 bytesize = target->info.width * target->info.height * (target->info.bitsPerSample/8) * target->info.samplesPerPixel;
+    u8 * tmp = &PUSHA(uint8, bytesize);
     if(target->info.bitsPerSample % 8 != 0 || target->info.samplesPerPixel != 1){
         return false;
     }
-    uint8 bytesPerPixel = (target->info.bitsPerSample * target->info.samplesPerPixel)/8;
-    for(uint32 h = 0; h < target->info.height; h++){
-        for(uint32 w = 0; w < target->info.width; w++){
-            for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+    u8 bytesPerPixel = (target->info.bitsPerSample * target->info.samplesPerPixel)/8;
+    for(u32 h = 0; h < target->info.height; h++){
+        for(u32 w = 0; w < target->info.width; w++){
+            for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
                 tmp[w*bytesPerPixel + byteIndex + (target->info.height - h - 1) * target->info.width * bytesPerPixel] = target->data[w*bytesPerPixel + byteIndex + target->info.width*h*bytesPerPixel];
             }
         }
@@ -134,7 +134,7 @@ bool flipY(Image * target){
 }
 
 
-bool cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
+bool cropImageY(Image * image, u32 bottomCrop, u32 topCrop){
     Image temp;
     temp.info = image->info;
     ASSERT(image->info.origin == BitmapOriginType_TopLeft);
@@ -142,22 +142,22 @@ bool cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
         return false;
     }
     if(bottomCrop < topCrop){
-        uint32 tmp = bottomCrop;
+        u32 tmp = bottomCrop;
         bottomCrop = topCrop;
         topCrop = topCrop;
     }
     temp.info.height = bottomCrop-topCrop;
     temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
     
-    uint32 i = 0;
-    for(uint32 h = topCrop; h < bottomCrop; h++){
-        for(uint32 w = 0; w < temp.info.width; w++, i++){
+    u32 i = 0;
+    for(u32 h = topCrop; h < bottomCrop; h++){
+        for(u32 w = 0; w < temp.info.width; w++, i++){
             temp.data[i] = image->data[h * image->info.width + w];
         }
     }
     
     image->info.height = temp.info.height;
-    for(uint32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
+    for(u32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
         image->data[i] = temp.data[i];
     }
     
@@ -168,7 +168,7 @@ bool cropImageY(Image * image, uint32 bottomCrop, uint32 topCrop){
 }
 
 
-bool rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float32 centerY = 0.5f){
+bool rotateImage(Image * image, f32 angleDeg, f32 centerX = 0.5f, f32 centerY = 0.5f){
     ASSERT(image->info.bitsPerSample == 8 && image->info.samplesPerPixel == 1);
     if(image->info.bitsPerSample != 8 || image->info.samplesPerPixel != 1){
         return false;
@@ -176,20 +176,20 @@ bool rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float3
     Image temp;
     temp.info = image->info;
     temp.data = &PUSHA(byte, temp.info.width * temp.info.height * temp.info.samplesPerPixel * temp.info.bitsPerSample/8);
-    float32 angleRad = -angleDeg;
+    f32 angleRad = -angleDeg;
     while(angleRad >= 360) angleRad -= 360;
     while(angleRad < 0) angleRad += 360;
     angleRad = (angleRad / 180) * PI;
-    float32 sinA = sin(angleRad);
-    float32 cosA = cos(angleRad);
-    int32 cX = (uint32)(centerX * image->info.width);
-    int32 cY = (uint32)(centerY * image->info.height);
-    for(uint32 h = 0; h < temp.info.height; h++){
-        int32 rY = h - cY;
-        for(uint32 w = 0; w < temp.info.width; w++){
-            int32 rX = w  - cX;
-            int32 nX = (int32)(cosA * rX) - (int32)(sinA*rY) + cX;
-            int32 nY = (int32)(sinA * rX) + (int32)(cosA*rY) + cY;
+    f32 sinA = sin(angleRad);
+    f32 cosA = cos(angleRad);
+    i32 cX = (uint32)(centerX * image->info.width);
+    i32 cY = (uint32)(centerY * image->info.height);
+    for(u32 h = 0; h < temp.info.height; h++){
+        i32 rY = h - cY;
+        for(u32 w = 0; w < temp.info.width; w++){
+            i32 rX = w  - cX;
+            i32 nX = (int32)(cosA * rX) - (int32)(sinA*rY) + cX;
+            i32 nY = (int32)(sinA * rX) + (int32)(cosA*rY) + cY;
             if(nX >= 0 && nX < image->info.width && nY >= 0 && nY < image->info.height){
                 temp.data[temp.info.width * h + w] = image->data[temp.info.width * nY  + nX];
             }else{
@@ -198,7 +198,7 @@ bool rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float3
         }
     }
     
-    for(uint32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
+    for(u32 i = 0; i < image->info.width * image->info.height * image->info.samplesPerPixel * (image->info.bitsPerSample/8); i++){
         image->data[i] = temp.data[i];
     }
     
@@ -206,20 +206,20 @@ bool rotateImage(Image * image, float32 angleDeg, float32 centerX = 0.5f, float3
     return true;
 }
 
-static inline uint8 resultingContrast(const uint8 originalColor, const float32 contrast){
-    float32 factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-    float32 result = factor * (originalColor - 128) + 128;
+static inline u8 resultingContrast(const u8 originalColor, const f32 contrast){
+    f32 factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+    f32 result = factor * (originalColor - 128) + 128;
     if(result < 0) result = 0;
     if(result > 255) result = 255;
     return (uint8) result;
 }
 
 
-void applyContrast(Image * target, const float32 contrast){
+void applyContrast(Image * target, const f32 contrast){
     ASSERT(target->info.interpretation = BitmapInterpretationType_GrayscaleBW01);
-    for(uint32 x = 0; x < target->info.width; x++){
-        for(uint32 y = 0; y < target->info.height; y++){
-            uint8 originalColor = target->data[y * target->info.width + x];
+    for(u32 x = 0; x < target->info.width; x++){
+        for(u32 y = 0; y < target->info.height; y++){
+            u8 originalColor = target->data[y * target->info.width + x];
             
             target->data[y * target->info.width + x] = resultingContrast(originalColor, contrast);
         }
@@ -227,11 +227,11 @@ void applyContrast(Image * target, const float32 contrast){
 }
 
 
-bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32 targetHeight){
-    float32 scaleX = (float32)source->info.width/(float32)targetWidth;
-    float32 scaleY = (float32)source->info.height/(float32)targetHeight;
+bool scaleImage(const Image * source, Image * target, u32 targetWidth, u32 targetHeight){
+    f32 scaleX = (float32)source->info.width/(float32)targetWidth;
+    f32 scaleY = (float32)source->info.height/(float32)targetHeight;
     
-    uint32 neighbourCount = (uint32)(scaleX*scaleY);
+    u32 neighbourCount = (uint32)(scaleX*scaleY);
     //does not hurt
     neighbourCount++;
     
@@ -245,7 +245,7 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     }
     
     NearestNeighbourColor * nn = &PUSHA(NearestNeighbourColor, neighbourCount);
-    uint8 channelCount = (source->info.bitsPerSample * source->info.samplesPerPixel) / 8;
+    u8 channelCount = (source->info.bitsPerSample * source->info.samplesPerPixel) / 8;
     
     //each target pixel
     for(int tw = 0; tw < targetWidth; tw++){
@@ -256,7 +256,7 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
             for(int clr = 0; clr < neighbourCount; clr++){
                 nn[clr] = {};
             }
-            uint8 nncount = 0;
+            u8 nncount = 0;
             
             //for all neighbours to the original pixel
             for(int nw = 0; nw < scaleX; nw++){
@@ -265,7 +265,7 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
                     int srcH = (int)(th*scaleY) + nh;
                     
                     Color srcColor = {};
-                    for(uint8 ci = 0; ci < channelCount; ci++){
+                    for(u8 ci = 0; ci < channelCount; ci++){
                         srcColor.channel[ci] = source->data[(srcH*source->info.width + srcW)*channelCount + ci];
                     }
                     
@@ -293,10 +293,10 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
             }
             
             //do some blending
-            uint32 sum[4] = {};
+            u32 sum[4] = {};
             //int8  highest = -1;
             for(int s = 0; s < nncount; s++){
-                for(uint8 ci = 0; ci < channelCount; ci++){
+                for(u8 ci = 0; ci < channelCount; ci++){
                     sum[ci] += nn[s].color.channel[ci];
                 }
                 
@@ -304,7 +304,7 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
                     resultColor = nn[s].color;
                 }*/
             }
-            for(uint8 ci = 0; ci < channelCount; ci++){
+            for(u8 ci = 0; ci < channelCount; ci++){
                 target->data[channelCount * i + ci] = sum[ci]/nncount;
             }
             
@@ -319,15 +319,15 @@ bool scaleImage(const Image * source, Image * target, uint32 targetWidth, uint32
     return true;
 }
 
-bool scaleCanvas(Image * target, uint32 newWidth, uint32 newHeight, uint32 originalOffsetX = 0, uint32 originalOffsetY = 0){
+bool scaleCanvas(Image * target, u32 newWidth, u32 newHeight, u32 originalOffsetX = 0, u32 originalOffsetY = 0){
     ASSERT(target->info.bitsPerSample * target->info.samplesPerPixel == 8);
     ASSERT(target->info.origin == BitmapOriginType_TopLeft);
     if(target->info.bitsPerSample * target->info.samplesPerPixel != 8 || target->info.origin != BitmapOriginType_TopLeft){
         return false;
     }
     byte * tmp = &PUSHA(byte, newWidth * newHeight);
-    for(uint32 th = 0; th < newHeight; th++){
-        for(uint32 tw = 0; tw < newWidth; tw++){
+    for(u32 th = 0; th < newHeight; th++){
+        for(u32 tw = 0; tw < newWidth; tw++){
             if(tw >= originalOffsetX &&
                th >= originalOffsetY &&
                th - originalOffsetY < target->info.height &&

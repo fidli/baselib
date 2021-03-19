@@ -4,13 +4,13 @@
 #include "util_image.cpp"
 
 //returns number of unmached chars
-uint32 convUTF8toAscii(const byte * source, const uint32 bytesize, char ** target, uint32 * targetSize){
+uint32 convUTF8toAscii(const byte * source, const u32 bytesize, char ** target, u32 * targetSize){
     
     *targetSize = 0;
     
-    uint32 errors = 0;
+    u32 errors = 0;
     char glyf;
-    for(uint32 i = 0; i < bytesize; i++){
+    for(u32 i = 0; i < bytesize; i++){
         if(!(source[i] & 128)){
             glyf = source[i];
         }else if(!(source[i] & 32)){
@@ -47,34 +47,34 @@ struct ReadHead{
 };
 
 union converter{
-    uint8 bytes[8];
-    uint16 words[4];
-    uint32 dwords[2];
-    uint64 qword;
+    u8 bytes[8];
+    u16 words[4];
+    u32 dwords[2];
+    u64 qword;
 };
 
 static inline void swapEndians(converter * martyr){
-    for(uint8 i = 0; i < 8; i++){
-        uint8 tmp = 0;
-        for(uint8 b = 0; b < 8; b++){
+    for(u8 i = 0; i < 8; i++){
+        u8 tmp = 0;
+        for(u8 b = 0; b < 8; b++){
             tmp |= ((martyr->bytes[i] >> b) << (7-b));
         }
         martyr->bytes[i] = tmp;
     }
 }
 
-static inline uint32 swapEndians(const uint32 source){
-    uint32 target = 0;
-    for(uint8 b = 0; b < 32; b++){
+static inline u32 swapEndians(const u32 source){
+    u32 target = 0;
+    for(u8 b = 0; b < 32; b++){
         target |= ((source >> b) << (31-b));
     }
     return target;
 }
 
-static inline void swapEndians(char * source, uint32 length, char * target){
-    for(uint32 i = 0; i < length; i++){
+static inline void swapEndians(char * source, u32 length, char * target){
+    for(u32 i = 0; i < length; i++){
         target[i] = 0;
-        for(uint8 b = 0; b < 8; b++){
+        for(u8 b = 0; b < 8; b++){
             target[i] |= ((source[i] >> b) << (7-b));
         }
         
@@ -83,14 +83,14 @@ static inline void swapEndians(char * source, uint32 length, char * target){
 
 static converter martyr;
 
-static inline uint8 scanByte(ReadHead * head){
-    uint8 res = head->offset[0];
+static inline u8 scanByte(ReadHead * head){
+    u8 res = head->offset[0];
     head->offset++;
     return res;
 }
 
-static inline uint16 scanWord(ReadHead * head){
-    uint16 res;
+static inline u16 scanWord(ReadHead * head){
+    u16 res;
     martyr.bytes[0] = head->offset[0];
     martyr.bytes[1] = head->offset[1];
     head->offset += 2;
@@ -99,8 +99,8 @@ static inline uint16 scanWord(ReadHead * head){
 }
 
 
-static inline uint32 scanDword(ReadHead * head){
-    uint32 res;
+static inline u32 scanDword(ReadHead * head){
+    u32 res;
     martyr.bytes[0] = head->offset[0];
     martyr.bytes[1] = head->offset[1];
     martyr.bytes[2] = head->offset[2];
@@ -111,8 +111,8 @@ static inline uint32 scanDword(ReadHead * head){
 }
 
 
-static inline uint64 scanQword(ReadHead * head){
-    uint64 res;
+static inline u64 scanQword(ReadHead * head){
+    u64 res;
     martyr.bytes[0] = head->offset[0];
     martyr.bytes[1] = head->offset[1];
     martyr.bytes[2] = head->offset[2];
@@ -131,17 +131,17 @@ static inline uint64 scanQword(ReadHead * head){
 struct Bitmapinfoheader{
     union{
         struct{
-            uint32 size;
-            uint32 width;
-            uint32 height;
-            uint16 colorPlanes;
-            uint16 bitsPerPixel;
-            uint32 compression;
-            uint32 datasize;
-            int32 pixelPerMeterHorizontal;
-            int32 pixelPerMeterVertical;
-            uint32 colorsInPallette;
-            uint32 importantColorsAmount;
+            u32 size;
+            u32 width;
+            u32 height;
+            u16 colorPlanes;
+            u16 bitsPerPixel;
+            u32 compression;
+            u32 datasize;
+            i32 pixelPerMeterHorizontal;
+            i32 pixelPerMeterVertical;
+            u32 colorsInPallette;
+            u32 importantColorsAmount;
         };
         char data[40];
     };
@@ -153,8 +153,8 @@ bool decodeBMP(const FileContents * source, Image * target){
     if(source->contents[0] != 'B' || source->contents[1] != 'M'){
         return false;
     }
-    uint32 filesize = *((uint32 *)(source->contents + 2));
-    int32 dataOffset = *((int32 *)(source->contents + 10));
+    u32 filesize = *((u32 *)(source->contents + 2));
+    i32 dataOffset = *((i32 *)(source->contents + 10));
     
     Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(source->contents + 14);
     target->info.width = infoheader->width;
@@ -168,7 +168,7 @@ bool decodeBMP(const FileContents * source, Image * target){
     }
     target->info.bitsPerSample = infoheader->bitsPerPixel;
     target->info.samplesPerPixel = 1;
-    uint64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
+    u64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
     target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
     target->info.origin = BitmapOriginType_BottomLeft;
     //RGB
@@ -184,15 +184,15 @@ bool decodeBMP(const FileContents * source, Image * target){
         }
         
         target->data = &PUSHA(byte, target->info.totalSize);
-        uint32 rowpitch = (target->info.width % 4 != 0 ? (target->info.width/4 + 1)*4 : target->info.width);
+        u32 rowpitch = (target->info.width % 4 != 0 ? (target->info.width/4 + 1)*4 : target->info.width);
         
-        uint8 bytesPerPixel = target->info.bitsPerSample/8;
-        for(uint32 h = 0; h < target->info.height; h++){
+        u8 bytesPerPixel = target->info.bitsPerSample/8;
+        for(u32 h = 0; h < target->info.height; h++){
             //data are padded with 0 for 32 bit row padding
-            uint32 sourcepitch = h * rowpitch * bytesPerPixel;
-            uint32 targetpitch = h * target->info.width * bytesPerPixel;
-            for(uint32 w = 0; w < target->info.width; w++){
-                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+            u32 sourcepitch = h * rowpitch * bytesPerPixel;
+            u32 targetpitch = h * target->info.width * bytesPerPixel;
+            for(u32 w = 0; w < target->info.width; w++){
+                for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
                     //the r g b is flipped to b g r due to whatever reason
                     target->data[targetpitch + w*bytesPerPixel + byteIndex] = (source->contents + dataOffset)[sourcepitch + w*bytesPerPixel + (bytesPerPixel-1-byteIndex)];
                 }
@@ -203,28 +203,28 @@ bool decodeBMP(const FileContents * source, Image * target){
     }else if(infoheader->compression == 3){
         if(infoheader->bitsPerPixel == 32){
             ASSERT(infoheader->compression == 3);
-            uint32 redMask = *(((uint32*)(infoheader+1))+0);
-            uint32 redMaskFallShift = redMask > 0xFF ? (redMask > 0xFF00 ? (redMask > 0xFF0000 ? 24 : 16) : 8) : 0;
+            u32 redMask = *(((uint32*)(infoheader+1))+0);
+            u32 redMaskFallShift = redMask > 0xFF ? (redMask > 0xFF00 ? (redMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            uint32 greenMask = *(((uint32*)(infoheader+1))+1);
-            uint32 greenMaskFallShift = greenMask > 0xFF ? (greenMask > 0xFF00 ? (greenMask > 0xFF0000 ? 24 : 16) : 8) : 0;
+            u32 greenMask = *(((uint32*)(infoheader+1))+1);
+            u32 greenMaskFallShift = greenMask > 0xFF ? (greenMask > 0xFF00 ? (greenMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            uint32 blueMask = *(((uint32*)(infoheader+1))+2);
-            uint32 blueMaskFallShift = blueMask > 0xFF ? (blueMask > 0xFF00 ? (blueMask > 0xFF0000 ? 24 : 16) : 8) : 0;
+            u32 blueMask = *(((uint32*)(infoheader+1))+2);
+            u32 blueMaskFallShift = blueMask > 0xFF ? (blueMask > 0xFF00 ? (blueMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            uint32 alfaMask = *(((uint32*)(infoheader+1))+3);
-            uint32 alfaMaskFallShift = alfaMask > 0xFF ? (alfaMask > 0xFF00 ? (alfaMask > 0xFF0000 ? 24 : 16) : 8) : 0;
+            u32 alfaMask = *(((uint32*)(infoheader+1))+3);
+            u32 alfaMaskFallShift = alfaMask > 0xFF ? (alfaMask > 0xFF00 ? (alfaMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
             target->info.interpretation = BitmapInterpretationType_RGBA;
             
             target->data = &PUSHA(byte, infoheader->datasize);
-            uint32 * pixelData = (uint32 *) target->data;
+            u32 * pixelData = (u32 *) target->data;
             
             //NOTE(AK): 32 bit pixels will always be 32 bit aligned
-            for(uint32 h = 0; h < target->info.height; h++){
-                uint32 pitch = h * target->info.width;
-                for(uint32 w = 0; w < target->info.width; w++){
-                    uint32 sourceData = ((uint32*)(source->contents + dataOffset))[pitch + w];
+            for(u32 h = 0; h < target->info.height; h++){
+                u32 pitch = h * target->info.width;
+                for(u32 w = 0; w < target->info.width; w++){
+                    u32 sourceData = ((uint32*)(source->contents + dataOffset))[pitch + w];
                     pixelData[pitch + w] = 0 | (((redMask & sourceData) >> redMaskFallShift)) | (((greenMask & sourceData) >> greenMaskFallShift) << 8)  | (((blueMask & sourceData) >> blueMaskFallShift) << 16) | (((alfaMask & sourceData) >> alfaMaskFallShift) << 24);
                 }
             }
@@ -245,8 +245,8 @@ bool decodeBMP(const FileContents * source, Image * target){
 
 bool encodeBMP(const Image * source, FileContents * target){
     bool palette = false;
-    uint32 bitsPerPixel = source->info.bitsPerSample * source->info.samplesPerPixel;
-    uint32 savewidth = source->info.width;
+    u32 bitsPerPixel = source->info.bitsPerSample * source->info.samplesPerPixel;
+    u32 savewidth = source->info.width;
     //each line must be within 32 bits boundary, filled with zeroes
     while(((savewidth * bitsPerPixel) / 32) * 32 != savewidth * bitsPerPixel){
         savewidth++;
@@ -263,9 +263,9 @@ bool encodeBMP(const Image * source, FileContents * target){
     
     target->contents[0] = 'B';
     target->contents[1] = 'M';
-    *((uint32 *)(target->contents + 2)) = target->size;
-    *((uint32 *)(target->contents + 6)) = 0;
-    uint32 dataOffset = *((uint32 *)(target->contents + 10)) = 14 + sizeof(Bitmapinfoheader) + (palette ? (4 * (1 << bitsPerPixel)) : 0);
+    *((u32 *)(target->contents + 2)) = target->size;
+    *((u32 *)(target->contents + 6)) = 0;
+    u32 dataOffset = *((u32 *)(target->contents + 10)) = 14 + sizeof(Bitmapinfoheader) + (palette ? (4 * (1 << bitsPerPixel)) : 0);
     
     Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(target->contents + 14);
     infoheader->size = sizeof(Bitmapinfoheader);
@@ -281,7 +281,7 @@ bool encodeBMP(const Image * source, FileContents * target){
     if(palette){
         ASSERT((1 << bitsPerPixel) == 256);
         ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01);
-        for(uint32 i = 0; i < (1 << bitsPerPixel); i++){
+        for(u32 i = 0; i < (1 << bitsPerPixel); i++){
             //R
             *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4) = (uint8)i;
             //G
@@ -297,29 +297,29 @@ bool encodeBMP(const Image * source, FileContents * target){
     ASSERT(bitsPerPixel % 8 == 0);
     ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01 || source->info.interpretation == BitmapInterpretationType_RGB);
     //the r g b  flipped to b g r
-    uint8 bytesPerPixel = bitsPerPixel/8;
+    u8 bytesPerPixel = bitsPerPixel/8;
     if(source->info.origin == BitmapOriginType_BottomLeft){
-        for(uint32 h = 0; h < infoheader->height; h++){
-            for(uint32 w = 0; w < infoheader->width; w++){
-                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+        for(u32 h = 0; h < infoheader->height; h++){
+            for(u32 w = 0; w < infoheader->width; w++){
+                for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
                     (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + (bytesPerPixel-1-byteIndex)] = source->data[h * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex]; 
                 }
             }
-            for(uint32 w = infoheader->width; w < savewidth; w++){
-                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+            for(u32 w = infoheader->width; w < savewidth; w++){
+                for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
                     (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
                 }
             }
         }
     }else if(source->info.origin == BitmapOriginType_TopLeft){
-        for(uint32 h = 0; h < infoheader->height; h++){
-            for(uint32 w = 0; w < infoheader->width; w++){
-                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+        for(u32 h = 0; h < infoheader->height; h++){
+            for(u32 w = 0; w < infoheader->width; w++){
+                for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
                     (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + (bytesPerPixel-1-byteIndex)] =  source->data[(infoheader->height - 1 - h) * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex];
                 }
             }
-            for(uint32 w = infoheader->width; w < savewidth; w++){
-                for(uint8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
+            for(u32 w = infoheader->width; w < savewidth; w++){
+                for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
                     (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
                 }
             }
@@ -350,32 +350,32 @@ bool decodeTiff(const FileContents * file, Image * target){
     }
     
     
-    uint16 tiffMagicFlag = scanWord(&head);
+    u16 tiffMagicFlag = scanWord(&head);
     //tiff const flag
     if(tiffMagicFlag != 42){
         INV;
         return false;
     }
     
-    uint32 imageOffset = scanDword(&head);
+    u32 imageOffset = scanDword(&head);
     head.offset = file->contents + imageOffset;
     
-    uint16 entries = scanWord(&head);
+    u16 entries = scanWord(&head);
     
-    uint32 * stripOffsets = NULL;
-    uint32 rowsPerStrip = -1; //infinity (1 strip for all data)
-    uint32 * stripSizes = NULL;
-    uint32 stripAmount = 0;
+    u32 * stripOffsets = NULL;
+    u32 rowsPerStrip = -1; //infinity (1 strip for all data)
+    u32 * stripSizes = NULL;
+    u32 stripAmount = 0;
     
     //default values
     target->info.origin = BitmapOriginType_TopLeft;
     target->info.samplesPerPixel = 1;
     
-    for(uint16 ei = 0; ei < entries; ei++){
-        uint16 tag = scanWord(&head);
-        uint16 type = scanWord(&head);
-        uint32 length = scanDword(&head);
-        uint32 headerOffset = scanDword(&head);
+    for(u16 ei = 0; ei < entries; ei++){
+        u16 tag = scanWord(&head);
+        u16 type = scanWord(&head);
+        u32 length = scanDword(&head);
+        u32 headerOffset = scanDword(&head);
         
         ASSERT(type >= 1 && type <= 5);
         //these appear in ascending order, but we do not care
@@ -455,8 +455,8 @@ bool decodeTiff(const FileContents * file, Image * target){
                 if(stripAmount == 1){
                     stripOffsets[0] = headerOffset;
                 }else{
-                    for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
-                        stripOffsets[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                    for(u32 stripIndex = 0; stripIndex < length; stripIndex++){
+                        stripOffsets[stripIndex] = ((u32 *)(file->contents + headerOffset))[stripIndex];
                     }
                 }
                 
@@ -502,8 +502,8 @@ bool decodeTiff(const FileContents * file, Image * target){
                 if(stripAmount == 1){
                     stripSizes[0] = headerOffset;
                 }else{
-                    for(uint32 stripIndex = 0; stripIndex < length; stripIndex++){
-                        stripSizes[stripIndex] = ((uint32 *)(file->contents + headerOffset))[stripIndex];
+                    for(u32 stripIndex = 0; stripIndex < length; stripIndex++){
+                        stripSizes[stripIndex] = ((u32 *)(file->contents + headerOffset))[stripIndex];
                     }
                 }
             }break;
@@ -542,7 +542,7 @@ bool decodeTiff(const FileContents * file, Image * target){
         }
     }
     
-    uint32 nextFile = scanDword(&head);
+    u32 nextFile = scanDword(&head);
     if(nextFile != 0){
         INV;
         return false;
@@ -550,14 +550,14 @@ bool decodeTiff(const FileContents * file, Image * target){
     
     target->data = &PPUSHA(byte, target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
     
-    for(uint32 i = 0; i < target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8); i++){
+    for(u32 i = 0; i < target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8); i++){
         target->data[i] = (char)255;
     }
     
-    uint32 total = 0;
-    uint32 last = 0;
+    u32 total = 0;
+    u32 last = 0;
     
-    for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
+    for(u32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
         last = decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex * rowsPerStrip * target->info.width);
         if(last == 0){
             POPI;
@@ -578,12 +578,12 @@ struct WriteHead{
     char * offset;
 };
 
-static inline void writeByte(WriteHead * head, uint8 data){
+static inline void writeByte(WriteHead * head, u8 data){
     head->offset[0] = data;
     head->offset++;
 }
 
-static inline void writeWord(WriteHead * head, uint16 data){
+static inline void writeWord(WriteHead * head, u16 data){
     martyr.words[0] = data;
     head->offset[0] = martyr.bytes[0];
     head->offset[1] = martyr.bytes[1];
@@ -591,7 +591,7 @@ static inline void writeWord(WriteHead * head, uint16 data){
 }
 
 
-static inline void writeDword(WriteHead * head, uint32 data){
+static inline void writeDword(WriteHead * head, u32 data){
     martyr.dwords[0] = data;
     head->offset[0] = martyr.bytes[0];
     head->offset[1] = martyr.bytes[1];
@@ -601,7 +601,7 @@ static inline void writeDword(WriteHead * head, uint32 data){
 }
 
 
-static inline void writeQword(WriteHead * head, uint64 data){
+static inline void writeQword(WriteHead * head, u64 data){
     martyr.qword = data;
     head->offset[0] = martyr.bytes[0];
     head->offset[1] = martyr.bytes[1];
@@ -621,22 +621,22 @@ bool encodeTiff(const Image * source, FileContents * target){
     PUSHI;
     
     //this should be calculated dynamically later
-    uint32 entries  = 10;
+    u32 entries  = 10;
     
-    uint32 bytesize = source->info.width * source->info.height * (source->info.bitsPerSample/8) * source->info.samplesPerPixel;
-    uint32 rowBytesize = bytesize / source->info.height;
+    u32 bytesize = source->info.width * source->info.height * (source->info.bitsPerSample/8) * source->info.samplesPerPixel;
+    u32 rowBytesize = bytesize / source->info.height;
     
-    uint32 stripRecommendedSize = KILOBYTE(8);
-    uint32 rowsPerStrip = stripRecommendedSize / rowBytesize;
+    u32 stripRecommendedSize = KILOBYTE(8);
+    u32 rowsPerStrip = stripRecommendedSize / rowBytesize;
     
     if(rowsPerStrip == 0) rowsPerStrip++;
     if(rowsPerStrip > source->info.height) rowsPerStrip = source->info.height;
     
-    uint32 stripAmount = source->info.height / rowsPerStrip;
+    u32 stripAmount = source->info.height / rowsPerStrip;
     if(source->info.height % rowsPerStrip != 0){
         stripAmount++;
     }
-    uint32 stripSize = rowBytesize * rowsPerStrip;
+    u32 stripSize = rowBytesize * rowsPerStrip;
     ASSERT(stripAmount >= 1);
     ASSERT(rowsPerStrip >= 1);
     if(stripAmount < 1 || 
@@ -646,7 +646,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     
     //compress - wild quess now, later compress first, then work with exact numbers
     //assuming 4096 2 byte entries
-    uint32 compressedSize = (4096*2) * stripAmount;
+    u32 compressedSize = (4096*2) * stripAmount;
     target->size =  (8 + (12 * entries) + 4) + (source->info.samplesPerPixel + 2*stripAmount) * 4 + compressedSize;
     target->contents = &PPUSHA(char, target->size);
     
@@ -677,8 +677,8 @@ bool encodeTiff(const Image * source, FileContents * target){
     dataHead.offset = head.offset +  (12 * entries) + 4;
     
     //image division
-    uint32 * stripOffsets = NULL;
-    uint32 * stripSizes = NULL;
+    u32 * stripOffsets = NULL;
+    u32 * stripSizes = NULL;
     
     
     
@@ -719,7 +719,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     }else{
         ASSERT(!"check me");
         writeDword(&head, dataHead.offset - target->contents);
-        for(uint16 i = 0; i < source->info.samplesPerPixel; i++){
+        for(u16 i = 0; i < source->info.samplesPerPixel; i++){
             writeWord(&dataHead, source->info.bitsPerSample);
         }
     }
@@ -767,11 +767,11 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeWord(&head, 4);
     writeDword(&head, stripAmount);
     if(stripAmount == 1){
-        stripOffsets = (uint32 *) head.offset;
+        stripOffsets = (u32 *) head.offset;
         head.offset += 4;
     }else{
         writeDword(&head, dataHead.offset - target->contents);
-        stripOffsets = (uint32 *) dataHead.offset;
+        stripOffsets = (u32 *) dataHead.offset;
         dataHead.offset += stripAmount * 4; //allocate space for future
     }
     
@@ -813,11 +813,11 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeWord(&head, 4);
     writeDword(&head, stripAmount);
     if(stripAmount == 1){
-        stripSizes = (uint32 *) head.offset;
+        stripSizes = (u32 *) head.offset;
         head.offset += 4;
     }else{
         writeDword(&head, dataHead.offset - target->contents);
-        stripSizes = (uint32 *) dataHead.offset;
+        stripSizes = (u32 *) dataHead.offset;
         dataHead.offset += stripAmount * 4; //allocate space for future
     }
     
@@ -852,12 +852,12 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeDword(&head, 0); //no next file
     
     
-    for(uint32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
-        uint32 sourceSize = stripSize;
+    for(u32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
+        u32 sourceSize = stripSize;
         if(stripIndex == stripAmount - 1){
             sourceSize = bytesize - (stripIndex * sourceSize);
         }
-        uint32 size = compressLZW((byte *) (source->data + stripIndex * rowsPerStrip * source->info.width), sourceSize, (byte *) dataHead.offset); 
+        u32 size = compressLZW((byte *) (source->data + stripIndex * rowsPerStrip * source->info.width), sourceSize, (byte *) dataHead.offset); 
         stripSizes[stripIndex] = size;
         stripOffsets[stripIndex] = dataHead.offset - target->contents;
         dataHead.offset += size;

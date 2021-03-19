@@ -3,16 +3,16 @@
 #include "util_sort.cpp"
 
 struct ProfileEntry{
-    uint64 callCountTotal;
-    float64 timeSpentTotal;
+    u64 callCountTotal;
+    f64 timeSpentTotal;
     
-    float64 lastStartTime;
+    f64 lastStartTime;
 };
 
 struct Profile{
     ProfileEntry slots[100];
     char names[100][30];
-    int32 slotsUsed;
+    i32 slotsUsed;
 };
 
 Profile * profile;
@@ -69,19 +69,19 @@ void profileClearStats(){
 
 struct ProfileStats{
     struct Entry{
-        uint64 totalCount;
-        float64 totalTime;
-        float64 avgTime;
+        u64 totalCount;
+        f64 totalTime;
+        f64 avgTime;
         const char * name;
     } entries[ARRAYSIZE(Profile::slots)];
-    int32 count;
+    i32 count;
 };
 
 inline ProfileStats * getCurrentProfileStats(){
     ProfileStats * r = &PUSH(ProfileStats);
-    int32 count = 0;
+    i32 count = 0;
     
-    for(int32 i = 0; i < profile->slotsUsed; i++){
+    for(i32 i = 0; i < profile->slotsUsed; i++){
         ProfileEntry * entry = &profile->slots[i];
         if(entry->callCountTotal){
             ProfileStats::Entry * stat = &r->entries[count];

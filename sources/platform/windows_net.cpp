@@ -132,7 +132,7 @@ bool openSocket(NetSocket * target, const NetSocketSettings * settings){
 
 
 
-bool tcpListen(const NetSocket * server, uint16 maxConnections){
+bool tcpListen(const NetSocket * server, u16 maxConnections){
     return listen(server->socket, maxConnections) == 0;
 }
 

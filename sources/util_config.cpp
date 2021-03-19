@@ -8,9 +8,9 @@ bool loadConfig(const char * file, bool (*lineCallback)(const uint64, const char
     if(readFile(file, &contents)){
         
         char line[1024];
-        uint64 lineIndex = 0;
+        u64 lineIndex = 0;
         while(getNextLine(&contents, line, ARRAYSIZE(line))){
-            uint32 localOffset = 0;
+            u32 localOffset = 0;
             while(line[localOffset] == ' ' || line[localOffset] == '\t'){
                 localOffset++;
             }

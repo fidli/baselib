@@ -8,12 +8,12 @@ struct StringHashTableElement{
 };
 
 struct StringHashTable{
-	uint32 size;
+	u32 size;
 	StringHashTableElement ** elements;
 	
-	uint32 slotCount;
+	u32 slotCount;
 	StringHashTableElement * slots;
-	uint32 slotsUsed;
+	u32 slotsUsed;
 };
 
 void clearStringHashTable(StringHashTable * target){
@@ -22,7 +22,7 @@ void clearStringHashTable(StringHashTable * target){
 	target->slotsUsed = 0;
 }
 
-bool createStringHashTable(StringHashTable * target, int32 size){
+bool createStringHashTable(StringHashTable * target, i32 size){
 	target->size = size*2;
 	target->slotCount = size;
 	target->slots = &PPUSHA(StringHashTableElement, target->slotCount);
@@ -34,9 +34,9 @@ bool createStringHashTable(StringHashTable * target, int32 size){
  
 
 
-static uint32 stringHash(const char * input, uint32 tableSize){
+static u32 stringHash(const char * input, u32 tableSize){
 	//djb http://www.cse.yorku.ca/~oz/hash.html
-	uint32 hash = 5381;
+	u32 hash = 5381;
 	while(*(input++)){
 		hash = hash * 33 + *input;
 	}
@@ -46,7 +46,7 @@ static uint32 stringHash(const char * input, uint32 tableSize){
 bool insertIntoStringHashTable(StringHashTable * target, const char * key, void * data){
 	if (target->slotsUsed >= target->slotCount) return false;
 	ASSERT(strlen(key) < 20);
-	int32 index = stringHash(key, target->size);
+	i32 index = stringHash(key, target->size);
 	StringHashTableElement ** spot = &target->elements[index];
 	StringHashTableElement * previous = NULL;
 	while(*spot != NULL){
@@ -70,7 +70,7 @@ bool insertIntoStringHashTable(StringHashTable * target, const char * key, void 
 }
 
 bool findInStringHashTable(StringHashTable * target, const char * key, void ** data){
-	int32 index = stringHash(key, target->size);
+	i32 index = stringHash(key, target->size);
 	StringHashTableElement ** spot = &target->elements[index];
 	while(*spot != NULL){
 		if(!strncmp(key, (*spot)->key, 20)){

@@ -8,40 +8,40 @@
 struct BitmapFont{
     struct {
         Image data;
-        uint32 gridSize;
+        u32 gridSize;
     } original;
     struct {
         Image data;
-        uint32 gridSize;
+        u32 gridSize;
     } current;
 };
 
 struct GlyphData{
     bool valid;
     char glyph;
-    int32 width;
+    i32 width;
     
-    int32 marginX;
-    int32 marginY;
+    i32 marginX;
+    i32 marginY;
     
-    int32 kerning[256];
+    i32 kerning[256];
     
     struct{
-        int32 x,y;
-        int32 width, height;
+        i32 x,y;
+        i32 width, height;
     } AABB;
 };
 
 struct AtlasFont{
     Image data;
-    int32 pixelSize;
-    int32 lineHeight;
-    int32 base;
+    i32 pixelSize;
+    i32 lineHeight;
+    i32 base;
     GlyphData glyphs[256];
 };
 
 int32 platformGetDpi();
-int32 ptToPx(float32 pt){
+int32 ptToPx(f32 pt){
     return CAST(int32, (pt * CAST(float32, platformGetDpi())) / 72.0f);
 }
 
@@ -78,10 +78,10 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
     }else{
     }
     
-    for(int32 i = 0; i < font->childrenCount && success; i++){
+    for(i32 i = 0; i < font->childrenCount && success; i++){
         XMLNode * ch = font->children[i];
         if(!strncmp(ch->name, "info", 4)){
-            for(int32 a = 0; a < ch->attributesCount && success; a++){
+            for(i32 a = 0; a < ch->attributesCount && success; a++){
                 if(!strncmp("size", ch->attributeNames[a], 4)){
                     if(!sscanf(ch->attributeValues[a], "%d", &target->pixelSize)){
                         INV;
@@ -91,7 +91,7 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                 }
             }
         }else if(!strncmp(ch->name, "common", 6)){
-            for(int32 a = 0; a < ch->attributesCount && success; a++){
+            for(i32 a = 0; a < ch->attributesCount && success; a++){
                 if(!strncmp("lineHeight", ch->attributeNames[a], 6)){
                     if(!sscanf(ch->attributeValues[a], "%d", &target->lineHeight)){
                         INV;
@@ -108,11 +108,11 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                 }
             }
         }else if(!strncmp(ch->name, "char", 4)){
-            for(int32 j = 0; j < ch->childrenCount && success; j++){
+            for(i32 j = 0; j < ch->childrenCount && success; j++){
                 XMLNode * chr = ch->children[j];
                 char glyph;
                 GlyphData tmp = {};
-                for(int32 a = 0; a < chr->attributesCount; a++){
+                for(i32 a = 0; a < chr->attributesCount; a++){
                     if(!strncmp("width", chr->attributeNames[a], 5)){
                         if(!sscanf(chr->attributeValues[a], "%d", &tmp.AABB.width)){
                             INV;
@@ -170,11 +170,11 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                 ASSERT(tmp.AABB.height != 0);
                 target->glyphs[glyph] = tmp;
             /*
-            for(int32 k = 0; k < ch->childrenCount; k++){
+            for(i32 k = 0; k < ch->childrenCount; k++){
                 XMLNode * kerningChild = ch->children[k];
                 char against = 0;
-                int32 advance = 0;
-                for(int32 a = 0; a < kerningChild->attributesCount; a++){
+                i32 advance = 0;
+                for(i32 a = 0; a < kerningChild->attributesCount; a++){
                     if(!strncmp("advance", kerningChild->attributeNames[a], 7)){
                         if(!sscanf(kerningChild->attributeValues[a], "%d", &advance)){
                             INV;
@@ -207,11 +207,11 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
     return success;
 }
 
-bool initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
+bool initBitmapFont(BitmapFont * target, const Image * source, u32 gridSize){
     memcpy(&target->original.data, source, sizeof(Image));
     memcpy(&target->current.data, source, sizeof(Image));
     
-    uint32 bytesize =  target->current.data.info.width * target->current.data.info.height *target->current.data.info.bitsPerSample * target->current.data.info.samplesPerPixel;
+    u32 bytesize =  target->current.data.info.width * target->current.data.info.height *target->current.data.info.bitsPerSample * target->current.data.info.samplesPerPixel;
     
     target->current.data.data = &PUSHA(byte,bytesize*2);
     
@@ -223,7 +223,7 @@ bool initBitmapFont(BitmapFont * target, const Image * source, uint32 gridSize){
 }
 
 
-bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * asciiText, BitmapFont * font, uint32 fontSize, Color color = {0xFF,0xFF,0xFF,0xFF}){
+bool printToBitmap(Image * target, u32 startX, u32 startY, const char * asciiText, BitmapFont * font, u32 fontSize, Color color = {0xFF,0xFF,0xFF,0xFF}){
     
     if(startY > (int64)target->info.height - fontSize) return false;
     if(startX > (int64)target->info.width - fontSize * strlen(asciiText)) return false;
@@ -247,23 +247,23 @@ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * as
     }
     
     
-    uint8 bytes = (target->info.samplesPerPixel * target->info.bitsPerSample) / 8;
-    uint32 letterIndex = 0;
+    u8 bytes = (target->info.samplesPerPixel * target->info.bitsPerSample) / 8;
+    u32 letterIndex = 0;
     while(asciiText[letterIndex] != '\0'){
         ASSERT((uint8)asciiText[letterIndex] <= 127);
-        uint32 sourcePixel = (asciiText[letterIndex] / 16) * fontSize * font->current.data.info.width + (asciiText[letterIndex] % 16) * fontSize;
-        uint32 offsetRow = startY * target->info.width;
-        uint32 offsetCol = startX + letterIndex * fontSize;
-        uint32 targetPixel = offsetRow + offsetCol;
+        u32 sourcePixel = (asciiText[letterIndex] / 16) * fontSize * font->current.data.info.width + (asciiText[letterIndex] % 16) * fontSize;
+        u32 offsetRow = startY * target->info.width;
+        u32 offsetCol = startX + letterIndex * fontSize;
+        u32 targetPixel = offsetRow + offsetCol;
         
         
-        for(uint32 rH = 0; rH < fontSize; rH++){
-            uint32 pitch = (targetPixel + rH * target->info.width);
-            uint32 fontpitch = sourcePixel + rH * font->current.data.info.width;
-            for(uint32 rW = 0; rW < fontSize; rW++){
+        for(u32 rH = 0; rH < fontSize; rH++){
+            u32 pitch = (targetPixel + rH * target->info.width);
+            u32 fontpitch = sourcePixel + rH * font->current.data.info.width;
+            for(u32 rW = 0; rW < fontSize; rW++){
                 if(font->current.data.data[rW + fontpitch] > 0){
-                    uint32 bpitch = (rW + pitch)*bytes;
-                    for(uint8 bi = 0; bi < bytes; bi++){
+                    u32 bpitch = (rW + pitch)*bytes;
+                    for(u8 bi = 0; bi < bytes; bi++){
                         target->data[bpitch + bi] = color.channel[bi];
                     }
                 }
@@ -275,19 +275,19 @@ bool printToBitmap(Image * target, uint32 startX, uint32 startY, const char * as
     return true;
 }
 
-int32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text, int32 pt, int32 pxPosition){
+int32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text, i32 pt, i32 pxPosition){
     if(pxPosition < 0){
         return 0;
     }
-    int32 width = 0;
-    int32 targetSize = ptToPx(CAST(float32, pt));
-    float32 fontScale = (float32)targetSize / font->pixelSize;
+    i32 width = 0;
+    i32 targetSize = ptToPx(CAST(float32, pt));
+    f32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
     nint len = strlen(text);
-    int32 unscaledTarget = CAST(int32, pxPosition/fontScale);
-    int32 caretPosition = 0;
+    i32 unscaledTarget = CAST(int32, pxPosition/fontScale);
+    i32 caretPosition = 0;
     for(; caretPosition < len; caretPosition++){
-        int32 contribution = 0;
+        i32 contribution = 0;
         const GlyphData * glyph = &font->glyphs[CAST(uint8, text[caretPosition])];
         ASSERT(glyph->valid);
         //kerning?
@@ -295,7 +295,7 @@ int32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text,
             contribution -= glyph->kerning[prevGlyph];
         }
         contribution += glyph->width;
-        int32 nextWidth = width + contribution;
+        i32 nextWidth = width + contribution;
         if(unscaledTarget <= nextWidth && unscaledTarget >= width){
             if(unscaledTarget - width < nextWidth - unscaledTarget){
                 return caretPosition;
@@ -310,10 +310,10 @@ int32 calculateAtlasTextCaretPosition(const AtlasFont * font, const char * text,
 }
 
 
-int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int32 pt, int32 textLen = -1){
-    int32 width = 0;
-    int32 targetSize = ptToPx(CAST(float32, pt));
-    float32 fontScale = (float32)targetSize / font->pixelSize;
+int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, i32 pt, i32 textLen = -1){
+    i32 width = 0;
+    i32 targetSize = ptToPx(CAST(float32, pt));
+    f32 fontScale = (float32)targetSize / font->pixelSize;
     char prevGlyph = 0;
     nint len;
     if(textLen != -1){
@@ -322,7 +322,7 @@ int32 calculateAtlasTextWidth(const AtlasFont * font, const char * text, int32 p
         len = text ? strlen(text) : 0;
     }
     for(int i = 0; i < len; i++){
-        uint8 c = text[i];
+        u8 c = text[i];
         const GlyphData * glyph = &font->glyphs[c];
         if(!glyph->valid && (c == '\r' || c == '\n')){
             continue;

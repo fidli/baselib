@@ -3,7 +3,7 @@
 #include "mem_structs.h"
 
 inline
-void * allocate(PersistentStackAllocator * allocator, uint64 bytes)
+void * allocate(PersistentStackAllocator * allocator, u64 bytes)
 {
 		void * result = ((byte *)allocator->mem_start) + allocator->offset;
 		allocator->offset += bytes;
@@ -18,7 +18,7 @@ void * allocate(PersistentStackAllocator * allocator, uint64 bytes)
 }
 
 inline
-void * allocate(StackAllocator * allocator, uint64 bytes)
+void * allocate(StackAllocator * allocator, u64 bytes)
 {
 	void * result = ((byte *) allocator->mem_start) + allocator->offsets[allocator->stackIndex];
 	allocator->offsets[allocator->stackIndex+1] = bytes + allocator->offsets[allocator->stackIndex];
@@ -93,10 +93,10 @@ void initMemory(void * memoryStart){
     mem.persistent.mem_start = memoryStart;
 	mem.persistent.effectiveSize = PERSISTENT_MEM;
 
-	mem.temp.offsets = CAST(uint64 *, CAST(byte *, mem.persistent.mem_start) + mem.persistent.effectiveSize);
-    mem.temp.bulkStackOffsets = CAST(uint16 *, CAST(byte *, mem.temp.offsets) + TEMP_MEM_STACK_SIZE*sizeof(*mem.temp.offsets));
+	mem.temp.offsets = CAST(u64 *, CAST(byte *, mem.persistent.mem_start) + mem.persistent.effectiveSize);
+    mem.temp.bulkStackOffsets = CAST(u16 *, CAST(byte *, mem.temp.offsets) + TEMP_MEM_STACK_SIZE*sizeof(*mem.temp.offsets));
 	
-	uint64 tempMemMetadataSize = TEMP_MEM_BULK_STACK_SIZE * sizeof(*mem.temp.bulkStackOffsets) + TEMP_MEM_STACK_SIZE * sizeof(*mem.temp.offsets);
+	u64 tempMemMetadataSize = TEMP_MEM_BULK_STACK_SIZE * sizeof(*mem.temp.bulkStackOffsets) + TEMP_MEM_STACK_SIZE * sizeof(*mem.temp.offsets);
 	mem.temp.mem_start = CAST(void *, CAST(byte*, mem.persistent.mem_start) + tempMemMetadataSize + mem.persistent.effectiveSize);
     ASSERT(tempMemMetadataSize < TEMP_MEM);
 	mem.temp.effectiveSize = TEMP_MEM - tempMemMetadataSize;

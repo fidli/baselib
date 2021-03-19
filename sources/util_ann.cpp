@@ -17,7 +17,7 @@ enum NeuralNetTrainLossFunctionType{
 
 
 
-static inline float32 sigmoidActivationFunction(float32 value){
+static inline f32 sigmoidActivationFunction(f32 value){
     return 1.0 / (1.0 + epow(-1*value));
 }
 
@@ -29,7 +29,7 @@ struct NeuralHiddenLayer{
 
 struct MLPNeuralNet{
     NeuralHiddenLayer * hiddenLayers;
-    uint16 hiddenLayersAmount;
+    u16 hiddenLayersAmount;
 };
 
 struct RNNNeuralNet{
@@ -40,14 +40,14 @@ struct RNNNeuralNet{
 /////////////// prediction
 
 void resetMemoryRNNNeuralNet(RNNNeuralNet * toReset){
-    for(uint32 i = 0; i < toReset->outputs.size; i++){
+    for(u32 i = 0; i < toReset->outputs.size; i++){
         toReset->outputs.v[i] = 0;
     }
 }
 
 bool predictRNNStep(RNNNeuralNet * model, vN * input, vN * output){
     ASSERT(output->size == model->outputs.size);
-    for(uint32 i = 0; i < model->outputs.size; i++){
+    for(u32 i = 0; i < model->outputs.size; i++){
         output->v[i] = model->outputs.v[i];
     }
     PUSHI;
@@ -87,7 +87,7 @@ bool predictRNNStep(RNNNeuralNet * model, vN * input, vN * output){
 bool predictMLP(const MLPNeuralNet * model, vN * input, vN * result){
     PUSHI;
     
-    float32 yP;
+    f32 yP;
     vN * layerOuts = &PUSHA(vN, model->hiddenLayersAmount+1);
     vN * layerOutput = &layerOuts[0];
     layerOutput->size = input->size+1;
@@ -131,7 +131,7 @@ bool predictMLP(const MLPNeuralNet * model, vN * input, vN * result){
     
     
     ASSERT(result->size == layerOutput->size-1); //no bias
-    for(uint32 i = 0; i < layerOutput->size-1; i++){
+    for(u32 i = 0; i < layerOutput->size-1; i++){
         result->v[i] = layerOutput->v[i];
     }
     
@@ -145,7 +145,7 @@ bool predictMLP(const MLPNeuralNet * model, vN * input, vN * result){
 /////////////// training
 
 struct NeuralNetTrainParams{
-    float32 learningRate;
+    f32 learningRate;
     NeuralNetTrainLossFunctionType lossFunction;
     //todo more parameters, like type of learning, batches, evo, etc...
 };
@@ -159,10 +159,10 @@ struct NeuralNetTrainPair{
 
 
 
-void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const NeuralNetTrainPair ** pairs, const uint32 * pairInputCount, uint64 datasize){
+void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const NeuralNetTrainPair ** pairs, const u32 * pairInputCount, u64 datasize){
     ASSERT(params->lossFunction == NeuralNetTrainLossFunctionType_QuadError);
     PUSHI;
-    float32 alfa = params->learningRate;
+    f32 alfa = params->learningRate;
     vN nodeDErrors;
     nodeDErrors.size = model->W.width;
     nodeDErrors.v = &PUSHA(float32, nodeDErrors.size);
@@ -182,7 +182,7 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
     nodeArgs.v = &PUSHA(float32, nodeArgs.size);
     
     
-    for(uint32 samplesIndex = 0; samplesIndex < datasize; samplesIndex++){
+    for(u32 samplesIndex = 0; samplesIndex < datasize; samplesIndex++){
         PUSHI;
         //Pkij = 0 <=> t = t0;
         for(int db = 0; db < 2; db++){
@@ -193,7 +193,7 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
             }
         }
         
-        for(uint32 inputIndex = 0; inputIndex < pairInputCount[samplesIndex]; inputIndex++){
+        for(u32 inputIndex = 0; inputIndex < pairInputCount[samplesIndex]; inputIndex++){
             matNM * currentP = pkDB[derivationIndex];
             matNM * previousP = pkDB[(derivationIndex + 1)%2];
             
@@ -234,7 +234,7 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
             
             
             //determine nodes error derivations ~Ek (using custom loss func)
-            for(uint32 k = 0; k < model->W.width; k++){
+            for(u32 k = 0; k < model->W.width; k++){
                 if(pairs[samplesIndex][inputIndex].matters[k]){
                     nodeDErrors.v[k] = -2 * (pairs[samplesIndex][inputIndex].result.v[k] - model->outputs.v[k]);
                 }else{
@@ -243,11 +243,11 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
             }
             
             //determine nodes derivations Pkij
-            for(uint32 k = 0; k < model->W.width; k++){ //the node which all weights are calculated for
-                float32 newDerivation = 1;
+            for(u32 k = 0; k < model->W.width; k++){ //the node which all weights are calculated for
+                f32 newDerivation = 1;
                 switch(model->activationFunction){
                     case NeuralNetActivationFunctionType_Sigmoid:{
-                        float32 val = sigmoidActivationFunction(nodeArgs.v[k]);
+                        f32 val = sigmoidActivationFunction(nodeArgs.v[k]);
                         newDerivation = val * (1-val);
                     }break;
                     case NeuralNetActivationFunctionType_Identity:
@@ -260,7 +260,7 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
                 
                 for(int i = 0; i < model->W.width; i++){ //the target weight node 
                     for(int j = 0; j < model->W.height; j++){ //the source weight node (can be input weight or bias weight)
-                        float32 sum = 0;
+                        f32 sum = 0;
                         for(int l = 0; l < model->W.width; l++){
                             sum += model->W.c[k* model->W.height + l] * previousP[l].c[i*model->W.height + j];
                         }
@@ -271,10 +271,10 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
             }
             
             //sub the dW
-            for(uint32 nodeIndex = 0; nodeIndex < model->W.width; nodeIndex++){
-                for(uint32 weightIndex = 0; weightIndex < model->W.height; weightIndex++){
-                    float32 sum = 0;
-                    for(uint32 k = 0; k < model->W.width; k++){
+            for(u32 nodeIndex = 0; nodeIndex < model->W.width; nodeIndex++){
+                for(u32 weightIndex = 0; weightIndex < model->W.height; weightIndex++){
+                    f32 sum = 0;
+                    for(u32 k = 0; k < model->W.width; k++){
                         sum += currentP[k].c[nodeIndex*model->W.height + weightIndex] * nodeDErrors.v[k];
                     }
                     model->W.c[nodeIndex*model->W.height + weightIndex] -= alfa * sum;
@@ -291,8 +291,8 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
     POPI;
 }
 
-void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, const NeuralNetTrainPair * data, const uint64 datasize){
-    for(uint64 dataIndex = 0; dataIndex < datasize; dataIndex++){
+void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, const NeuralNetTrainPair * data, const u64 datasize){
+    for(u64 dataIndex = 0; dataIndex < datasize; dataIndex++){
         
         PUSHI;
         
@@ -348,13 +348,13 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
         
         switch(parameters->lossFunction){
             case NeuralNetTrainLossFunctionType_QuadError:{
-                float32 alfa = parameters->learningRate;
+                f32 alfa = parameters->learningRate;
                 
                 vN * layerDerivations = &PUSHA(vN, model->hiddenLayersAmount);
                 vN * prevDerivations = NULL;
                 vN * currentDerivations = NULL;
                 NeuralHiddenLayer layerCopies[2];
-                uint8 layerCopyIndex = 1;
+                u8 layerCopyIndex = 1;
                 NeuralHiddenLayer * layer = NULL;
                 
                 for(int hiddenLayerIndex = model->hiddenLayersAmount-1; hiddenLayerIndex >= 0 ; hiddenLayerIndex--){
@@ -385,7 +385,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
                         }
                         
                         //dNode
-                        float32 derivationValue = 0;
+                        f32 derivationValue = 0;
                         if(prevDerivations != NULL){
                             for(int prevNodeIndex = 0; prevNodeIndex < prevLayer->W.width; prevNodeIndex++){
                                 //w * prev
@@ -400,7 +400,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
                             case NeuralNetActivationFunctionType_Identity:
                             break;
                             case NeuralNetActivationFunctionType_Sigmoid:{
-                                float32 val = sigmoidActivationFunction(layerArgs[hiddenLayerIndex].v[nodeIndex]);
+                                f32 val = sigmoidActivationFunction(layerArgs[hiddenLayerIndex].v[nodeIndex]);
                                 derivationValue *= val * (1-val);
                             }
                             break;
@@ -451,9 +451,9 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
 bool loadMLPNeuralNet(const FileContents * contents, MLPNeuralNet * result){
     char * line = &PUSHA(char, 1024);
     result->hiddenLayersAmount = 0;
-    uint32 scanOffset = 0;
-    uint32 rowsLeft = 0;
-    int32 layerIndex = -1;
+    u32 scanOffset = 0;
+    u32 rowsLeft = 0;
+    i32 layerIndex = -1;
     while(scanOffset < contents->size && sscanf(contents->contents + scanOffset, "%1024%1023[^\n]", line) == 1){
         if(result->hiddenLayersAmount == 0){
             ASSERT(sscanf(line, "%5%5hu", &result->hiddenLayersAmount) == 1);
@@ -474,7 +474,7 @@ bool loadMLPNeuralNet(const FileContents * contents, MLPNeuralNet * result){
                     INV;
                 }
             }else{
-                uint32 lineOffset = 0;
+                u32 lineOffset = 0;
                 for(int i = 0; i < result->hiddenLayers[layerIndex].W.width; i++){
                     ASSERT(sscanf(line + lineOffset, "%32%f", &result->hiddenLayers[layerIndex].W.c[result->hiddenLayers[layerIndex].W.height*i + (result->hiddenLayers[layerIndex].W.height - rowsLeft)]) == 1);
                     lineOffset += strfind(" ", line+lineOffset) + 1;
@@ -489,7 +489,7 @@ bool loadMLPNeuralNet(const FileContents * contents, MLPNeuralNet * result){
 }
 
 bool saveMLPNeuralNet(const MLPNeuralNet * source, FileContents * target){
-    uint32 maxLen = 70 + 20*source->hiddenLayersAmount;
+    u32 maxLen = 70 + 20*source->hiddenLayersAmount;
     for(int i = 0; i < source->hiddenLayersAmount; i++){
         maxLen += 33 * source->hiddenLayers[i].W.width * source->hiddenLayers[i].W.height;
     }
@@ -531,9 +531,9 @@ bool saveMLPNeuralNet(const MLPNeuralNet * source, FileContents * target){
 
 bool loadRNNNeuralNet(const FileContents * contents, RNNNeuralNet * result){
     char * line = &PUSHA(char, 1024);
-    uint32 scanOffset = 0;
-    uint32 rowsLeft = 0;
-    int32 layerIndex = -1;
+    u32 scanOffset = 0;
+    u32 rowsLeft = 0;
+    i32 layerIndex = -1;
     while(scanOffset < contents->size && sscanf(contents->contents + scanOffset, "%1024%1023[^\n]", line) == 1){
         if(rowsLeft == 0){
             char actFunc = '0';
@@ -550,7 +550,7 @@ bool loadRNNNeuralNet(const FileContents * contents, RNNNeuralNet * result){
                 INV;
             }
         }else{
-            uint32 lineOffset = 0;
+            u32 lineOffset = 0;
             for(int i = 0; i < result->W.width; i++){
                 ASSERT(sscanf(line + lineOffset, "%32%f", &result->W.c[result->W.height*i + (result->W.height - rowsLeft)]) == 1);
                 lineOffset += strfind(" ", line+lineOffset) + 1;
@@ -566,7 +566,7 @@ bool loadRNNNeuralNet(const FileContents * contents, RNNNeuralNet * result){
 
 
 bool saveRNNNeuralNet(const RNNNeuralNet * source, FileContents * target){
-    uint32 maxLen = 20 + 33 * source->W.width * source->W.height;
+    u32 maxLen = 20 + 33 * source->W.width * source->W.height;
     target->size = 0;
     target->contents = &PUSHA(char, maxLen);
     target->size += strlen(target->contents + target->size);

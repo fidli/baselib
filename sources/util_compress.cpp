@@ -4,38 +4,38 @@
 #include "util_sort.cpp"
 
 struct LZWCompressNode{
-    uint16 index;
+    u16 index;
     LZWCompressNode * next;
 };
 
 struct LZWTable{
     struct {
-        uint8 carryingSymbol[1 << 12];
-        uint16 previousNode[1 << 12];
+        u8 carryingSymbol[1 << 12];
+        u16 previousNode[1 << 12];
         LZWCompressNode * children[1 << 12];
     } data;
-    uint8 bits;
-    uint16 count;
+    u8 bits;
+    u16 count;
 };
 
 struct LZWStack{
-    uint8 symbols[1 << 12]; //all 12 bit numbers
-    uint16 currentIndex;
+    u8 symbols[1 << 12]; //all 12 bit numbers
+    u16 currentIndex;
 };
 
-static inline void LZWpush(LZWStack * stack, const uint8 symbol){
+static inline void LZWpush(LZWStack * stack, const u8 symbol){
     ASSERT(stack->currentIndex < (1 << 11));
     stack->symbols[stack->currentIndex++] = symbol;
 }
 
-static inline uint8 LZWpop(LZWStack * stack){
+static inline u8 LZWpop(LZWStack * stack){
     ASSERT(stack->currentIndex > 0);
-    uint8 ret = stack->symbols[stack->currentIndex-1];
+    u8 ret = stack->symbols[stack->currentIndex-1];
     stack->currentIndex--;
     return ret;
 }
 
-static inline uint8 LZWpeek(const LZWStack * stack){
+static inline u8 LZWpeek(const LZWStack * stack){
     return stack->symbols[stack->currentIndex-1];
 }
 
@@ -47,15 +47,15 @@ struct ReadHeadBit{
     const byte * source;
     byte currentByte;
     bool inverted;
-    uint32 byteOffset;
-    uint8 bitOffset;
+    u32 byteOffset;
+    u8 bitOffset;
 };
 
-static inline uint16 invertBits(const uint16 sourceBits, uint8 bitCount){
-    uint16 result = 0;
+static inline u16 invertBits(const u16 sourceBits, u8 bitCount){
+    u16 result = 0;
     
-    uint16 workBits = sourceBits;
-    int16 currentBit = bitCount-1;
+    u16 workBits = sourceBits;
+    i16 currentBit = bitCount-1;
     
     while(currentBit >= 0){
         result |= ((workBits & 1) << currentBit);
@@ -66,16 +66,16 @@ static inline uint16 invertBits(const uint16 sourceBits, uint8 bitCount){
     return result;
 }
 
-static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
+static inline u16 readBits(ReadHeadBit * head, const u8 bits){
     ASSERT(bits > 0);
     ASSERT(bits <= 16);
-    uint16 result = 0;
+    u16 result = 0;
     
     
     
-    int16 toRead = bits;
+    i16 toRead = bits;
     while(toRead > 0){
-        uint8 remainingBits = 8 - head->bitOffset;
+        u8 remainingBits = 8 - head->bitOffset;
         ASSERT(remainingBits <= 8);
         if(remainingBits == 0){
             head->bitOffset = 0;
@@ -89,7 +89,7 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
             }
         }
         
-        uint8 reading = (toRead >= remainingBits) ? remainingBits : toRead;
+        u8 reading = (toRead >= remainingBits) ? remainingBits : toRead;
         result <<= reading;
         result |=(uint8)( (uint8)((uint8)((uint8)head->currentByte << head->bitOffset) >> head->bitOffset) >> (8-head->bitOffset - reading));
         ASSERT(reading <= toRead);
@@ -106,24 +106,24 @@ static inline uint16 readBits(ReadHeadBit * head, const uint8 bits){
     return result;
 }
 
-uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target){
+uint32 decompressLZW(const byte * source, const u32 sourceSize, byte * target){
     //http://www.fileformat.info/format/tiff/corion-lzw.htm
     //every message begins with clear code and ends with end of information code
     
     ReadHeadBit compressedDataHead = {};
     compressedDataHead.source = source;
     compressedDataHead.inverted = false;
-    uint16 endOfInfo = 257;
-    uint16 clearCode = 256;
+    u16 endOfInfo = 257;
+    u16 clearCode = 256;
     PUSHI;
     LZWTable * table = &PUSH(LZWTable);
     LZWStack * stack = &PUSH(LZWStack);
     table->bits = 9;
     stack->currentIndex = 0;
-    uint16 currentTableIndex;
-    uint16 previousTableIndex;
-    uint32 targetIndex = 0;
-    uint8 previousFirstCharacter;
+    u16 currentTableIndex;
+    u16 previousTableIndex;
+    u32 targetIndex = 0;
+    u8 previousFirstCharacter;
     ASSERT(*source == 128 && (~*(source + 1) & 128) == 128);
     if(*source != 128 || (~*(source + 1) & 128) != 128){
         POPI;
@@ -134,7 +134,7 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
         ReadHeadBit oldHead = compressedDataHead;
         currentTableIndex = readBits(&compressedDataHead, table->bits);
         if(currentTableIndex == clearCode){
-            for(uint16 i = 0; i < 258; i++){
+            for(u16 i = 0; i < 258; i++){
                 table->data.carryingSymbol[i] = i;
                 table->data.previousNode[i] = endOfInfo;
             }
@@ -163,7 +163,7 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
             }
             //get the output string
             ASSERT(LZWempty(stack));
-            uint16 crawlIndex = currentTableIndex;
+            u16 crawlIndex = currentTableIndex;
             if(currentTableIndex == table->count){
                 crawlIndex = previousTableIndex;
             }
@@ -174,7 +174,7 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
             
             //write to output
             ASSERT(!LZWempty(stack));  
-            uint8 firstChar = LZWpeek(stack);
+            u8 firstChar = LZWpeek(stack);
             while(!LZWempty(stack)){
                 target[targetIndex] = LZWpop(stack);
                 targetIndex++;
@@ -214,24 +214,24 @@ uint32 decompressLZW(const byte * source, const uint32 sourceSize, byte * target
 
 struct WriteHeadBit{
     byte * source;
-    uint32 byteOffset;
-    uint8 bitOffset;
+    u32 byteOffset;
+    u8 bitOffset;
 };
 
-static inline void writeBits(WriteHeadBit * head, uint16 data, const uint8 bits){
+static inline void writeBits(WriteHeadBit * head, u16 data, const u8 bits){
     ASSERT(bits > 0);
     ASSERT(bits <= 16);
-    uint8 toWrite = bits;
+    u8 toWrite = bits;
     data = data << (16 - bits);
     while(toWrite != 0){
-        uint8 currentWriting = MIN(8 - head->bitOffset, toWrite);
+        u8 currentWriting = MIN(8 - head->bitOffset, toWrite);
         
         //clear with zeros
         head->source[head->byteOffset] &=
             (uint8)((uint8)(0xFF >> (8 - head->bitOffset)) << (8 - head->bitOffset)) |
             (uint8)(0xFF >>  (head->bitOffset + currentWriting));
         
-        uint8 write = ((uint8)(((uint8)(((data >> 8) >> head->bitOffset)) >> (8 - head->bitOffset - currentWriting)))) << (8 - head->bitOffset - currentWriting);
+        u8 write = ((uint8)(((uint8)(((data >> 8) >> head->bitOffset)) >> (8 - head->bitOffset - currentWriting)))) << (8 - head->bitOffset - currentWriting);
         
         //write
         head->source[head->byteOffset] |= write;
@@ -247,27 +247,27 @@ static inline void writeBits(WriteHeadBit * head, uint16 data, const uint8 bits)
 }
 
 
-uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
+uint32 compressLZW(byte * source, const u32 sourceSize, byte * target){
     //http://www.fileformat.info/format/tiff/corion-lzw.htm
     //every message begins with clear code and ends with end of information code
     WriteHeadBit compressedDataHead = {};
     compressedDataHead.source = target;
-    uint16 endOfInfo = 257;
-    uint16 clearCode = 256;
+    u16 endOfInfo = 257;
+    u16 clearCode = 256;
     PUSHI;
     LZWTable * table = &PUSH(LZWTable);
     LZWCompressNode * pool = &PUSHA(LZWCompressNode, 1 << 12);
-    uint16 poolCount = 0;
+    u16 poolCount = 0;
     table->count = 4094;
     table->bits = 9;
     
-    uint16 currentCrawl = source[0];
+    u16 currentCrawl = source[0];
     bool fresh = true;
-    for(uint32 i = 1; i < sourceSize; i++){
+    for(u32 i = 1; i < sourceSize; i++){
         if(table->count == 4094){
             ASSERT((i == 1 && table->bits == 9) || (i != 1 && table->bits == 12));
             writeBits(&compressedDataHead, clearCode, table->bits);
-            for(uint16 i = 0; i < 258; i++){
+            for(u16 i = 0; i < 258; i++){
                 table->data.carryingSymbol[i] = i;
                 table->data.children[i] = NULL;
             }
@@ -293,7 +293,7 @@ uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
         } 
         if(!found){
             writeBits(&compressedDataHead, currentCrawl, table->bits);
-            uint16 newIndex = table->count;
+            u16 newIndex = table->count;
             table->data.carryingSymbol[newIndex] = source[i];
             table->data.children[newIndex] = NULL;
             if(previous == NULL){
@@ -332,27 +332,27 @@ uint32 compressLZW(byte * source, const uint32 sourceSize, byte * target){
 
 struct HuffmanNode{
     bool leaf;
-    int32 value;
-    uint8 bit;
+    i32 value;
+    u8 bit;
     HuffmanNode * one;
     HuffmanNode * zero;
 };
 
 struct CodeWord{
-    uint32 weight;
-    uint32 code;
-    uint8 bitSize;
+    u32 weight;
+    u32 code;
+    u8 bitSize;
 };
 
-inline static uint32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * literalsTree, const HuffmanNode * distancesTree, byte * target){
+inline static u32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * literalsTree, const HuffmanNode * distancesTree, byte * target){
     
     
-    int32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
-    int32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
+    i32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
+    i32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
     
     
     //inflating huffman codes
-    uint32 localOffset = 0;
+    u32 localOffset = 0;
     const HuffmanNode * currentNode = literalsTree;
     while(true){
         if(readBits(head, 1) & 1){
@@ -370,17 +370,17 @@ inline static uint32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * l
             }
             if(currentNode->value > 256){
                 //repetition, defined in specification
-                int32 count;
+                i32 count;
                 if(currentNode->value < 265){
                     count = currentNode->value - 254;
                 }else if(currentNode->value < 285){
-                    uint8 bits = (currentNode->value - 261) / 4;
+                    u8 bits = (currentNode->value - 261) / 4;
                     count = invertBits(readBits(head, bits), bits) + extraCounts[currentNode->value - 265];
                 }else{
                     count = 258;
                 }
                 
-                int32 backOffset;
+                i32 backOffset;
                 
                 if(distancesTree){
                     const HuffmanNode * distNode = distancesTree;
@@ -402,13 +402,13 @@ inline static uint32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * l
                 
                 
                 if(backOffset > 3){
-                    uint8 bits = (backOffset-2)/2;
+                    u8 bits = (backOffset-2)/2;
                     backOffset =  invertBits(readBits(head, bits), bits) + extraBackOffsets[backOffset-4];
                 }
                 
                 unsigned char * start = target + localOffset - 1 - backOffset;
                 
-                for(int32 i = 0; i < count; i++){
+                for(i32 i = 0; i < count; i++){
                     target[localOffset++] = start[i];
                 }
                 
@@ -421,7 +421,7 @@ inline static uint32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * l
 }
 
 
-static void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 code, uint8 codeLenght){
+static void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, u16 code, u8 codeLenght){
     
     //if this fires, not a prefix code
     ASSERT(tree->value == -1);
@@ -467,7 +467,7 @@ static void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, uint16 cod
     
 }
 
-static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, uint32 itemCount){
+static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, u32 itemCount){
     
     
     
@@ -491,22 +491,22 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, uint32 i
                });
     
     
-    uint8 maxCodeLength = codeWords[itemCount-1].bitSize;
+    u8 maxCodeLength = codeWords[itemCount-1].bitSize;
     
-    uint32 * amounts = &PUSHA(uint32, maxCodeLength+1);
-    for(uint8 i = 0; i < maxCodeLength; i++){
+    u32 * amounts = &PUSHA(uint32, maxCodeLength+1);
+    for(u8 i = 0; i < maxCodeLength; i++){
         amounts[i] = 0;
     }
-    uint32 * codeDispenser = &PUSHA(uint32, maxCodeLength+1);
-    uint32 code = 0;
+    u32 * codeDispenser = &PUSHA(uint32, maxCodeLength+1);
+    u32 code = 0;
     codeDispenser[0] = code;
     
     
-    for(uint32 i = 0; i < itemCount; i++){
+    for(u32 i = 0; i < itemCount; i++){
         amounts[codeWords[i].bitSize]++;
     }
     
-    for(uint8 i = 1; i <= maxCodeLength; i++){
+    for(u8 i = 1; i <= maxCodeLength; i++){
         code = (code + amounts[i-1]) << 1;
         codeDispenser[i] = code;
     }
@@ -514,7 +514,7 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, uint32 i
     
     
     
-    for(uint32 i = 0; i < itemCount; i++){
+    for(u32 i = 0; i < itemCount; i++){
         //proccess each code length
         
         if(codeWords[i].bitSize == 0) continue;
@@ -532,7 +532,7 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, uint32 i
     tree.one = NULL;
     tree.zero = NULL;
     
-    for(uint32 i = 0; i < itemCount; i++){
+    for(u32 i = 0; i < itemCount; i++){
         if(codeWords[i].bitSize == 0) continue;
         HuffmanNode * node = &PUSH(HuffmanNode);
         
@@ -551,10 +551,10 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, uint32 i
 
 
 
-static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeWord * target, uint32 limit){
+static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeWord * target, u32 limit){
     
     const HuffmanNode * currentNode = tree;
-    int32 i = 0;
+    i32 i = 0;
     while(i < limit){
         
         if(readBits(head, 1) & 1){
@@ -567,10 +567,10 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
             
             //17 repeat 0 n times n = 3 bits
             if(currentNode->value == 17){
-                uint16 times0 = invertBits(readBits(head, 3), 3);
+                u16 times0 = invertBits(readBits(head, 3), 3);
                 times0 += 3;
                 
-                for(uint16 ri = 0; ri < times0; ri++){
+                for(u16 ri = 0; ri < times0; ri++){
                     target[i].bitSize = 0;
                     target[i].weight = i;
                     i++;
@@ -579,9 +579,9 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
                 
             }else if(currentNode->value == 18){
                 //18 repeat 0 n times n = 7 bits
-                uint16 times0 = invertBits(readBits(head, 7), 7);
+                u16 times0 = invertBits(readBits(head, 7), 7);
                 times0 += 11;
-                for(uint16 ri = 0; ri  < times0; ri++){
+                for(u16 ri = 0; ri  < times0; ri++){
                     target[i].bitSize = 0;
                     target[i].weight = i;
                     i++;
@@ -589,10 +589,10 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
                 
             }else if(currentNode->value == 16){
                 ////16 repeat previous n times
-                uint16 timesRepeat = invertBits(readBits(head, 2), 2);
+                u16 timesRepeat = invertBits(readBits(head, 2), 2);
                 timesRepeat += 3;
                 ASSERT(i-1 >= 0);
-                for(uint16 ri = 0; ri < timesRepeat; ri++){
+                for(u16 ri = 0; ri < timesRepeat; ri++){
                     target[i].bitSize = target[i-1].bitSize;
                     target[i].weight = i;
                     i++;
@@ -620,7 +620,7 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
 //http://www.gzip.org/algorithm.txt - idea
 
 //more specific - https://en.wikipedia.org/wiki/DEFLATE or RFC
-bool decompressDeflate(const char * compressedData, const uint32 compressedSize, char * target){
+bool decompressDeflate(const char * compressedData, const u32 compressedSize, char * target){
     
     //dict 32kbytes
     //maxLen = 256
@@ -631,32 +631,32 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
     head.source = (const unsigned char*)compressedData;
     
     //phase1 repeat counts, is this hardcoded defined? or where do these repeat times come from?
-    uint8 dynamicCodes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
+    u8 dynamicCodes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
     //uint8 ascendingIndices[] = { 3, 17, 15, 13, 11, 9, 7, 5, 4, 6, 8, 10, 12, 14, 16, 18, 0, 1, 2};
     
-    uint32 targetOffset = 0;
+    u32 targetOffset = 0;
     
     bool processBlock = true;
     while(processBlock){
         PUSHI;
         processBlock = readBits(&head, 1);
-        uint16 header = invertBits(readBits(&head, 2), 2);
+        u16 header = invertBits(readBits(&head, 2), 2);
         
         
         if((header & 3) == 0){
             //a stored/raw/literal section, between 0 and 65,535 bytes in length.
             //http://www.bolet.org/~pornin/deflate-flush.html
             while(head.bitOffset != 0){
-                uint16 bits = readBits(&head, 1);
+                u16 bits = readBits(&head, 1);
                 //ASSERT(bits == 0);
             } //get rid of 0 bytes
             
-            uint16 dataSize = readBits(&head, 16);
+            u16 dataSize = readBits(&head, 16);
             //this is redundancy
-            uint16 complement = readBits(&head, 16);
+            u16 complement = readBits(&head, 16);
             //now the data should be present
             ASSERT(head.bitOffset == 0);
-            for(uint32 i = 0; i < dataSize; i++){
+            for(u32 i = 0; i < dataSize; i++){
                 target[targetOffset++] = (byte) readBits(&head, 8);
             }
             
@@ -679,9 +679,9 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             tree.one = NULL;
             tree.zero = NULL;
             
-            uint16 code = 48;
+            u16 code = 48;
             
-            for(int32 value = 0; value <= 143; value++){
+            for(i32 value = 0; value <= 143; value++){
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
@@ -693,7 +693,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 code++;
             }
             code = 400;
-            for(int32 value = 144; value <= 255; value++){
+            for(i32 value = 144; value <= 255; value++){
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
@@ -705,7 +705,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
                 code++;
             }
             code = 0;
-            for(int32 value = 256; value <= 279; value++){
+            for(i32 value = 256; value <= 279; value++){
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
@@ -718,7 +718,7 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             }
             
             code = 192;
-            for(int32 value = 280; value <= 287; value++){
+            for(i32 value = 280; value <= 287; value++){
                 HuffmanNode * node = &PUSH(HuffmanNode);
                 
                 node->value = value;
@@ -739,30 +739,30 @@ bool decompressDeflate(const char * compressedData, const uint32 compressedSize,
             // - http://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art001
             //see Listing 14: Read the GZIP pre-header
             
-            uint16 litCode = invertBits(readBits(&head, 5), 5);
-            uint16 distCode = invertBits(readBits(&head, 5), 5);
+            u16 litCode = invertBits(readBits(&head, 5), 5);
+            u16 distCode = invertBits(readBits(&head, 5), 5);
             
             
             //huffmann tree for following lenghts
-            uint16 howMany3bitCodes = invertBits(readBits(&head, 4), 4);
+            u16 howMany3bitCodes = invertBits(readBits(&head, 4), 4);
             howMany3bitCodes += 4;
             
-            uint16 codeLengthsForRepeat[19];
-            for(uint8 i = 0; i < ARRAYSIZE(codeLengthsForRepeat); i++){
+            u16 codeLengthsForRepeat[19];
+            for(u8 i = 0; i < ARRAYSIZE(codeLengthsForRepeat); i++){
                 codeLengthsForRepeat[i] = 0;
             }
             
             
             CodeWord codeWords[19];
-            for(uint8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
+            for(u8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
                 codeWords[ci].weight = dynamicCodes[ci];
                 codeWords[ci].bitSize = 0;
             }
             
             
             //kinda RlE 
-            for(uint8 bci = 0; bci < howMany3bitCodes; bci++){
-                uint16 codeLength = invertBits(readBits(&head, 3), 3);
+            for(u8 bci = 0; bci < howMany3bitCodes; bci++){
+                u16 codeLength = invertBits(readBits(&head, 3), 3);
                 codeWords[bci].bitSize = codeLength;
             }
             

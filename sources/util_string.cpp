@@ -8,8 +8,8 @@
 #ifndef CRT_PRESENT
 
 int32 strcmp(const char * a, const char * b){
-    int32 result = 0;
-    for(uint32 index = 0; ;index++){
+    i32 result = 0;
+    for(u32 index = 0; ;index++){
         
         result = a[index] - b[index];
         if(result){
@@ -23,8 +23,8 @@ int32 strcmp(const char * a, const char * b){
 }
 
 int32 strncmp(const char * a, const char * b, nint maxlen){
-    int32 result = 0;
-    for(uint32 index = 0; index < maxlen;index++){
+    i32 result = 0;
+    for(u32 index = 0; index < maxlen;index++){
         
         result = a[index] - b[index];
         if(result){
@@ -40,7 +40,7 @@ int32 strncmp(const char * a, const char * b, nint maxlen){
 
 
 char * strncpy(char * target, const char * source, nint limit){
-    uint32 i = 0;
+    u32 i = 0;
     do{
         target[i] = source[i];
         i++;
@@ -53,7 +53,7 @@ char * strncpy(char * target, const char * source, nint limit){
 }
 
 char * strcpy(char * target, const char * source){
-    uint32 i = 0;
+    u32 i = 0;
     do{
         target[i] = source[i];
         i++;
@@ -82,13 +82,13 @@ nint strlen(const char * source){
 }
 
 const char * strstr(const char * data, const char * searchFor){
-    int32 searchLen = strlen(searchFor);
-    int32 dataLen = strlen(data);
+    i32 searchLen = strlen(searchFor);
+    i32 dataLen = strlen(data);
     if(searchLen > dataLen){
         return NULL;
     }
     // TODO(fidli): more efficient way?
-    for(int32 i = 0; i <= dataLen - searchLen; i++){
+    for(i32 i = 0; i <= dataLen - searchLen; i++){
         if(!strncmp(data + i, searchFor, searchLen)){
             return data + i;
         }
@@ -97,12 +97,12 @@ const char * strstr(const char * data, const char * searchFor){
 }
 
 char * strcat(char * first, const char * second){
-    uint32 index = 0;
+    u32 index = 0;
     while(first[index] != '\0'){
         first[index] = first[index];
         index++;
     }
-    uint32 index2 = 0;
+    u32 index2 = 0;
     while(second[index2] != '\0'){
         first[index + index2] = second[index2];
         index2++;
@@ -114,9 +114,9 @@ char * strcat(char * first, const char * second){
 #endif
 
 //todo: overflow control + return 0 on overflow
-static uint8 scanNumber16(const char * source, int16 * target, uint8 maxDigits = 6){
+static u8 scanNumber16(const char * source, i16 * target, u8 maxDigits = 6){
     if(maxDigits > 6) maxDigits = 6; //cant fit more with sign
-    uint8 i = 0;
+    u8 i = 0;
     bool first = true;
     bool negative = false;
     if(source[i] == '-'){
@@ -124,7 +124,7 @@ static uint8 scanNumber16(const char * source, int16 * target, uint8 maxDigits =
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -142,9 +142,9 @@ static uint8 scanNumber16(const char * source, int16 * target, uint8 maxDigits =
     return i;
 }
 
-static uint8 scanNumber8(const char * source, int8 * target, uint8 maxDigits = 3){
+static u8 scanNumber8(const char * source, i8 * target, u8 maxDigits = 3){
     if(maxDigits > 6) maxDigits = 6; //cant fit more with sign
-    uint8 i = 0;
+    u8 i = 0;
     bool first = true;
     bool negative = false;
     if(source[i] == '-'){
@@ -152,7 +152,7 @@ static uint8 scanNumber8(const char * source, int8 * target, uint8 maxDigits = 3
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -170,12 +170,12 @@ static uint8 scanNumber8(const char * source, int8 * target, uint8 maxDigits = 3
     return i;
 }
 
-static uint8 scanUnumber8(const char * source, uint8 * target, uint8 maxDigits = 3){
+static u8 scanUnumber8(const char * source, u8 * target, u8 maxDigits = 3){
     if(maxDigits > 3) maxDigits = 3; //cant fit more
-    uint8 i = 0;
+    u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -187,12 +187,12 @@ static uint8 scanUnumber8(const char * source, uint8 * target, uint8 maxDigits =
     return i;
 }
 
-static uint8 scanUnumber16(const char * source, uint16 * target, uint8 maxDigits = 5){
+static u8 scanUnumber16(const char * source, u16 * target, u8 maxDigits = 5){
     if(maxDigits > 5) maxDigits = 5; //cant fit more
-    uint8 i = 0;
+    u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -206,9 +206,9 @@ static uint8 scanUnumber16(const char * source, uint16 * target, uint8 maxDigits
 
 
 //todo: overflow control + return 0 on overflow
-static uint8 scanNumber(const char * source, int32 * target, uint8 maxDigits = 11){
-    if(maxDigits > 11) maxDigits = 11; //cant fit more into int32 with sign
-    uint8 i = 0;
+static u8 scanNumber(const char * source, i32 * target, u8 maxDigits = 11){
+    if(maxDigits > 11) maxDigits = 11; //cant fit more into i32 with sign
+    u8 i = 0;
     bool first = true;
     bool negative = false;
     if(source[i] == '-'){
@@ -216,7 +216,7 @@ static uint8 scanNumber(const char * source, int32 * target, uint8 maxDigits = 1
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         
         if(digit < 48 || digit > 57) break;
         digit -= 48;
@@ -236,9 +236,9 @@ static uint8 scanNumber(const char * source, int32 * target, uint8 maxDigits = 1
 }
 
 //todo: overflow control + return 0 on overflow
-static uint8 scanNumber64(const char * source, int64 * target, uint8 maxDigits = 20){
-    if(maxDigits > 20) maxDigits = 20; //cant fit more into int64 with sign
-    uint8 i = 0;
+static u8 scanNumber64(const char * source, i64 * target, u8 maxDigits = 20){
+    if(maxDigits > 20) maxDigits = 20; //cant fit more into i64 with sign
+    u8 i = 0;
     bool first = true;
     bool negative = false;
     if(source[i] == '-'){
@@ -246,7 +246,7 @@ static uint8 scanNumber64(const char * source, int64 * target, uint8 maxDigits =
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         
         if(digit < 48 || digit > 57) break;
         digit -= 48;
@@ -265,12 +265,12 @@ static uint8 scanNumber64(const char * source, int64 * target, uint8 maxDigits =
     return i;
 }
 
-static uint8 scanUnumber(const char * source, uint32 * target, uint8 maxDigits = 10){
+static u8 scanUnumber(const char * source, u32 * target, u8 maxDigits = 10){
     if(maxDigits > 10) maxDigits = 10; //cant fit more
-    uint8 i = 0;
+    u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -283,12 +283,12 @@ static uint8 scanUnumber(const char * source, uint32 * target, uint8 maxDigits =
 }
 
 
-static uint8 scanUnumber64(const char * source, uint64 * target, uint8 maxDigits = 20){
+static u8 scanUnumber64(const char * source, u64 * target, u8 maxDigits = 20){
     if(maxDigits > 20) maxDigits = 20; //cant fit more
-    uint8 i = 0;
+    u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        int8 digit = (int8) source[i];
+        i8 digit = (int8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -301,10 +301,10 @@ static uint8 scanUnumber64(const char * source, uint64 * target, uint8 maxDigits
 }
 
 
-static uint8 printDigits(char * target, int64 number){
+static u8 printDigits(char * target, i64 number){
     char digitsStack[20];
-    int8 stackSize = 0;
-    int64 temp = ABS(number);
+    i8 stackSize = 0;
+    i64 temp = ABS(number);
     do{
         digitsStack[stackSize] = char((temp % 10) + 48);
         temp /= 10;
@@ -312,7 +312,7 @@ static uint8 printDigits(char * target, int64 number){
     } while(temp != 0);
     stackSize--;
     
-    uint8 i = 0;
+    u8 i = 0;
     if(number < 0){
         target[i++] = '-';
     }
@@ -349,7 +349,7 @@ struct FormatInfo{
     struct {
         bool varLen;
     } print;
-    uint32 width;
+    u32 width;
     FormatType type;
     FormatTypeSize typeLength;
     union{
@@ -362,19 +362,19 @@ struct FormatInfo{
             char capitalLetterRangeLow;
             char capitalLetterRangeHigh;
             const char * charlist[4];
-            uint8 charlistLengths[4];
-            uint8 charlistCount;
+            u8 charlistLengths[4];
+            u8 charlistCount;
         } charlist;
         struct{
             char * start;
-            uint32 length;
+            u32 length;
         } immediate;
         struct {
-            uint8 precision;
+            u8 precision;
             bool defaultPrecision;
         } real;
     };
-    uint32 length;
+    u32 length;
     bool padding0;
     bool forceSign;
     bool leftJustify;
@@ -390,9 +390,9 @@ static inline bool isDigit19(const char digit){
 
 //unsafe, format must be 0 terminated
 static FormatInfo parseFormat(const char * format){
-    uint32 formatIndex = 0;
+    u32 formatIndex = 0;
     FormatInfo info = {};
-    uint32 localMaxread = -1;
+    u32 localMaxread = -1;
     //%... or immediate
     if(format[formatIndex] == '%'){
         formatIndex++;
@@ -471,7 +471,7 @@ static FormatInfo parseFormat(const char * format){
                 info.charlist.inverted = true;
                 formatIndex++;
             }
-            uint8 charlistLen = 0;
+            u8 charlistLen = 0;
             for(;format[formatIndex] != ']'; formatIndex++){
                 ASSERT(format[formatIndex] != '\0');
                 if(format[formatIndex+1] == '-'){
@@ -563,33 +563,33 @@ static FormatInfo parseFormat(const char * format){
 }
 
 //returns printed characters
-int32 printPrepend(char * target, char value, int32 len){
+int32 printPrepend(char * target, char value, i32 len){
     if(len > 0){
         memset(target, value, len);
         return len;
     }
     return 0;
 }
-uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_list ap){
+uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list ap){
     
     
-    uint32 targetIndex = 0;
-    uint32 formatOffset = 0;
+    u32 targetIndex = 0;
+    u32 formatOffset = 0;
     FormatInfo info;
-	uint32 successfullyPrinted = 0; //printed entities
+	u32 successfullyPrinted = 0; //printed entities
     while((info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
         formatOffset += info.length;
         if(info.print.varLen){
-            int32 len = va_arg(ap, int32);
+            i32 len = va_arg(ap, int32);
             info.width = len;
         }
-        uint32 previousTargetIndex = targetIndex;
+        u32 previousTargetIndex = targetIndex;
         switch(info.type){
             case FormatType_c:
             case FormatType_s:{
                 char * source;
                 char sourceSlot;
-                int32 toPrint = 0x7FFFFFFF;
+                i32 toPrint = 0x7FFFFFFF;
                 if(info.type == FormatType_c){
                     toPrint = 1;
                     sourceSlot = CAST(char, va_arg(ap, int));
@@ -604,7 +604,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                     targetIndex += printPrepend(target + targetIndex, ' ', info.width - toPrint);
                 }
                 //set proper max length to avoid buffer overflow
-                uint32 i = 0;
+                u32 i = 0;
                 for(; targetIndex + i < maxprint && i < toPrint && source[i] != '\0'; i++){
                     target[targetIndex + i] = source[i];
                 }
@@ -613,48 +613,48 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
             }break;
             case FormatType_d:
             case FormatType_u:{
-                uint64 absValue;
+                u64 absValue;
                 bool negative = false;
                 if(info.type == FormatType_u){
                     if(info.typeLength == FormatTypeSize_Default){
-                        uint32 source = va_arg(ap, uint32);
+                        u32 source = va_arg(ap, uint32);
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
-                        uint16 source = CAST(uint16, va_arg(ap, int));
+                        u16 source = CAST(uint16, va_arg(ap, int));
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        uint8 source = CAST(uint8, va_arg(ap, int));
+                        u8 source = CAST(uint8, va_arg(ap, int));
                         absValue = source;
                     }else if(info.typeLength == FormatTypeSize_ll){
-                        uint64 source = va_arg(ap, uint64);
+                        u64 source = va_arg(ap, uint64);
                         absValue = source;
                     }else{
                         return -1;
                     }
                 }else if(info.type == FormatType_d){
                     if(info.typeLength == FormatTypeSize_Default){
-                        int32 source = va_arg(ap, int32);
+                        i32 source = va_arg(ap, int32);
                         if(source < 0){
                             source *= -1;
                             negative = true;
                         }
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
-                        int16 source = CAST(int16, va_arg(ap, int));
+                        i16 source = CAST(int16, va_arg(ap, int));
                         if(source < 0){
                             source *= -1;
                             negative = true;
                         }
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        int8 source = CAST(int8, va_arg(ap, int));
+                        i8 source = CAST(int8, va_arg(ap, int));
                         if(source < 0){
                             source *= -1;
                             negative = true;
                         }
                         absValue = source;
                     }else if(info.typeLength == FormatTypeSize_ll){
-                        int64 source = va_arg(ap, int64);
+                        i64 source = va_arg(ap, int64);
                         if(source < 0){
                             source *= -1;
                             negative = true;
@@ -667,7 +667,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 }
                 
                 if(!info.leftJustify || info.padding0){
-                    int8 prependLen = info.width - numlen(absValue);
+                    i8 prependLen = info.width - numlen(absValue);
                     if(info.forceSign || negative){
                         prependLen--;
                     }
@@ -690,7 +690,7 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 return -1;
             }break;
             case FormatType_immediate:{
-                uint32 i = 0;
+                u32 i = 0;
                 for(;i < info.immediate.length; i++){
                     target[targetIndex + i] = info.immediate.start[i];
                 }
@@ -700,15 +700,15 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
             case FormatType_f:{
                 char delim = '.';
                 //float is promoted to double,...
-                float64 source = (float64)va_arg(ap, float64);
-                int64 wholePart = (int64) source;
+                f64 source = (float64)va_arg(ap, float64);
+                i64 wholePart = (int64) source;
                 
-                uint8 numlength = numlen(ABS(wholePart));
+                u8 numlength = numlen(ABS(wholePart));
                 bool negative = source < 0;
                 
                 if(numlength + info.real.precision + 1 <= info.width){
                     if(!info.leftJustify || info.padding0){
-                        int8 prependLen = info.width - numlength;
+                        i8 prependLen = info.width - numlength;
                         if(info.forceSign || negative){
                             prependLen--;
                         }
@@ -730,10 +730,10 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                     target[targetIndex] = delim;
                     
                     targetIndex++;
-                    uint8 precision = info.real.precision;
+                    u8 precision = info.real.precision;
                     
-                    int64 decimalPart = ABS((int64)((source - wholePart) * powd64(10, precision)));
-                    int32 prependLen = precision - numlen(decimalPart);
+                    i64 decimalPart = ABS((int64)((source - wholePart) * powd64(10, precision)));
+                    i32 prependLen = precision - numlen(decimalPart);
                     for(int i = 0; i < prependLen; i++){
                         target[targetIndex] = '0';
                         targetIndex++;
@@ -748,9 +748,9 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
                 return -1;
             }break;
         }
-        uint32 printedCharacters = targetIndex - previousTargetIndex;  
+        u32 printedCharacters = targetIndex - previousTargetIndex;  
         if((info.leftJustify && info.width != (uint32)-1) && printedCharacters < info.width){
-            for(int32 i = 0; i < info.width - printedCharacters; i++){
+            for(i32 i = 0; i < info.width - printedCharacters; i++){
                 target[targetIndex++] = ' ';
             }
         }
@@ -763,17 +763,17 @@ uint32 printFormatted(uint32 maxprint, char * target, const char * format, va_li
 
 
 
-uint32 scanFormatted(int32 limit, const char * source, const char * format, va_list ap){
-    uint32 formatOffset = 0;
-    uint32 sourceIndex = 0;
-    uint32 successfullyScanned = 0;
-    uint32 maxread = (uint32) limit;
+uint32 scanFormatted(i32 limit, const char * source, const char * format, va_list ap){
+    u32 formatOffset = 0;
+    u32 sourceIndex = 0;
+    u32 successfullyScanned = 0;
+    u32 maxread = (uint32) limit;
     FormatInfo info;
     bool exit = false;
     while(!exit && (info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
         formatOffset += info.length;
         
-        uint32 scannedChars = 0;
+        u32 scannedChars = 0;
         
         switch(info.type){
             case FormatType_c:
@@ -782,7 +782,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                 //set proper max length to avoid buffer overflow
                 ASSERT(info.width != 0); 
                 bool first = true;
-                uint32 i = 0;
+                u32 i = 0;
                 for(; sourceIndex < maxread && i < info.width && source[sourceIndex] != '\0'; sourceIndex++, i++){
                     if(first) first = false;
                     if(!info.scan.dryRun)
@@ -800,66 +800,66 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                 ASSERT(!info.scan.dryRun);
                 if(info.type == FormatType_u){
                     if(info.typeLength == FormatTypeSize_Default){
-                        uint32 * targetVar = va_arg(ap, uint32 * );
-                        uint8 maxDigits = 10;
+                        u32 * targetVar = va_arg(ap, u32 * );
+                        u8 maxDigits = 10;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanUnumber(source + sourceIndex, (uint32 *) targetVar, maxDigits);
+                        scannedChars = scanUnumber(source + sourceIndex, (u32 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_h){
-                        uint16 * targetVar = va_arg(ap, uint16 * );
-                        uint8 maxDigits = 5;
+                        u16 * targetVar = va_arg(ap, u16 * );
+                        u8 maxDigits = 5;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanUnumber16(source + sourceIndex, (uint16 *) targetVar, maxDigits);
+                        scannedChars = scanUnumber16(source + sourceIndex, (u16 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_ll){
-                        uint64 * targetVar = va_arg(ap, uint64 * );
-                        uint8 maxDigits = 20;
+                        u64 * targetVar = va_arg(ap, u64 * );
+                        u8 maxDigits = 20;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanUnumber64(source + sourceIndex, (uint64 *) targetVar, maxDigits);
+                        scannedChars = scanUnumber64(source + sourceIndex, (u64 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        uint8 * targetVar = va_arg(ap, uint8 * );
-                        uint8 maxDigits = 3;
+                        u8 * targetVar = va_arg(ap, u8 * );
+                        u8 maxDigits = 3;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanUnumber8(source + sourceIndex, (uint8 *) targetVar, maxDigits);
+                        scannedChars = scanUnumber8(source + sourceIndex, (u8 *) targetVar, maxDigits);
                     }
                     else{
                         INV; //implement me or genuine error
                     }
                 }else if(info.type == FormatType_d){
                     if(info.typeLength == FormatTypeSize_Default){
-                        int32 * targetVar = va_arg(ap, int32 * );
-                        uint8 maxDigits = 11;
+                        i32 * targetVar = va_arg(ap, i32 * );
+                        u8 maxDigits = 11;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanNumber(source + sourceIndex, (int32 *) targetVar, maxDigits);
+                        scannedChars = scanNumber(source + sourceIndex, (i32 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_h){
-                        int16 * targetVar = va_arg(ap, int16 * );
-                        uint8 maxDigits = 6;
+                        i16 * targetVar = va_arg(ap, i16 * );
+                        u8 maxDigits = 6;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanNumber16(source + sourceIndex, (int16 *) targetVar, maxDigits);
+                        scannedChars = scanNumber16(source + sourceIndex, (i16 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_ll){
-                        int64 * targetVar = va_arg(ap, int64 * );
-                        uint8 maxDigits = 20;
+                        i64 * targetVar = va_arg(ap, i64 * );
+                        u8 maxDigits = 20;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanNumber64(source + sourceIndex, (int64 *) targetVar, maxDigits);
+                        scannedChars = scanNumber64(source + sourceIndex, (i64 *) targetVar, maxDigits);
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        int8 * targetVar = va_arg(ap, int8 * );
-                        uint8 maxDigits = 3;
+                        i8 * targetVar = va_arg(ap, i8 * );
+                        u8 maxDigits = 3;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        scannedChars = scanNumber8(source + sourceIndex, (int8 *) targetVar, maxDigits);
+                        scannedChars = scanNumber8(source + sourceIndex, (i8 *) targetVar, maxDigits);
                     }
                     else{
                         INV; //implement me or genuine error
@@ -878,30 +878,30 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                 switch(info.typeLength){
                     
                     case FormatTypeSize_Default:{
-                        float32 * targetVar = va_arg(ap, float32 *);
+                        f32 * targetVar = va_arg(ap, f32 *);
                         
-                        uint8 maxDigits = 7;
+                        u8 maxDigits = 7;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
                         // TODO(fidli): scanReal()
-                        int32 wholePart = 0;
+                        i32 wholePart = 0;
                         scannedChars = scanNumber(source + sourceIndex, &wholePart, maxDigits);
                         *targetVar = (float32) wholePart;
                         sourceIndex += scannedChars;
                         if(source[sourceIndex] == '.'){
                             sourceIndex++;
-                            uint8 numlength = numlen(wholePart);
+                            u8 numlength = numlen(wholePart);
                             
-                            int32 decimalPart = 0;
-                            uint8 partScannedChars = scanNumber(source + sourceIndex, &decimalPart, maxDigits);
+                            i32 decimalPart = 0;
+                            u8 partScannedChars = scanNumber(source + sourceIndex, &decimalPart, maxDigits);
                             
                             if(decimalPart != 0){
-                                uint8 prepended = 0;
+                                u8 prepended = 0;
                                 for(;prepended < maxDigits; prepended++){
                                     if(source[sourceIndex + prepended] != '0') break;
                                 }
-                                uint8 len = numlen(decimalPart) + prepended;
+                                u8 len = numlen(decimalPart) + prepended;
                                 *targetVar += (float32)(decimalPart) / powd(10, len);
                             }
                             scannedChars += partScannedChars;
@@ -911,28 +911,28 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                         if(negative) *targetVar *= -1;
                     }break;
                     case FormatTypeSize_l:{
-                        float64 * targetVar = va_arg(ap, float64 *);
-                        uint8 maxDigits = 15;
+                        f64 * targetVar = va_arg(ap, f64 *);
+                        u8 maxDigits = 15;
                         if(info.width != 0){
                             maxDigits = info.width;
                         }
-                        int64 wholePart = 0;
+                        i64 wholePart = 0;
                         scannedChars = scanNumber64(source + sourceIndex, &wholePart, maxDigits);
                         *targetVar = (float64) wholePart;
                         sourceIndex += scannedChars;
                         if(source[sourceIndex] == '.'){
                             sourceIndex++;
-                            uint8 numlength = numlen(wholePart);
+                            u8 numlength = numlen(wholePart);
                             
-                            int64 decimalPart = 0;
-                            uint8 partScannedChars = scanNumber64(source + sourceIndex, &decimalPart, maxDigits);
+                            i64 decimalPart = 0;
+                            u8 partScannedChars = scanNumber64(source + sourceIndex, &decimalPart, maxDigits);
                             
                             if(decimalPart != 0){
-                                uint8 prepended = 0;
+                                u8 prepended = 0;
                                 for(;prepended < maxDigits; prepended++){
                                     if(source[sourceIndex + prepended] != '0') break;
                                 }
-                                uint8 len = numlen(decimalPart) + prepended;
+                                u8 len = numlen(decimalPart) + prepended;
                                 *targetVar += (float64)(decimalPart) / powd(10, len);
                             }
                             scannedChars += partScannedChars;
@@ -956,7 +956,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
             case FormatType_charlist:{
                 char * targetVar = va_arg(ap, char *);
                 bool scanned = false;
-                uint32 i = 0;
+                u32 i = 0;
                 for(; sourceIndex < maxread && i < info.width && source[sourceIndex] != '\0'; sourceIndex++, i++){
                     if(info.charlist.digitRangeLow != '\0'){
                         if(source[sourceIndex] >= info.charlist.digitRangeLow && source[sourceIndex] <= info.charlist.digitRangeHigh && !info.charlist.inverted){
@@ -1034,7 +1034,7 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
                 }
             }break;
             case FormatType_immediate:{
-                uint32 i;
+                u32 i;
                 for(i = 0; i < info.immediate.length; i++, sourceIndex++){
                     if(source[sourceIndex] != info.immediate.start[i]){
                         break;
@@ -1059,14 +1059,14 @@ uint32 scanFormatted(int32 limit, const char * source, const char * format, va_l
 
 #ifndef CRT_PRESENT
 uint32 vsnprintf(char * target, nint limit, const char * format, va_list ap){
-	uint32 successfullyPrinted = printFormatted(limit, target, format, ap);
+	u32 successfullyPrinted = printFormatted(limit, target, format, ap);
 	return successfullyPrinted;
 }
 
 uint32 snprintf(char * target, nint limit, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
-	uint32 successfullyPrinted = vsnprintf(target, limit, format, ap);
+	u32 successfullyPrinted = vsnprintf(target, limit, format, ap);
     va_end(ap);
     return successfullyPrinted;
 }
@@ -1075,7 +1075,7 @@ uint32 snprintf(char * target, nint limit, const char * format, ...){
 uint32 snscanf(const char * target, nint limit, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
-    uint32 successfullyScanned  = scanFormatted(limit, target, format, ap);
+    u32 successfullyScanned  = scanFormatted(limit, target, format, ap);
     va_end(ap);
     return successfullyScanned;
 }
@@ -1085,7 +1085,7 @@ uint32 snscanf(const char * target, nint limit, const char * format, ...){
 uint32 sprintf(char * target, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
-    uint32 successfullyPrinted = printFormatted(-1, target, format, ap);
+    u32 successfullyPrinted = printFormatted(-1, target, format, ap);
     va_end(ap);
     return successfullyPrinted;
 }
@@ -1093,7 +1093,7 @@ uint32 sprintf(char * target, const char * format, ...){
 uint32 sscanf(const char * target, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
-    uint32 successfullyScanned  = scanFormatted(-1, target, format, ap);
+    u32 successfullyScanned  = scanFormatted(-1, target, format, ap);
     va_end(ap);
     return successfullyScanned;
 }
