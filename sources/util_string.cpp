@@ -124,7 +124,7 @@ static u8 scanNumber16(const char * source, i16 * target, u8 maxDigits = 6){
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -152,7 +152,7 @@ static u8 scanNumber8(const char * source, i8 * target, u8 maxDigits = 3){
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -175,7 +175,7 @@ static u8 scanUnumber8(const char * source, u8 * target, u8 maxDigits = 3){
     u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -192,7 +192,7 @@ static u8 scanUnumber16(const char * source, u16 * target, u8 maxDigits = 5){
     u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -216,7 +216,7 @@ static u8 scanNumber(const char * source, i32 * target, u8 maxDigits = 11){
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         
         if(digit < 48 || digit > 57) break;
         digit -= 48;
@@ -246,7 +246,7 @@ static u8 scanNumber64(const char * source, i64 * target, u8 maxDigits = 20){
         i++;
     }
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         
         if(digit < 48 || digit > 57) break;
         digit -= 48;
@@ -270,7 +270,7 @@ static u8 scanUnumber(const char * source, u32 * target, u8 maxDigits = 10){
     u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -288,7 +288,7 @@ static u8 scanUnumber64(const char * source, u64 * target, u8 maxDigits = 20){
     u8 i = 0;
     bool first = true;
     for(;source[i] != '\0' && i < maxDigits; i++){
-        i8 digit = (int8) source[i];
+        i8 digit = (i8) source[i];
         if(digit < 48 || digit > 57) break;
         digit -= 48;
         if(first){
@@ -580,7 +580,7 @@ uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list 
     while((info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
         formatOffset += info.length;
         if(info.print.varLen){
-            i32 len = va_arg(ap, int32);
+            i32 len = va_arg(ap, i32);
             info.width = len;
         }
         u32 previousTargetIndex = targetIndex;
@@ -617,44 +617,44 @@ uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list 
                 bool negative = false;
                 if(info.type == FormatType_u){
                     if(info.typeLength == FormatTypeSize_Default){
-                        u32 source = va_arg(ap, uint32);
+                        u32 source = va_arg(ap, u32);
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
-                        u16 source = CAST(uint16, va_arg(ap, int));
+                        u16 source = CAST(u16, va_arg(ap, int));
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        u8 source = CAST(uint8, va_arg(ap, int));
+                        u8 source = CAST(u8, va_arg(ap, int));
                         absValue = source;
                     }else if(info.typeLength == FormatTypeSize_ll){
-                        u64 source = va_arg(ap, uint64);
+                        u64 source = va_arg(ap, u64);
                         absValue = source;
                     }else{
                         return -1;
                     }
                 }else if(info.type == FormatType_d){
                     if(info.typeLength == FormatTypeSize_Default){
-                        i32 source = va_arg(ap, int32);
+                        i32 source = va_arg(ap, i32);
                         if(source < 0){
                             source *= -1;
                             negative = true;
                         }
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_h){
-                        i16 source = CAST(int16, va_arg(ap, int));
+                        i16 source = CAST(i16, va_arg(ap, int));
                         if(source < 0){
                             source *= -1;
                             negative = true;
                         }
                         absValue = source;
                     }else if (info.typeLength == FormatTypeSize_hh){
-                        i8 source = CAST(int8, va_arg(ap, int));
+                        i8 source = CAST(i8, va_arg(ap, int));
                         if(source < 0){
                             source *= -1;
                             negative = true;
                         }
                         absValue = source;
                     }else if(info.typeLength == FormatTypeSize_ll){
-                        i64 source = va_arg(ap, int64);
+                        i64 source = va_arg(ap, i64);
                         if(source < 0){
                             source *= -1;
                             negative = true;
@@ -700,8 +700,8 @@ uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list 
             case FormatType_f:{
                 char delim = '.';
                 //float is promoted to double,...
-                f64 source = (float64)va_arg(ap, float64);
-                i64 wholePart = (int64) source;
+                f64 source = (f64)va_arg(ap, f64);
+                i64 wholePart = (i64) source;
                 
                 u8 numlength = numlen(ABS(wholePart));
                 bool negative = source < 0;
@@ -732,7 +732,7 @@ uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list 
                     targetIndex++;
                     u8 precision = info.real.precision;
                     
-                    i64 decimalPart = ABS((int64)((source - wholePart) * powd64(10, precision)));
+                    i64 decimalPart = ABS((i64)((source - wholePart) * powd64(10, precision)));
                     i32 prependLen = precision - numlen(decimalPart);
                     for(int i = 0; i < prependLen; i++){
                         target[targetIndex] = '0';
@@ -749,7 +749,7 @@ uint32 printFormatted(u32 maxprint, char * target, const char * format, va_list 
             }break;
         }
         u32 printedCharacters = targetIndex - previousTargetIndex;  
-        if((info.leftJustify && info.width != (uint32)-1) && printedCharacters < info.width){
+        if((info.leftJustify && info.width != (u32)-1) && printedCharacters < info.width){
             for(i32 i = 0; i < info.width - printedCharacters; i++){
                 target[targetIndex++] = ' ';
             }
@@ -767,7 +767,7 @@ uint32 scanFormatted(i32 limit, const char * source, const char * format, va_lis
     u32 formatOffset = 0;
     u32 sourceIndex = 0;
     u32 successfullyScanned = 0;
-    u32 maxread = (uint32) limit;
+    u32 maxread = (u32) limit;
     FormatInfo info;
     bool exit = false;
     while(!exit && (info = parseFormat(format + formatOffset)).type != FormatType_Invalid){
@@ -887,7 +887,7 @@ uint32 scanFormatted(i32 limit, const char * source, const char * format, va_lis
                         // TODO(fidli): scanReal()
                         i32 wholePart = 0;
                         scannedChars = scanNumber(source + sourceIndex, &wholePart, maxDigits);
-                        *targetVar = (float32) wholePart;
+                        *targetVar = (f32) wholePart;
                         sourceIndex += scannedChars;
                         if(source[sourceIndex] == '.'){
                             sourceIndex++;
@@ -902,7 +902,7 @@ uint32 scanFormatted(i32 limit, const char * source, const char * format, va_lis
                                     if(source[sourceIndex + prepended] != '0') break;
                                 }
                                 u8 len = numlen(decimalPart) + prepended;
-                                *targetVar += (float32)(decimalPart) / powd(10, len);
+                                *targetVar += (f32)(decimalPart) / powd(10, len);
                             }
                             scannedChars += partScannedChars;
                             sourceIndex += partScannedChars;
@@ -918,7 +918,7 @@ uint32 scanFormatted(i32 limit, const char * source, const char * format, va_lis
                         }
                         i64 wholePart = 0;
                         scannedChars = scanNumber64(source + sourceIndex, &wholePart, maxDigits);
-                        *targetVar = (float64) wholePart;
+                        *targetVar = (f64) wholePart;
                         sourceIndex += scannedChars;
                         if(source[sourceIndex] == '.'){
                             sourceIndex++;
@@ -933,7 +933,7 @@ uint32 scanFormatted(i32 limit, const char * source, const char * format, va_lis
                                     if(source[sourceIndex + prepended] != '0') break;
                                 }
                                 u8 len = numlen(decimalPart) + prepended;
-                                *targetVar += (float64)(decimalPart) / powd(10, len);
+                                *targetVar += (f64)(decimalPart) / powd(10, len);
                             }
                             scannedChars += partScannedChars;
                             sourceIndex += partScannedChars;

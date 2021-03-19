@@ -109,7 +109,7 @@ void evoSolve(const BasicEvoParameters * parameters, Instance * instance){
     u16 size = parameters->encodingSettings.bitfield.size;
     u16 arraysize = (size / 64) + ((size % 64 == 0) ? 0 : 1);
     ASSERT(parameters->encoding == EvoParametersEncodingType_Bitfield);
-    u64 * bits = &PUSHA(uint64, arraysize * 2 * parameters->popsize);
+    u64 * bits = &PUSHA(u64, arraysize * 2 * parameters->popsize);
     EvoPopulation popdb[2];
     for(int i = 0; i < ARRAYSIZE(popdb); i++){
         popdb[i].count = parameters->popsize;
@@ -185,7 +185,7 @@ void evoSolve(const BasicEvoParameters * parameters, Instance * instance){
                             for(u8 bitIndex = 0; bitIndex < individual->genotype.size; bitIndex++){
                                 if((individual->genotype.bitfield >> bitIndex) & 1){
                                     if(tossIndex == 0){
-                                        individual->genotype.bitfield &= ~((uint64)1 << bitIndex);
+                                        individual->genotype.bitfield &= ~((u64)1 << bitIndex);
                                         individual->fitness = parameters->fitness(individual, instance);
                                         ones--;
                                         break;
@@ -258,7 +258,7 @@ void evoSolve(const BasicEvoParameters * parameters, Instance * instance){
                         maxFitness += previousPop->individuals[i].fitness;
                     }
                     
-                    f32 choice = ((float32)(randlcg() % 100) / 100.0) * maxFitness;
+                    f32 choice = ((f32)(randlcg() % 100) / 100.0) * maxFitness;
                     for(u32 i = 0; i < parameters->popsize; i++){
                         choice -= previousPop->individuals[i].fitness;
                         if(aseqr(choice, 0)){
@@ -267,7 +267,7 @@ void evoSolve(const BasicEvoParameters * parameters, Instance * instance){
                         }
                     }
                     
-                    choice = ((float32)(randlcg() % 100) / 100.0) * maxFitness;
+                    choice = ((f32)(randlcg() % 100) / 100.0) * maxFitness;
                     for(u32 i = 0; i < parameters->popsize; i++){
                         choice -= previousPop->individuals[i].fitness;
                         if(aseqr(choice, 0)){
@@ -300,8 +300,8 @@ void evoSolve(const BasicEvoParameters * parameters, Instance * instance){
                             breakpoint -= 64;
                         }else if(breakpoint > 0){
                             baby->genotype.bitfield.bits[p] = 0;
-                            baby->genotype.bitfield.bits[p] |= sacrifice1->genotype.bitfield.bits[p] & (~((uint64)0) << breakpoint);
-                            baby->genotype.bitfield.bits[p] |= sacrifice2->genotype.bitfield.bits[p] & (~((uint64)0) >> (64 - breakpoint));
+                            baby->genotype.bitfield.bits[p] |= sacrifice1->genotype.bitfield.bits[p] & (~((u64)0) << breakpoint);
+                            baby->genotype.bitfield.bits[p] |= sacrifice2->genotype.bitfield.bits[p] & (~((u64)0) >> (64 - breakpoint));
                         }else{
                             baby->genotype.bitfield.bits[p] = sacrifice2->genotype.bitfield.bits[p];
                         }
@@ -322,9 +322,9 @@ void evoSolve(const BasicEvoParameters * parameters, Instance * instance){
                             index++;
                         }
                         if(randlcg() % 100 < parameters->crossoverSettings.uniform.chance){
-                            baby->genotype.bitfield.bits[index] |= sacrifice1->genotype.bitfield.bits[index] & ((uint64)1 << (i%64));
+                            baby->genotype.bitfield.bits[index] |= sacrifice1->genotype.bitfield.bits[index] & ((u64)1 << (i%64));
                         }else{
-                            baby->genotype.bitfield.bits[index] |= sacrifice2->genotype.bitfield.bits[index] & ((uint64)1 << (i%64));
+                            baby->genotype.bitfield.bits[index] |= sacrifice2->genotype.bitfield.bits[index] & ((u64)1 << (i%64));
                         }
                         
                     }
@@ -346,9 +346,9 @@ void evoSolve(const BasicEvoParameters * parameters, Instance * instance){
                         }
                         if(randlcgd() % parameters->mutationSettings.bitflip.modulus < parameters->mutationSettings.bitflip.chance){
                             if(((baby->genotype.bitfield.bits[index] >> (i%64)) & 1)){
-                                baby->genotype.bitfield.bits[index] &= ~(((uint64)1) << (i%64));
+                                baby->genotype.bitfield.bits[index] &= ~(((u64)1) << (i%64));
                             }else{
-                                baby->genotype.bitfield.bits[index] |= (((uint64)1) << (i%64));
+                                baby->genotype.bitfield.bits[index] |= (((u64)1) << (i%64));
                             }
                         }
                         

@@ -53,7 +53,7 @@ bool predictRNNStep(RNNNeuralNet * model, vN * input, vN * output){
     PUSHI;
     vN matrixInput;
     matrixInput.size = model->W.height;
-    matrixInput.v = &PUSHA(float32, matrixInput.size);
+    matrixInput.v = &PUSHA(f32, matrixInput.size);
     for(int i = 0; i < model->outputs.size; i++){
         matrixInput.v[i] = model->outputs.v[i];
     }
@@ -91,7 +91,7 @@ bool predictMLP(const MLPNeuralNet * model, vN * input, vN * result){
     vN * layerOuts = &PUSHA(vN, model->hiddenLayersAmount+1);
     vN * layerOutput = &layerOuts[0];
     layerOutput->size = input->size+1;
-    layerOutput->v = &PUSHA(float32, layerOutput->size);
+    layerOutput->v = &PUSHA(f32, layerOutput->size);
     for(int i = 0; i < input->size; i++){
         layerOutput->v[i] = input->v[i];
     }
@@ -102,13 +102,13 @@ bool predictMLP(const MLPNeuralNet * model, vN * input, vN * result){
         
         vN layerArg; 
         layerArg.size = layer->W.width;
-        layerArg.v = &PUSHA(float32, layerArg.size);
+        layerArg.v = &PUSHA(f32, layerArg.size);
         
         mul(layerOutput, &layer->W, &layerArg);
         
         layerOutput = &layerOuts[hiddenLayerIndex+1];
         layerOutput->size = layer->W.width+1;
-        layerOutput->v = &PUSHA(float32, layerOutput->size);
+        layerOutput->v = &PUSHA(f32, layerOutput->size);
         
         switch(layer->activationFunction){
             case NeuralNetActivationFunctionType_Sigmoid:
@@ -165,21 +165,21 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
     f32 alfa = params->learningRate;
     vN nodeDErrors;
     nodeDErrors.size = model->W.width;
-    nodeDErrors.v = &PUSHA(float32, nodeDErrors.size);
+    nodeDErrors.v = &PUSHA(f32, nodeDErrors.size);
     matNM * pkDB[2];
     for(int db = 0; db < 2; db++){
         pkDB[db] = &PUSHA(matNM, model->W.width);
         for(int i = 0; i < model->W.width; i++){
             pkDB[db][i].width = model->W.width;
             pkDB[db][i].height = model->W.height;
-            pkDB[db][i].c = &PUSHA(float32, model->W.height * model->W.width);
+            pkDB[db][i].c = &PUSHA(f32, model->W.height * model->W.width);
             
         }
     }
     int derivationIndex = 1;
     vN nodeArgs;
     nodeArgs.size = model->W.width;
-    nodeArgs.v = &PUSHA(float32, nodeArgs.size);
+    nodeArgs.v = &PUSHA(f32, nodeArgs.size);
     
     
     for(u32 samplesIndex = 0; samplesIndex < datasize; samplesIndex++){
@@ -200,7 +200,7 @@ void trainRNN(RNNNeuralNet * model, const NeuralNetTrainParams * params, const N
             //prediction part
             vN matrixInput;
             matrixInput.size = model->W.height;
-            matrixInput.v = &PUSHA(float32, matrixInput.size);
+            matrixInput.v = &PUSHA(f32, matrixInput.size);
             
             const vN * input = &pairs[samplesIndex][inputIndex].input;
             
@@ -300,7 +300,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
         vN * layerOuts = &PUSHA(vN, model->hiddenLayersAmount+1);
         vN * layerOutput = &layerOuts[0];
         layerOutput->size = data[dataIndex].input.size+1;
-        layerOutput->v = &PUSHA(float32, layerOutput->size);
+        layerOutput->v = &PUSHA(f32, layerOutput->size);
         for(int i = 0; i < data[dataIndex].input.size; i++){
             layerOutput->v[i] = data[dataIndex].input.v[i];
         }
@@ -312,13 +312,13 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
             
             vN * layerArg = &layerArgs[hiddenLayerIndex]; 
             layerArg->size = layer->W.width;
-            layerArg->v = &PUSHA(float32, layerArg->size);
+            layerArg->v = &PUSHA(f32, layerArg->size);
             
             mul(layerOutput, &layer->W, layerArg);
             
             layerOutput = &layerOuts[hiddenLayerIndex+1];
             layerOutput->size = layer->W.width+1;
-            layerOutput->v = &PUSHA(float32, layerOutput->size);
+            layerOutput->v = &PUSHA(f32, layerOutput->size);
             
             
             switch(layer->activationFunction){
@@ -362,7 +362,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
                     
                     layer = &model->hiddenLayers[hiddenLayerIndex];
                     layerCopies[(layerCopyIndex + 1)%2] = *layer;
-                    layerCopies[(layerCopyIndex + 1)%2].W.c = &PUSHA(float32, layerCopies[(layerCopyIndex + 1)%2].W.width * layerCopies[(layerCopyIndex + 1)%2].W.height);
+                    layerCopies[(layerCopyIndex + 1)%2].W.c = &PUSHA(f32, layerCopies[(layerCopyIndex + 1)%2].W.width * layerCopies[(layerCopyIndex + 1)%2].W.height);
                     for(int i = 0; i < layerCopies[(layerCopyIndex + 1)%2].W.width * layerCopies[(layerCopyIndex + 1)%2].W.height; i++){
                         layerCopies[(layerCopyIndex + 1)%2].W.c[i] = layer->W.c[i];
                     }
@@ -373,7 +373,7 @@ void trainMLP(MLPNeuralNet * model, const NeuralNetTrainParams * parameters, con
                     prevDerivations = currentDerivations;
                     currentDerivations = &layerDerivations[hiddenLayerIndex];
                     currentDerivations->size = layer->W.width;
-                    currentDerivations->v = &PUSHA(float32, currentDerivations->size);
+                    currentDerivations->v = &PUSHA(f32, currentDerivations->size);
                     
                     
                     
@@ -464,7 +464,7 @@ bool loadMLPNeuralNet(const FileContents * contents, MLPNeuralNet * result){
                 char actFunc = '0';
                 ASSERT(sscanf(line, "%1024%5hu %5hu %c", &result->hiddenLayers[layerIndex].W.width, &result->hiddenLayers[layerIndex].W.height, &actFunc) == 3);
                 rowsLeft = result->hiddenLayers[layerIndex].W.height;
-                result->hiddenLayers[layerIndex].W.c = &PUSHA(float32, result->hiddenLayers[layerIndex].W.height * result->hiddenLayers[layerIndex].W.width);
+                result->hiddenLayers[layerIndex].W.c = &PUSHA(f32, result->hiddenLayers[layerIndex].W.height * result->hiddenLayers[layerIndex].W.width);
                 
                 if(actFunc == 's'){
                     result->hiddenLayers[layerIndex].activationFunction = NeuralNetActivationFunctionType_Sigmoid;
@@ -495,7 +495,7 @@ bool saveMLPNeuralNet(const MLPNeuralNet * source, FileContents * target){
     }
     target->size = 0;
     target->contents = &PUSHA(char, maxLen);
-    ASSERT(sprintf(target->contents, "%d\n", (int32)source->hiddenLayersAmount) != -1);
+    ASSERT(sprintf(target->contents, "%d\n", (i32)source->hiddenLayersAmount) != -1);
     target->size += strlen(target->contents + target->size);
     for(int i = 0; i < source->hiddenLayersAmount; i++){
         NeuralHiddenLayer * layer = &source->hiddenLayers[i];
@@ -511,7 +511,7 @@ bool saveMLPNeuralNet(const MLPNeuralNet * source, FileContents * target){
             INV;
             break;
         }
-        ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (int32)layer->W.width, (int32)layer->W.height, c) != -1);
+        ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (i32)layer->W.width, (i32)layer->W.height, c) != -1);
         target->size += strlen(target->contents + target->size);
         for(int row = 0; row < layer->W.height; row++){
             for(int col = 0; col < layer->W.width; col++){
@@ -539,9 +539,9 @@ bool loadRNNNeuralNet(const FileContents * contents, RNNNeuralNet * result){
             char actFunc = '0';
             ASSERT(sscanf(line, "%1024%5hu %5hu %c", &result->W.width, &result->W.height, &actFunc) == 3);
             rowsLeft = result->W.height;
-            result->W.c = &PUSHA(float32, result->W.height * result->W.width);
+            result->W.c = &PUSHA(f32, result->W.height * result->W.width);
             result->outputs.size = result->W.width;
-            result->outputs.v = &PUSHA(float32, result->outputs.size);
+            result->outputs.v = &PUSHA(f32, result->outputs.size);
             if(actFunc == 's'){
                 result->activationFunction = NeuralNetActivationFunctionType_Sigmoid;
             }else if(actFunc == 'i'){
@@ -583,7 +583,7 @@ bool saveRNNNeuralNet(const RNNNeuralNet * source, FileContents * target){
         INV;
         break;
     }
-    ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (int32)source->W.width, (int32)source->W.height, c) != -1);
+    ASSERT(sprintf(target->contents+target->size, "%d %d %c\n", (i32)source->W.width, (i32)source->W.height, c) != -1);
     target->size += strlen(target->contents + target->size);
     for(int row = 0; row < source->W.height; row++){
         for(int col = 0; col < source->W.width; col++){

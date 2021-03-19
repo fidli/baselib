@@ -14,8 +14,8 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
     switch(message)
     {
         case WM_MOUSEMOVE:{
-            guiInput.mouse.y = (int16) (lParam >> 16);
-            guiInput.mouse.x = (int16) (lParam);
+            guiInput.mouse.y = (i16) (lParam >> 16);
+            guiInput.mouse.x = (i16) (lParam);
             return false;
         }break;
         case WM_LBUTTONUP:{
@@ -30,7 +30,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
         case WM_LBUTTONDOWN:{
             guiInput.mouse.buttons.leftDown = true;
             guiInput.mouse.leftHold = true;
-            if(message == WM_LBUTTONDOWN && CAST(uint32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastDoubleClickTime)) < GetDoubleClickTime()){
+            if(message == WM_LBUTTONDOWN && CAST(u32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastDoubleClickTime)) < GetDoubleClickTime()){
                 guiInput.mouse.buttons.leftTripleClick = true;
             }
             // NOTE(fidli): any input gets re-selected potentially

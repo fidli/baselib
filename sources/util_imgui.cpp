@@ -524,7 +524,7 @@ void guiEndline(GuiContainer * container, GuiStyle * style){
         container->cursor[i].y = newValue;
     }
     if(smallestAddition == 0){
-        container->heightUsed += ptToPx(CAST(float32, style->pt)) + style->text.margin.b + style->text.margin.t + style->text.padding.t + style->text.padding.b;
+        container->heightUsed += ptToPx(CAST(f32, style->pt)) + style->text.margin.b + style->text.margin.t + style->text.padding.t + style->text.padding.b;
         guiEndline(container, style);
     }
 }
@@ -564,7 +564,7 @@ static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle 
         justify = (*container)->defaultJustify;
     }
     i32 textWidth = MAX(calculateAtlasTextWidth(style->font, text, style->pt), elementStyle->minWidth);
-    i32 textHeight = MAX(CAST(int32, style->font->lineHeight*ptToPx(CAST(float32, style->pt))/style->font->pixelSize), elementStyle->minHeight);
+    i32 textHeight = MAX(CAST(i32, style->font->lineHeight*ptToPx(CAST(f32, style->pt))/style->font->pixelSize), elementStyle->minHeight);
     i32 startX = (*container)->cursor[justify].x;
     i32 startY = (*container)->cursor[justify].y;
     i32 advanceX = textWidth + elementStyle->margin.r + elementStyle->margin.l + elementStyle->padding.l + elementStyle->padding.r;
@@ -635,24 +635,24 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
     i32 advance = 0;
     f32 resScaleY = 1.0f / (guiContext->height);
     f32 resScaleX = 1.0f / (guiContext->width);
-    i32 targetSize = ptToPx(CAST(float32, pt));
-    f32 fontScale = (float32)targetSize / font->pixelSize;
+    i32 targetSize = ptToPx(CAST(f32, pt));
+    f32 fontScale = (f32)targetSize / font->pixelSize;
     char prevGlyph = 0;
     i32 len = text ? strlen(text) : 0;
     for(int i = 0; i < len; i++){
-        const GlyphData * glyph = &font->glyphs[CAST(uint8, text[i])];
+        const GlyphData * glyph = &font->glyphs[CAST(u8, text[i])];
         if(!glyph->valid){
             continue;
         }
-        i32 positionX = startX + CAST(int32, fontScale*(advance + glyph->marginX));
-        i32 positionY = startY + CAST(int32, fontScale*glyph->marginY);
+        i32 positionX = startX + CAST(i32, fontScale*(advance + glyph->marginX));
+        i32 positionY = startY + CAST(i32, fontScale*glyph->marginY);
         //kerning
         if(prevGlyph){
-            positionX += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
-            advance += (int32)((float32)glyph->kerning[prevGlyph]*fontScale);
+            positionX += (i32)((f32)glyph->kerning[prevGlyph]*fontScale);
+            advance += (i32)((f32)glyph->kerning[prevGlyph]*fontScale);
         }
         
-        f32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
+        f32 zOffset = CAST(f32, clamp(CAST(i32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
         //position
         glUniform3f(guiGl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
         //scale
@@ -660,12 +660,12 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
                     fontScale * resScaleY * (glyph->AABB.height) * 2);
         
         //texture offset
-        glUniform2f(guiGl->font.textureOffsetLocation, (float32)glyph->AABB.x / font->data.info.width,
-                    (float32)glyph->AABB.y / font->data.info.height);
+        glUniform2f(guiGl->font.textureOffsetLocation, (f32)glyph->AABB.x / font->data.info.width,
+                    (f32)glyph->AABB.y / font->data.info.height);
         
         //texture scale
-        glUniform2f(guiGl->font.textureScaleLocation, ((float32)glyph->AABB.width) / font->data.info.width,
-                    ((float32)(glyph->AABB.height)) / font->data.info.height);
+        glUniform2f(guiGl->font.textureScaleLocation, ((f32)glyph->AABB.width) / font->data.info.width,
+                    ((f32)(glyph->AABB.height)) / font->data.info.height);
         
         //color
         glUniform4f(guiGl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
@@ -680,7 +680,7 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
 }
 
 bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX, int centerY, int pt, const Color * color, i32 zOffset = 0){
-    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - CAST(int32, ((CAST(float32, ptToPx(CAST(float32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, color, zOffset);
+    return renderText(font, text, centerX - calculateAtlasTextWidth(font, text, pt)/2, centerY - CAST(i32, ((CAST(f32, ptToPx(CAST(f32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, color, zOffset);
 }
 
 static bool renderRect(const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * color, f32 zIndex = 0){
@@ -691,7 +691,7 @@ static bool renderRect(const i32 positionX, const i32 positionY, const i32 width
     f32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    f32 zOffset = clamp(zIndex, CAST(float32, -INT8_MAX), CAST(float32, INT8_MAX)) / CAST(float32, INT8_MAX);
+    f32 zOffset = clamp(zIndex, CAST(f32, -INT8_MAX), CAST(f32, INT8_MAX)) / CAST(f32, INT8_MAX);
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width) * resScaleX * 2, resScaleY * (height) * 2);
@@ -712,7 +712,7 @@ static bool renderWireRect(const i32 positionX, const i32 positionY, const i32 w
     f32 resScaleX = 1.0f / (guiContext->width);
     
     //position
-    f32 zOffset = CAST(float32, clamp(CAST(int32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
+    f32 zOffset = CAST(f32, clamp(CAST(i32, zIndex), -INT8_MAX, INT8_MAX)) / INT8_MAX;
     glUniform3f(guiGl->flat.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
     //scale
     glUniform2f(guiGl->flat.scaleLocation, (width-1) * resScaleX * 2, resScaleY * (height-1) * 2);
@@ -1012,7 +1012,7 @@ static bool renderSlider(f32 * progress, const i32 positionX, const i32 position
     bool isHoverBeforeAndNow = isHoverNow && guiEq(id, guiContext->lastHover);
     if(guiInput.mouse.leftHold && isLastActive){
         // slider position
-        *progress = clamp(CAST(float32, CAST(float32, guiInput.mouse.x - (positionX + marginX)) / CAST(float32, width-2*marginX)), 0.0f, 1.0f);
+        *progress = clamp(CAST(f32, CAST(f32, guiInput.mouse.x - (positionX + marginX)) / CAST(f32, width-2*marginX)), 0.0f, 1.0f);
         result = true;
     }
     if(isLastActive){
@@ -1044,7 +1044,7 @@ static bool renderSlider(f32 * progress, const i32 positionX, const i32 position
         renderWireRect(positionX, positionY, width, height, fieldColor, zIndex + 0.1f);
     }
     renderRect(positionX+marginX, positionY + height/2, width-2*marginX, 2, fieldColor, zIndex);
-    renderRect(CAST(int32, positionX+marginX - diameter/2 + ((width-2*marginX)*(*progress))), CAST(int32, CAST(float32, positionY) + height/2 + 1 - diameter/2), diameter, diameter, fieldColor, zIndex);
+    renderRect(CAST(i32, positionX+marginX - diameter/2 + ((width-2*marginX)*(*progress))), CAST(i32, CAST(f32, positionY) + height/2 + 1 - diameter/2), diameter, diameter, fieldColor, zIndex);
     return result;
 }
 
@@ -1130,7 +1130,7 @@ static bool renderInput(const AtlasFont * font, i32 pt, char * text, i32 textMax
             textColor = selectTextColor;
         }
     }
-    renderText(font, text, textPxStartX, positionY + height/2 - CAST(int32, ((CAST(float32, ptToPx(CAST(float32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, textColor, zIndex);
+    renderText(font, text, textPxStartX, positionY + height/2 - CAST(i32, ((CAST(f32, ptToPx(CAST(f32, pt)))/font->pixelSize) * font->lineHeight)/2), pt, textColor, zIndex);
     
     //do something at all
 	if(guiEq(guiContext->activeInput, id)){
@@ -1293,7 +1293,7 @@ static bool renderDropdown(const AtlasFont * font, i32 pt, char * searchtext, i3
             {
                 i32 buttonPositionX = positionX;
                 i32 buttonPositionY = positionY + (rendered+2)*height;
-                GuiId id = {buttonPositionX, buttonPositionY, CAST(int8, zIndex+1)};
+                GuiId id = {buttonPositionX, buttonPositionY, CAST(i8, zIndex+1)};
                 bool isLastActive = guiEq(id, guiContext->lastActive);
                 bool result = false;
                 bool isHoverNow = guiInput.mouse.x >= buttonPositionX && guiInput.mouse.x <= buttonPositionX + width && guiInput.mouse.y >= buttonPositionY && guiInput.mouse.y <= buttonPositionY + height;

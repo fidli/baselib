@@ -117,7 +117,7 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
     va_start(ap, format);
     char format2[] = "[%02hu.%02hu.%04hu %02hu:%02hu:%02hu][%s][%c] %s\r\n";
     loggers->lt = getLocalTime();
-    snprintf(loggers->formatbuffer, ARRAYSIZE(loggers->formatbuffer), format2, loggers->lt.day, loggers->lt.month, loggers->lt.year, loggers->lt.hour, loggers->lt.minute, loggers->lt.second, resourceName, map[CAST(int32, level)], format);
+    snprintf(loggers->formatbuffer, ARRAYSIZE(loggers->formatbuffer), format2, loggers->lt.day, loggers->lt.month, loggers->lt.year, loggers->lt.hour, loggers->lt.minute, loggers->lt.second, resourceName, map[CAST(i32, level)], format);
 #if CRT_PRESENT
     vsnprintf(loggers->messagebuffer, ARRAYSIZE(loggers->messagebuffer), loggers->formatbuffer, ap);
 #else

@@ -18,7 +18,7 @@ bool initTime(){
 
 float32 getProcessCurrentTime(){
     clock_gettime(CLOCK_MONOTONIC, &clock_);
-    return ((float32)clock_.tv_sec) + clock_.tv_nsec / 1.0e9 - startTime;
+    return ((f32)clock_.tv_sec) + clock_.tv_nsec / 1.0e9 - startTime;
 }
 
 LocalTime sysToLocal(const timespec * timespec){

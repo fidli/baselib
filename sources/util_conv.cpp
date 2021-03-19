@@ -283,13 +283,13 @@ bool encodeBMP(const Image * source, FileContents * target){
         ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01);
         for(u32 i = 0; i < (1 << bitsPerPixel); i++){
             //R
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4) = (uint8)i;
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4) = (u8)i;
             //G
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 1) = (uint8)i;
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 1) = (u8)i;
             //B
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 2) = (uint8)i;
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 2) = (u8)i;
             //unused
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 3) = (uint8)0;
+            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 3) = (u8)0;
         }
     }
     //@Incomplete
@@ -445,7 +445,7 @@ bool decodeTiff(const FileContents * file, Image * target){
                     return false;
                 }
                 //support dwords only now
-                stripOffsets = &PUSHA(uint32, length);
+                stripOffsets = &PUSHA(u32, length);
                 ASSERT(stripAmount == 0 || length == stripAmount);
                 if(stripAmount != 0 && length != stripAmount){
                     POPI;
@@ -492,7 +492,7 @@ bool decodeTiff(const FileContents * file, Image * target){
                     return false;
                 }
                 //support dwords only now
-                stripSizes = &PUSHA(uint32, length);
+                stripSizes = &PUSHA(u32, length);
                 ASSERT(stripAmount == 0 || length == stripAmount);
                 if(stripAmount != 0 && length != stripAmount){
                     POPI;
@@ -657,8 +657,8 @@ bool encodeTiff(const Image * source, FileContents * target){
     head.offset = target->contents;
     
     //endianity
-    writeByte(&head, (uint8) 'I');
-    writeByte(&head, (uint8) 'I');
+    writeByte(&head, (u8) 'I');
+    writeByte(&head, (u8) 'I');
     //magic constant
     writeWord(&head, 42);
     

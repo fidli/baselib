@@ -9,7 +9,7 @@ static f32 frequencyF;
 bool initTime(){
     int result = QueryPerformanceFrequency(&frequency);
     if(result != 0){
-        frequencyF = (float32)frequency.QuadPart;
+        frequencyF = (f32)frequency.QuadPart;
         return true;
     }
     return false;
@@ -18,7 +18,7 @@ bool initTime(){
 float32 getProcessCurrentTime(){
     LARGE_INTEGER counter;
     QueryPerformanceCounter(&counter);
-    return ((float32)counter.QuadPart / frequencyF);
+    return ((f32)counter.QuadPart / frequencyF);
     
 }
 
@@ -33,7 +33,7 @@ uint64 getTickDivisor(){
 }
 
 float64 translateTickToTime(const u64 tick, u64 divisor = getTickDivisor()){
-    return (float64)tick / divisor;
+    return (f64)tick / divisor;
 }
 
 LocalTime sysToLocal(const SYSTEMTIME * time){

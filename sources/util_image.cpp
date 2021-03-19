@@ -101,7 +101,7 @@ bool flipY(Image * target){
     ASSERT(target->info.bitsPerSample % 8 == 0);
     ASSERT(target->info.samplesPerPixel == 1);
     u32 bytesize = target->info.width * target->info.height * (target->info.bitsPerSample/8) * target->info.samplesPerPixel;
-    u8 * tmp = &PUSHA(uint8, bytesize);
+    u8 * tmp = &PUSHA(u8, bytesize);
     if(target->info.bitsPerSample % 8 != 0 || target->info.samplesPerPixel != 1){
         return false;
     }
@@ -182,14 +182,14 @@ bool rotateImage(Image * image, f32 angleDeg, f32 centerX = 0.5f, f32 centerY = 
     angleRad = (angleRad / 180) * PI;
     f32 sinA = sin(angleRad);
     f32 cosA = cos(angleRad);
-    i32 cX = (uint32)(centerX * image->info.width);
-    i32 cY = (uint32)(centerY * image->info.height);
+    i32 cX = (u32)(centerX * image->info.width);
+    i32 cY = (u32)(centerY * image->info.height);
     for(u32 h = 0; h < temp.info.height; h++){
         i32 rY = h - cY;
         for(u32 w = 0; w < temp.info.width; w++){
             i32 rX = w  - cX;
-            i32 nX = (int32)(cosA * rX) - (int32)(sinA*rY) + cX;
-            i32 nY = (int32)(sinA * rX) + (int32)(cosA*rY) + cY;
+            i32 nX = (i32)(cosA * rX) - (i32)(sinA*rY) + cX;
+            i32 nY = (i32)(sinA * rX) + (i32)(cosA*rY) + cY;
             if(nX >= 0 && nX < image->info.width && nY >= 0 && nY < image->info.height){
                 temp.data[temp.info.width * h + w] = image->data[temp.info.width * nY  + nX];
             }else{
@@ -211,7 +211,7 @@ static inline u8 resultingContrast(const u8 originalColor, const f32 contrast){
     f32 result = factor * (originalColor - 128) + 128;
     if(result < 0) result = 0;
     if(result > 255) result = 255;
-    return (uint8) result;
+    return (u8) result;
 }
 
 
@@ -228,10 +228,10 @@ void applyContrast(Image * target, const f32 contrast){
 
 
 bool scaleImage(const Image * source, Image * target, u32 targetWidth, u32 targetHeight){
-    f32 scaleX = (float32)source->info.width/(float32)targetWidth;
-    f32 scaleY = (float32)source->info.height/(float32)targetHeight;
+    f32 scaleX = (f32)source->info.width/(f32)targetWidth;
+    f32 scaleY = (f32)source->info.height/(f32)targetHeight;
     
-    u32 neighbourCount = (uint32)(scaleX*scaleY);
+    u32 neighbourCount = (u32)(scaleX*scaleY);
     //does not hurt
     neighbourCount++;
     

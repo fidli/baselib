@@ -91,7 +91,7 @@ static inline u16 readBits(ReadHeadBit * head, const u8 bits){
         
         u8 reading = (toRead >= remainingBits) ? remainingBits : toRead;
         result <<= reading;
-        result |=(uint8)( (uint8)((uint8)((uint8)head->currentByte << head->bitOffset) >> head->bitOffset) >> (8-head->bitOffset - reading));
+        result |=(u8)( (u8)((u8)((u8)head->currentByte << head->bitOffset) >> head->bitOffset) >> (8-head->bitOffset - reading));
         ASSERT(reading <= toRead);
         toRead -= reading;
         head->bitOffset += reading;
@@ -228,10 +228,10 @@ static inline void writeBits(WriteHeadBit * head, u16 data, const u8 bits){
         
         //clear with zeros
         head->source[head->byteOffset] &=
-            (uint8)((uint8)(0xFF >> (8 - head->bitOffset)) << (8 - head->bitOffset)) |
-            (uint8)(0xFF >>  (head->bitOffset + currentWriting));
+            (u8)((u8)(0xFF >> (8 - head->bitOffset)) << (8 - head->bitOffset)) |
+            (u8)(0xFF >>  (head->bitOffset + currentWriting));
         
-        u8 write = ((uint8)(((uint8)(((data >> 8) >> head->bitOffset)) >> (8 - head->bitOffset - currentWriting)))) << (8 - head->bitOffset - currentWriting);
+        u8 write = ((u8)(((u8)(((data >> 8) >> head->bitOffset)) >> (8 - head->bitOffset - currentWriting)))) << (8 - head->bitOffset - currentWriting);
         
         //write
         head->source[head->byteOffset] |= write;
@@ -493,11 +493,11 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, u32 item
     
     u8 maxCodeLength = codeWords[itemCount-1].bitSize;
     
-    u32 * amounts = &PUSHA(uint32, maxCodeLength+1);
+    u32 * amounts = &PUSHA(u32, maxCodeLength+1);
     for(u8 i = 0; i < maxCodeLength; i++){
         amounts[i] = 0;
     }
-    u32 * codeDispenser = &PUSHA(uint32, maxCodeLength+1);
+    u32 * codeDispenser = &PUSHA(u32, maxCodeLength+1);
     u32 code = 0;
     codeDispenser[0] = code;
     

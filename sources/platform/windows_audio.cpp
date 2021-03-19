@@ -111,7 +111,7 @@ void loadAudio(const WCHAR * path, Audio * target){
 bool initAudio(){
     
     mixer.samplesPerSecond = 44100;
-    mixer.bytesPerSample = sizeof(int16)*2;
+    mixer.bytesPerSample = sizeof(i16)*2;
     mixer.bufferSize = mixer.samplesPerSecond*mixer.bytesPerSample*2;
     
     

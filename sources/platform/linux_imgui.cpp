@@ -34,11 +34,11 @@ bool guiHandleInputLinux(XEvent * event){
                 guiInput.mouse.lastClickTime = getProcessCurrentTime();
                 guiInput.mouse.buttons.leftDown = true;
                 guiInput.mouse.leftHold = true;
-                if(CAST(uint32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastClickTime)) < GetDoubleClickTime()){
+                if(CAST(u32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastClickTime)) < GetDoubleClickTime()){
                     guiInput.mouse.buttons.leftDoubleClick = true;
                     guiInput.mouse.lastDoubleClickTime = getProcessCurrentTime();
                 }
-                if(CAST(uint32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastDoubleClickTime)) < GetDoubleClickTime()){
+                if(CAST(u32, 1000*(getProcessCurrentTime() - guiInput.mouse.lastDoubleClickTime)) < GetDoubleClickTime()){
                     guiInput.mouse.buttons.leftTripleClick = true;
                 }
                 // NOTE(fidli): any input gets re-selected potentially

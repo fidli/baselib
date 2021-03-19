@@ -231,8 +231,8 @@ void mergeSortInPlace(byte * target, const u8 elemsize, u64 arraySize, i8 (*cmp)
     //STEPs DONE: we have small unsorted part  and sorted part
     
     //STEP3 "bubble sort" tiny remaining part into rest of the array:
-    for(i64 startingIndex = (int64)workingSize - 1; startingIndex >= 0; startingIndex--){
-        u64 currentIndex = (uint64)startingIndex;
+    for(i64 startingIndex = (i64)workingSize - 1; startingIndex >= 0; startingIndex--){
+        u64 currentIndex = (u64)startingIndex;
         while(currentIndex + 1 != arraySize && cmp(target + currentIndex*elemsize, target + (currentIndex+1)*elemsize) > 0){
             swap(target + currentIndex*elemsize, target + (currentIndex+1)*elemsize, elemsize);
             currentIndex++;
@@ -386,8 +386,8 @@ void mergeSortInPlace4(i32 * target, u64 arraySize, i8 (*cmp)(void * a, void * b
     //STEPs DONE: we have small unsorted part  and sorted part
     
     //STEP3 "bubble sort" tiny remaining part into rest of the array:
-    for(i64 startingIndex = (int64)workingSize - 1; startingIndex >= 0; startingIndex--){
-        u64 currentIndex = (uint64)startingIndex;
+    for(i64 startingIndex = (i64)workingSize - 1; startingIndex >= 0; startingIndex--){
+        u64 currentIndex = (u64)startingIndex;
         while(currentIndex + 1 != arraySize && cmp(target + currentIndex, target + (currentIndex+1)) > 0){
             swap4(target + currentIndex, target + (currentIndex+1));
             currentIndex++;

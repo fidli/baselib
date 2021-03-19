@@ -36,11 +36,11 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
         //width > heigth
         if(maxX - minX > maxY-minY){
             //y = kx + q
-            k = (float32)((int32)from->y - (int32)to->y)/((int32)from->x - (int32)to->x);
-            q = (int32)to->y - k*(int32)to->x;
+            k = (f32)((i32)from->y - (i32)to->y)/((i32)from->x - (i32)to->x);
+            q = (i32)to->y - k*(i32)to->x;
             
             for(u32 w = minX; w <= maxX; w++){
-                u32 linepoint = (int32)(k*w + q);
+                u32 linepoint = (i32)(k*w + q);
                 linepoint -= thickness/2;
                 for(u8 t = 0; t < thickness; t++){
                     if(linepoint >= minY && linepoint <= maxY){
@@ -53,11 +53,11 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
             }
         }else{
             //x = ky + q
-            k = (float32)((int32)from->x - (int32)to->x)/((int32)from->y - (int32)to->y);
-            q = (int32)to->x - k*(int32)to->y;
+            k = (f32)((i32)from->x - (i32)to->x)/((i32)from->y - (i32)to->y);
+            q = (i32)to->x - k*(i32)to->y;
             
             for(u32 h = minY; h < maxY; h++){
-                u32 linepoint = (int32)(k*h + q);
+                u32 linepoint = (i32)(k*h + q);
                 linepoint -= thickness/2;
                 for(u8 t = 0; t < thickness; t++){
                     if(linepoint >= minX && linepoint <= maxX){
@@ -113,11 +113,11 @@ void drawQuad(Image * target, const dv2 * topLeft, const dv2 * topRight, const d
 void drawCircle(Image * target, const dv2 * center, u32 radius, const Color borderColor, u8 borderThickness = 1, bool filled = false){
     ASSERT(target->info.origin == BitmapOriginType_TopLeft && target->info.interpretation == BitmapInterpretationType_ARGB);
     u8 thicknessReal = MAX(borderThickness/2, 1);
-    i32 startY = MAX(0, (int32)(center->y - radius - thicknessReal));
-    i32 startX = MAX(0, (int32)(center->x - radius - thicknessReal));
+    i32 startY = MAX(0, (i32)(center->y - radius - thicknessReal));
+    i32 startX = MAX(0, (i32)(center->x - radius - thicknessReal));
     //+1 because this is count, not index
-    i32 endY = MIN(target->info.height, (int32)(center->y + radius + thicknessReal + 1));
-    i32 endX = MIN(target->info.width, (int32)(center->x + radius + thicknessReal + 1));
+    i32 endY = MIN(target->info.height, (i32)(center->y + radius + thicknessReal + 1));
+    i32 endX = MIN(target->info.width, (i32)(center->x + radius + thicknessReal + 1));
     
     for(i32 y = startY; y < endY; y++){
         i32 pitch = y*target->info.width;
@@ -153,11 +153,11 @@ void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, c
         /*convex hull style (is convex hull still triangle?)
         //http://mathworld.wolfram.com/TriangleInterior.html // does not seem to work properly
         
-        v2 _v0 = {(float32)A->x, (float32)A->y};
+        v2 _v0 = {(f32)A->x, (f32)A->y};
         dv2 v1d = *B - *A;
         dv2 v2d = *C - *A;
-        v2 _v1 = {(float32) v1d.x, (float32) v1d.y};
-        v2 _v2 = {(float32) v2d.x, (float32) v2d.y};
+        v2 _v1 = {(f32) v1d.x, (f32) v1d.y};
+        v2 _v2 = {(f32) v2d.x, (f32) v2d.y};
         
         f32 detV1V2 = det(_v1, _v2);
         f32 detV0V2 = det(_v0, _v2);
@@ -167,7 +167,7 @@ void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, c
             i32 pitch = y*target->info.width;
             for(i32 x = leftTop.x; x < rightBot.x; x++){
             
-                v2 _v = {(float32) (x), (float32) (y)};
+                v2 _v = {(f32) (x), (f32) (y)};
                 f32 a = (det(_v, _v2) - detV0V2) / detV1V2;
                 f32 b = (det(_v, _v1) - detV0V1) / detV1V2;
                 if(((a > 0 && b < 0) || (a < 0 && b > 0)) && (a + b < 1)){
@@ -181,19 +181,19 @@ void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, c
         dv2 b0 = *B - *A;
         dv2 c0 = *C - *A;
         
-        f32 d = (float32)(b0.x * c0.y - c0.x * b0.y);
+        f32 d = (f32)(b0.x * c0.y - c0.x * b0.y);
         
-        f32 member1 = (float32)(b0.y - c0.y);
-        f32 member2 = (float32)(c0.x - b0.x);
-        f32 member3 = (float32)(b0.x * c0.y);
-        f32 member4 = (float32)(c0.x * b0.y);
+        f32 member1 = (f32)(b0.y - c0.y);
+        f32 member2 = (f32)(c0.x - b0.x);
+        f32 member3 = (f32)(b0.x * c0.y);
+        f32 member4 = (f32)(c0.x * b0.y);
         
         
         for(i32 y = leftTop.y; y < rightBot.y; y++){
             i32 pitch = y*target->info.width;
             for(i32 x = leftTop.x; x < rightBot.x; x++){
                 
-                v2 p0 = {(float32) (x-A->x), (float32) (y-A->y)};
+                v2 p0 = {(f32) (x-A->x), (f32) (y-A->y)};
                 
                 f32 wA = (p0.x * member1 + p0.y * member2 + member3 - member4) / d;
                 f32 wB = (p0.x * c0.y - p0.y * c0.x) / d;

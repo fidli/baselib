@@ -64,7 +64,7 @@ bool loadAndCompileShaders(const char * vertexShaderPath, const char * fragmentS
     
     //shaders compilation
     if(readFile(vertexShaderPath, &vertexContents) && readFile(fragmentShaderPath, &fragmentContents)){
-        return compileShaders(CAST(const unsigned char *, vertexContents.contents), CAST(uint32, vertexContents.size), CAST(const unsigned char *, fragmentContents.contents), CAST(uint32, fragmentContents.size), vertexShader, fragmentShader, program);
+        return compileShaders(CAST(const unsigned char *, vertexContents.contents), CAST(u32, vertexContents.size), CAST(const unsigned char *, fragmentContents.contents), CAST(u32, fragmentContents.size), vertexShader, fragmentShader, program);
     }
     LOGE(default, shaders, "Failed to read shader files");
     return false;

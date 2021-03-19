@@ -12,13 +12,13 @@ static Lcg lcgen;
 bool initRng(){
     Lcg * gen = &lcgen;
     LocalTime now = getLocalTime();
-    gen->state = (uint32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
+    gen->state = (u32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
     return true;
 }
 
 bool initRng(Lcg * gen){
     LocalTime now = getLocalTime();
-    gen->state = (uint32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
+    gen->state = (u32)-(now.second * now.minute * now.hour * (1 + getProcessCurrentTime()));
     return true;
 }
 
@@ -27,14 +27,14 @@ bool initRng(Lcg * gen){
 uint16 randlcg(Lcg * gen){
     gen->state  = 1103515245 * gen->state + 12345;
     gen->state &= 0xEFFFFFFF; //modulo 31 bits
-    return (uint16) (gen->state >> 15);
+    return (u16) (gen->state >> 15);
 }
 
 uint16 randlcg(){
     Lcg * gen = &lcgen;
     gen->state  = 1103515245 * gen->state + 12345;
     gen->state &= 0xEFFFFFFF; //modulo 31 bits
-    return (uint16) (gen->state >> 15);
+    return (u16) (gen->state >> 15);
 }
 
 uint32 randlcgd(){
@@ -45,7 +45,7 @@ uint32 randlcgd(){
 }
 
 uint16 randlcgRange(u16 spanSize){
-    return (uint16)(((float32) randlcg() / (uint16) -1) * spanSize);
+    return (u16)(((f32) randlcg() / (u16) -1) * spanSize);
 }
 
 #endif

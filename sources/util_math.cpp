@@ -11,7 +11,7 @@
 //-----------------------------------------------------------------------NUMBERS
 
 bool32 isOdd(const u64 a){
-    return (a & (uint64) 1);
+    return (a & (u64) 1);
 }
 
 bool aseq(f32 a, f32 b, f32 delta = 0.000001f){
@@ -52,8 +52,8 @@ bool aseqr64(f64 test, f64 fixedpoint, f64 delta = 0.000005f){
 #ifndef PRECISE_MATH
 
 float32 ceil(f32 value){
-    i64 i = CAST(int64, value);
-    f32 result = CAST(float32, i);
+    i64 i = CAST(i64, value);
+    f32 result = CAST(f32, i);
     if(result != value && value >= 0){
         result++;
     }
@@ -61,8 +61,8 @@ float32 ceil(f32 value){
 }
 
 float32 floor(f32 value){
-    i64 i = CAST(int64, value);
-    f32 result = CAST(float32, i);
+    i64 i = CAST(i64, value);
+    f32 result = CAST(f32, i);
     if(result != value && value <= 0){
         result--;
     }
@@ -71,7 +71,7 @@ float32 floor(f32 value){
 }
 
 float32 round(f32 value){
-    if((uint32)(value * 10) % 10 >= 5){
+    if((u32)(value * 10) % 10 >= 5){
         return ceil(value);
     }else{
         return floor(value);
@@ -167,7 +167,7 @@ float32 sqrt(f32 value){
 */
 
 
-float32 atan2(float32, float32){
+float32 atan2(f32, float32){
     ASSERT(!"implement me");
     return 0;
 }
@@ -236,9 +236,9 @@ float32 ln(f32 number, u8 precisionBits = 32){
 float32 epow(f32 power){
     if(aseq(power, 0, 0.000000005f)) return 1;
     //taylor
-    f32 abspow = ABS(power) - (uint32) ABS(power);
+    f32 abspow = ABS(power) - (u32) ABS(power);
     f32 result = 1 + abspow + powd(abspow, 2)/2.0f + powd(abspow, 3)/6.0f + powd(abspow, 4)/24.0f + powd(abspow, 5)/120.0f  + powd(abspow, 6)/720.0f + powd(abspow, 7)/5040.0f + powd(abspow, 8)/40320.0f + powd(abspow, 9)/362880.0f + powd(abspow, 10)/3628800.0f + powd(abspow, 11)/39916800.0f + powd(abspow, 12)/479001600.0f +powd(abspow, 13)/6881080200.0f + powd(abspow, 14)/87178291200.0f;
-    result *= powd(E, (uint32) ABS(power));
+    result *= powd(E, (u32) ABS(power));
     return (power < 0) ? (1.0 / result) : result;
 }
 
@@ -281,14 +281,14 @@ float32 normalize(f32 value, f32 min, f32 max){
 }
 
 float32 fmodd(f32 value, u32 modulus){
-    i32 wholePart = (int32) value;
-    f32 preResult = (float32)(wholePart % modulus) + (value - wholePart);
+    i32 wholePart = (i32) value;
+    f32 preResult = (f32)(wholePart % modulus) + (value - wholePart);
     return preResult; 
 }
 
 float64 fmodd64(f64 value, u64 modulus){
-    i64 wholePart = (int64) value;
-    f64 preResult = (float64)(wholePart % modulus) + (value - wholePart);
+    i64 wholePart = (i64) value;
+    f64 preResult = (f64)(wholePart % modulus) + (value - wholePart);
     return preResult; 
 }
 #else
@@ -297,19 +297,19 @@ float64 fmodd64(f64 value, u64 modulus){
 //this is just interface
 
 float32 powd(f32 base, i16 power = 2){
-    return (float32)pow((double) base, (double) power);
+    return (f32)pow((double) base, (double) power);
 }
 
 float64 powd64(f64 base, i16 power = 2){
-    return (float64)pow(base, (double) power);
+    return (f64)pow(base, (double) power);
 }
 
 float64 sqrt64(f64 value){
-    return (float64)sqrt((double) value);
+    return (f64)sqrt((double) value);
 }
 
 float32 fmodd(f32 value, u32 modulus){
-    f32 result = (float32) fmod((double) value, (double) modulus);
+    f32 result = (f32) fmod((double) value, (double) modulus);
     return result;
 }
 
@@ -318,15 +318,15 @@ float64 fmodd64(f64 value, u64 modulus){
 }
 
 float64 acos64(f64 cos64){
-    return (float64)acos((double)cos64);
+    return (f64)acos((double)cos64);
 }
 
 float64 cos64(f64 radAngle){
-    return (float64)cos((double)radAngle);
+    return (f64)cos((double)radAngle);
 }
 
 float64 sin64(f64 radAngle){
-    return (float64)sin((double)radAngle);
+    return (f64)sin((double)radAngle);
 }
 
 
@@ -536,7 +536,7 @@ dv3_64 DV3_64(i64 x, i64 y, i64 z){
 }
 
 v2 V2(const dv2 & v){
-    v2 res = {CAST(float32, v.x), CAST(float32, v.y)};
+    v2 res = {CAST(f32, v.x), CAST(f32, v.y)};
     return res;
 }
 
@@ -727,7 +727,7 @@ dv3 & operator+=(dv3 & a, const dv3 & b){
 
 v2 & operator+=(v2 & a, const dv2 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
-        a.v[i] += CAST(float32, b.v[i]);
+        a.v[i] += CAST(f32, b.v[i]);
     }
     return a;
 }
@@ -750,7 +750,7 @@ dv2 operator/(const dv2 & a, const i32 b){
 v3_64 operator/(const dv3_64 & a, const f64 b){
     v3_64 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
-        result.v[i] = (float64) a.v[i] / b;
+        result.v[i] = (f64) a.v[i] / b;
     }
     return result;
 }
@@ -838,7 +838,7 @@ v2 operator*(const v2 & b, const f32 a){
 v2 operator*(const v2 & b, const i32 a){
     v2 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
-        result.v[i] = ((float32)a)*b.v[i];
+        result.v[i] = ((f32)a)*b.v[i];
     }
     return result;
 }
@@ -873,7 +873,7 @@ v2 operator*=(v2 & v, const f32 a){
 v2 operator*(const dv2 & b, const f32 a){
     v2 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
-        result.v[i] = a*(float32)b.v[i];
+        result.v[i] = a*(f32)b.v[i];
     }
     return result;
 }
@@ -883,12 +883,12 @@ v2 operator*(const f32 a, const dv2 & b){
 }
 
 v2 dv2Tov2(const dv2 & a){
-    v2 result = {(float32)a.x, (float32)a.y};
+    v2 result = {(f32)a.x, (f32)a.y};
     return result;
 }
 
 dv2 v2Todv2(const v2 & a){
-    dv2 result = {(int32)a.x, (int32)a.y};
+    dv2 result = {(i32)a.x, (i32)a.y};
     return result;
 }
 
@@ -972,7 +972,7 @@ uint64 dot64(dv3_64 a, dv3_64 b){
 }
 
 float32 dot(dv2 a, dv2 b){
-    return (float32)(a.x*b.x + a.y * b.y);
+    return (f32)(a.x*b.x + a.y * b.y);
 }
 
 float32 dot(vN a, vN b){
@@ -998,7 +998,7 @@ float64 length64(v3_64 a){
 }
 
 float64 length64(dv3_64 a){
-    return sqrt64((float64)dot64(a,a));
+    return sqrt64((f64)dot64(a,a));
 }
 
 float32 length(vN a){
@@ -1070,7 +1070,7 @@ v2 normalize(v2 source){
 
 v2 normalize(dv2 source){
     v2 result = {};
-    v2 cast = {(float32)source.x, (float32)source.y};
+    v2 cast = {(f32)source.x, (f32)source.y};
     f32 len = length(cast);
     for(int i = 0; i < ARRAYSIZE(cast.v); i++){
         result.v[i] = cast.v[i] / len;
@@ -1205,8 +1205,8 @@ v3_64 operator*(const mat4_64 & matrix, const v3_64 & vector){
 
 void mul(const vN * vector, const matNM * matrix, vN * result){
     
-    ASSERT((uint16)result->size == matrix->width);
-    ASSERT((uint16)vector->size == matrix->height);
+    ASSERT((u16)result->size == matrix->width);
+    ASSERT((u16)vector->size == matrix->height);
     
     for(int matrixCol = 0; matrixCol < matrix->width; matrixCol++){
         result->v[matrixCol] = 0;
@@ -1302,7 +1302,7 @@ mat4 inverseMatrix(const mat4 * originalMatrix){
                     }
                 }
             }
-            f32 minorSign = pow(-1.0f, (float32)(minorRow + minorCol + 2));
+            f32 minorSign = pow(-1.0f, (f32)(minorRow + minorCol + 2));
             minors.cells[minorRow][minorCol] = minorSign * determinant(&tempMatrix);
             if(minorRow == 0){
                 originalDeterminant += minors.cells[minorRow][minorCol];

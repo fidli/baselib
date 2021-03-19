@@ -46,7 +46,7 @@ void write8Reg(MPU6050Handle * handle, int reg, u8 data){
     wiringPiI2CWriteReg8(handle->fd, reg, (int)data);
 }
 uint8 read8Reg(MPU6050Handle * handle, int reg){
-    return (uint8) wiringPiI2CReadReg8(handle->fd, reg);
+    return (u8) wiringPiI2CReadReg8(handle->fd, reg);
 }
 
 #else
@@ -149,7 +149,7 @@ void mpu6050_setup(MPU6050Handle * handle, const MPU6050Settings settings){
 uint16 mpu6050_fifoCount(MPU6050Handle * handle){
     u8 high = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_H);
     u8 low = read8Reg(handle, MPU6050_REGISTER_FIFO_COUNT_L);
-    return (((uint16) high) << 8) + low;
+    return (((u16) high) << 8) + low;
 }
 
 uint8 mpu6050_readFifoByte(MPU6050Handle * handle){

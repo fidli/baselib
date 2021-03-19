@@ -207,22 +207,22 @@ void skipBytes(FileContents * contents, i32 amount)
 
 uint8 readUint8(FileContents * contents)
 {
-    u16 result = CAST(uint8, *(contents->contents + contents->head));
+    u16 result = CAST(u8, *(contents->contents + contents->head));
     contents->head += 1;
     return result;
 }
 
 uint16 readUint16(FileContents * contents)
 {
-    u16 result = ((CAST(uint16, *(contents->contents + contents->head)) << 8) & 0xFF00) | ((CAST(uint16, *(contents->contents + 1 + contents->head)) & 0x00FF));
+    u16 result = ((CAST(u16, *(contents->contents + contents->head)) << 8) & 0xFF00) | ((CAST(u16, *(contents->contents + 1 + contents->head)) & 0x00FF));
     contents->head += 2;
     return result;
 }
 
 uint32 readUint32(FileContents * contents)
 {
-    u32 result = ((CAST(uint32, *(contents->contents + contents->head)) << 24) & 0xFF000000) | ((CAST(uint32, *(contents->contents + 1 + contents->head)) << 16) & 0x00FF0000)
-                    | ((CAST(uint32, *(contents->contents + 2 + contents->head)) << 8) & 0x0000FF00) | ((CAST(uint32, *(contents->contents + 3 + contents->head) & 0x000000FF)));
+    u32 result = ((CAST(u32, *(contents->contents + contents->head)) << 24) & 0xFF000000) | ((CAST(u32, *(contents->contents + 1 + contents->head)) << 16) & 0x00FF0000)
+                    | ((CAST(u32, *(contents->contents + 2 + contents->head)) << 8) & 0x0000FF00) | ((CAST(u32, *(contents->contents + 3 + contents->head) & 0x000000FF)));
     contents->head += 4;
     return result;
 }

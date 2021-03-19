@@ -3,7 +3,7 @@
 
 #include "util_filesystem.cpp"
 
-bool loadConfig(const char * file, bool (*lineCallback)(const uint64, const char *, void ** context), void * initialContext = NULL){
+bool loadConfig(const char * file, bool (*lineCallback)(const u64, const char *, void ** context), void * initialContext = NULL){
     FileContents contents = {};
     if(readFile(file, &contents)){
         
