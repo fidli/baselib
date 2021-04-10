@@ -8,7 +8,7 @@ typedef RP(CALLBACK * NM##FuncType)(__VA_ARGS__); \
 NM##FuncType NM;
 
 #define OBTAINDLLFUNC(HNDL, FNC) \
-FNC = (FNC##FuncType) GetProcAddress(HNDL, #FNC)
+FNC = (FNC##FuncType) GetProcAddress(HNDL, #FNC); ASSERT(FNC != NULL);
 
 
 bool hasDllChangedAndReloaded(FileWatchHandle * target, HMODULE * lib, void (*customWait)(void) = NULL){

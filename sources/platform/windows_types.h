@@ -11,6 +11,6 @@
 #define i64 __int64
 #define u16 unsigned __int16
 #define u64 unsigned __int64
-#define b32 int32
+#define b32 i32
 #define nint size_t
 #define byte unsigned char

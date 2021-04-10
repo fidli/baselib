@@ -18,6 +18,16 @@
 #define GL_CLAMP_TO_BORDER 0x812D
 #define GL_CLAMP_TO_EDGE 0x812F
 
+//https://www.khronos.org/registry/OpenGL/api/GL/wglext.h
+#define WGL_DRAW_TO_WINDOW_ARB 0x2001
+#define WGL_SUPPORT_OPENGL_ARB 0x2010
+#define WGL_DOUBLE_BUFFER_ARB 0x2011
+#define WGL_PIXEL_TYPE_ARB 0x2013
+#define WGL_COLOR_BITS_ARB 0x2014
+#define WGL_DEPTH_BITS_ARB 0x2022
+#define WGL_STENCIL_BITS_ARB 0x2023
+#define WGL_TYPE_RGBA_ARB 0x202B
+
 DEFINEDLLFUNC(GLuint, glCreateShader, GLenum);
 DEFINEDLLFUNC(void, glShaderSource, GLuint, GLsizei, const char **, const GLint *);
 DEFINEDLLFUNC(void, glCompileShader, GLuint);
@@ -38,6 +48,8 @@ DEFINEDLLFUNC(void, glVertexAttribPointer, GLuint, GLint, GLenum, bool, GLsizei,
 DEFINEDLLFUNC(void, glDeleteShader, GLuint);
 DEFINEDLLFUNC(void, glDeleteProgram, GLuint);
 DEFINEDLLFUNC(bool, wglSwapIntervalEXT, int);
+DEFINEDLLFUNC(bool, wglChoosePixelFormatARB, HDC, const int *, const FLOAT *, UINT, int *, UINT *);
+DEFINEDLLFUNC(HGLRC, wglCreateContextAttribsARB, HDC, HGLRC, const int *);
 
 DEFINEDLLFUNC(GLint, glGetUniformLocation, GLuint, const char *);
 DEFINEDLLFUNC(void, glUniform1i, GLint, GLint);
@@ -49,6 +61,27 @@ DEFINEDLLFUNC(void, glUniform4f, GLint, GLfloat, GLfloat, GLfloat, GLfloat);
 FNC = (FNC##FuncType) wglGetProcAddress(#FNC);if(FNC == NULL){OBTAINDLLFUNC(HNDL, FNC);}ASSERT(FNC != NULL);
 
 bool initOpenGL(HDC dc){
+    PIXELFORMATDESCRIPTOR pfd =
+		{
+			sizeof(PIXELFORMATDESCRIPTOR),
+			1,
+			PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,    //Flags
+			PFD_TYPE_RGBA,        // The kind of framebuffer. RGBA or palette.
+			32,                   // Colordepth of the framebuffer.
+			0, 0, 0, 0, 0, 0,
+			0,
+			0,
+			0,
+			0, 0, 0, 0,
+			24,                   // Number of bits for the depthbuffer
+			0,                    // Number of bits for the stencilbuffer
+			0,                    // Number of Aux buffers in the framebuffer.
+            0,
+			0,
+			0, 0, 0
+		};
+    bool res = SetPixelFormat(dc,ChoosePixelFormat(dc, &pfd), &pfd) == TRUE;
+    ASSERT(res);
     HGLRC dummyContext = wglCreateContext(dc);
     ASSERT(dummyContext != NULL);
     auto r = wglMakeCurrent(dc, dummyContext);
@@ -79,6 +112,8 @@ bool initOpenGL(HDC dc){
         OBTAINGLFUNC(opengl, glDeleteShader);
         OBTAINGLFUNC(opengl, glDeleteProgram);
         OBTAINGLFUNC(opengl, wglSwapIntervalEXT);
+        OBTAINGLFUNC(opengl, wglChoosePixelFormatARB);
+        OBTAINGLFUNC(opengl, wglCreateContextAttribsARB);
 
         OBTAINGLFUNC(opengl, glGetUniformLocation);
         OBTAINGLFUNC(opengl, glUniform1i);
