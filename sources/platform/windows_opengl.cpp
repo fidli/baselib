@@ -53,7 +53,9 @@ DEFINEDLLFUNC(HGLRC, wglCreateContextAttribsARB, HDC, HGLRC, const int *);
 
 DEFINEDLLFUNC(GLint, glGetUniformLocation, GLuint, const char *);
 DEFINEDLLFUNC(void, glUniform1i, GLint, GLint);
+DEFINEDLLFUNC(void, glUniform1f, GLint, GLfloat);
 DEFINEDLLFUNC(void, glUniform2f, GLint, GLfloat, GLfloat);
+DEFINEDLLFUNC(void, glUniform2i, GLint, GLint, GLint);
 DEFINEDLLFUNC(void, glUniform3f, GLint, GLfloat, GLfloat, GLfloat);
 DEFINEDLLFUNC(void, glUniform4f, GLint, GLfloat, GLfloat, GLfloat, GLfloat);
 
@@ -116,8 +118,10 @@ bool initOpenGL(HDC dc){
         OBTAINGLFUNC(opengl, wglCreateContextAttribsARB);
 
         OBTAINGLFUNC(opengl, glGetUniformLocation);
+        OBTAINGLFUNC(opengl, glUniform1f);
         OBTAINGLFUNC(opengl, glUniform1i);
         OBTAINGLFUNC(opengl, glUniform2f);
+        OBTAINGLFUNC(opengl, glUniform2i);
         OBTAINGLFUNC(opengl, glUniform3f);
         OBTAINGLFUNC(opengl, glUniform4f);
         r = true;

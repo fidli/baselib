@@ -15,7 +15,7 @@ bool compileShaders(const unsigned char * vertexContents, u32 vertexContentsSize
         glGetShaderiv(*vertexShader, GL_INFO_LOG_LENGTH, &maxLength);
         char error[1024];
         glGetShaderInfoLog(*vertexShader, maxLength, &maxLength, error);
-        LOGE(default, shaders, error);
+            LOGE(default, shaders, error);
         return false;
     }
     

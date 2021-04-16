@@ -8,8 +8,15 @@ struct GuiGL{
         GLint fragmentShader;
         GLint program;
         
-        GLint scaleLocation;
         GLint positionLocation;
+        GLint glyphLocation;
+        GLint advanceLocation;
+        GLint ptLocation;
+        GLint screenDimsLocation;
+        GLint fontPixelSizeLocation;
+        GLint glyphPixelDimsLocation;
+        GLint glyphMarginLocation;
+
         GLint overlayColorLocation;
         GLint samplerLocation;
         GLint textureOffsetLocation;
@@ -33,7 +40,13 @@ GuiGL * guiGl;
 
 static inline void initFontShader(){
     guiGl->font.positionLocation = glGetUniformLocation(guiGl->font.program, "position");
-    guiGl->font.scaleLocation = glGetUniformLocation(guiGl->font.program, "scale");
+    guiGl->font.glyphLocation = glGetUniformLocation(guiGl->font.program, "glyph");
+    guiGl->font.advanceLocation = glGetUniformLocation(guiGl->font.program, "advance");
+    guiGl->font.ptLocation = glGetUniformLocation(guiGl->font.program, "pt");
+    guiGl->font.screenDimsLocation = glGetUniformLocation(guiGl->font.program, "screenDims");
+    guiGl->font.fontPixelSizeLocation = glGetUniformLocation(guiGl->font.program, "fontPixelSize");
+    guiGl->font.glyphPixelDimsLocation = glGetUniformLocation(guiGl->font.program, "glyphPixelDims");
+    guiGl->font.glyphMarginLocation = glGetUniformLocation(guiGl->font.program, "glyphMargin");
     guiGl->font.overlayColorLocation = glGetUniformLocation(guiGl->font.program, "overlayColor");
     guiGl->font.samplerLocation = glGetUniformLocation(guiGl->font.program, "sampler");
     guiGl->font.textureOffsetLocation = glGetUniformLocation(guiGl->font.program, "textureOffset");
@@ -631,12 +644,50 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
     PROFILE_SCOPE(gui_render_text);
     glUseProgram(guiGl->font.program);
     glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
+#if 1
+    i32 advance = 0;
+    char prevGlyph = 0;
+    i32 len = text ? strlen(text) : 0;
+    for(int i = 0; i < len; i++){
+        const GlyphData * glyph = &font->glyphs[CAST(u8, text[i])];
+        //kerning
+        if(prevGlyph){
+            advance += glyph->kerning[prevGlyph];
+        }
+        
+        glUniform3f(guiGl->font.positionLocation, CAST(f32, startX), CAST(f32, startY), zIndex);
 
+        glUniform1i(guiGl->font.glyphLocation, CAST(i32, text[i]));
+        glUniform1i(guiGl->font.advanceLocation, advance);
+        glUniform1f(guiGl->font.ptLocation, CAST(f32, pt));
+        glUniform2i(guiGl->font.screenDimsLocation, guiContext->width, guiContext->height);
+        glUniform1f(guiGl->font.fontPixelSizeLocation, CAST(f32, font->pixelSize));
+        glUniform2f(guiGl->font.glyphPixelDimsLocation, CAST(f32, glyph->AABB.width), CAST(f32, glyph->AABB.height));
+        glUniform2f(guiGl->font.glyphMarginLocation, CAST(f32, glyph->marginX), CAST(f32, glyph->marginY));
+
+
+        // TODO(fidli): figure out in shader from texture
+        //texture offset
+        glUniform2f(guiGl->font.textureOffsetLocation, (f32)glyph->AABB.x / font->data.info.width,
+                    (f32)glyph->AABB.y / font->data.info.height);
+        
+        //texture scale
+        glUniform2f(guiGl->font.textureScaleLocation, ((f32)glyph->AABB.width) / font->data.info.width,
+                    ((f32)(glyph->AABB.height)) / font->data.info.height);
+        
+        //color
+        glUniform4f(guiGl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        
+        advance += glyph->width;
+        prevGlyph = glyph->glyph;
+    }
+#else
     i32 advance = 0;
     f32 resScaleY = 1.0f / (guiContext->height);
     f32 resScaleX = 1.0f / (guiContext->width);
     i32 targetSize = ptToPx(CAST(f32, pt));
-    f32 fontScale = (f32)targetSize / font->pixelSize;
+    f32 fontScale = CAST(f32, targetSize) / font->pixelSize;
     char prevGlyph = 0;
     i32 len = text ? strlen(text) : 0;
     for(int i = 0; i < len; i++){
@@ -656,8 +707,8 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
         //position
         glUniform3f(guiGl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
         //scale
-        glUniform2f(guiGl->font.scaleLocation, fontScale * (glyph->AABB.width) * resScaleX * 2,
-                    fontScale * resScaleY * (glyph->AABB.height) * 2);
+//        glUniform2f(guiGl->font.scaleLocation, fontScale * (glyph->AABB.width) * resScaleX * 2, fontScale * resScaleY * (glyph->AABB.height) * 2);
+//        glUniform2f(guiGl->font.glyphMarginLocation, fontScale * (glyph->AABB.width) * resScaleX * 2, fontScale * resScaleY * (glyph->AABB.height) * 2);
         
         //texture offset
         glUniform2f(guiGl->font.textureOffsetLocation, (f32)glyph->AABB.x / font->data.info.width,
@@ -670,12 +721,22 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
         //color
         glUniform4f(guiGl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
         
+        glUniform3f(guiGl->font.positionLocation, CAST(f32, startX), CAST(f32, startY), CAST(f32, zIndex));
+        glUniform1i(guiGl->font.glyphLocation, CAST(i32, text[i]));
+        glUniform1i(guiGl->font.advanceLocation, advance);
+        glUniform1f(guiGl->font.ptLocation, CAST(f32, pt));
+        glUniform2i(guiGl->font.screenDimsLocation, guiContext->width, guiContext->height);
+        glUniform1f(guiGl->font.fontPixelSizeLocation, CAST(f32, font->pixelSize));
+        glUniform2f(guiGl->font.glyphPixelDimsLocation, CAST(f32, glyph->AABB.width), CAST(f32, glyph->AABB.height));
+        glUniform2f(guiGl->font.glyphMarginLocation, CAST(f32, glyph->marginX), CAST(f32, glyph->marginY));
+        
         //draw it
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
         advance += glyph->width;
         prevGlyph = glyph->glyph;
     }
+#endif
     return true;
 }
 
