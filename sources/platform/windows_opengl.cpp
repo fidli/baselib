@@ -17,6 +17,11 @@
 #define GL_TEXTURE_MAX_LEVEL 0x813D
 #define GL_CLAMP_TO_BORDER 0x812D
 #define GL_CLAMP_TO_EDGE 0x812F
+#define GL_TEXTURE0 0x84C0
+#define GL_RGBA32I 0x8D82
+#define GL_RGBA_INTEGER 0x8D99
+#define GL_RG32I 0x823B
+#define GL_RG_INTEGER 0x8228
 
 //https://www.khronos.org/registry/OpenGL/api/GL/wglext.h
 #define WGL_DRAW_TO_WINDOW_ARB 0x2001
@@ -45,14 +50,17 @@ DEFINEDLLFUNC(void, glBindBuffer, GLenum, GLuint);
 DEFINEDLLFUNC(void, glBufferData, GLenum, GLsizei, const void *, GLenum);
 DEFINEDLLFUNC(void, glEnableVertexAttribArray, GLuint);
 DEFINEDLLFUNC(void, glVertexAttribPointer, GLuint, GLint, GLenum, bool, GLsizei, const void *);
+DEFINEDLLFUNC(void, glVertexAttribIPointer, GLuint, GLint, GLenum, GLsizei, const void *);
 DEFINEDLLFUNC(void, glDeleteShader, GLuint);
 DEFINEDLLFUNC(void, glDeleteProgram, GLuint);
 DEFINEDLLFUNC(bool, wglSwapIntervalEXT, int);
 DEFINEDLLFUNC(bool, wglChoosePixelFormatARB, HDC, const int *, const FLOAT *, UINT, int *, UINT *);
 DEFINEDLLFUNC(HGLRC, wglCreateContextAttribsARB, HDC, HGLRC, const int *);
+DEFINEDLLFUNC(void, glDrawArraysInstanced, GLenum, GLint, GLsizei, GLsizei);
 
 DEFINEDLLFUNC(GLint, glGetUniformLocation, GLuint, const char *);
 DEFINEDLLFUNC(void, glUniform1i, GLint, GLint);
+DEFINEDLLFUNC(void, glUniform1iv, GLint, GLsizei, const GLint*);
 DEFINEDLLFUNC(void, glUniform1f, GLint, GLfloat);
 DEFINEDLLFUNC(void, glUniform2f, GLint, GLfloat, GLfloat);
 DEFINEDLLFUNC(void, glUniform2i, GLint, GLint, GLint);
@@ -111,15 +119,18 @@ bool initOpenGL(HDC dc){
         OBTAINGLFUNC(opengl, glBufferData);
         OBTAINGLFUNC(opengl, glEnableVertexAttribArray);
         OBTAINGLFUNC(opengl, glVertexAttribPointer);
+        OBTAINGLFUNC(opengl, glVertexAttribIPointer);
         OBTAINGLFUNC(opengl, glDeleteShader);
         OBTAINGLFUNC(opengl, glDeleteProgram);
         OBTAINGLFUNC(opengl, wglSwapIntervalEXT);
         OBTAINGLFUNC(opengl, wglChoosePixelFormatARB);
         OBTAINGLFUNC(opengl, wglCreateContextAttribsARB);
+        OBTAINGLFUNC(opengl, glDrawArraysInstanced);
 
         OBTAINGLFUNC(opengl, glGetUniformLocation);
         OBTAINGLFUNC(opengl, glUniform1f);
         OBTAINGLFUNC(opengl, glUniform1i);
+        OBTAINGLFUNC(opengl, glUniform1iv);
         OBTAINGLFUNC(opengl, glUniform2f);
         OBTAINGLFUNC(opengl, glUniform2i);
         OBTAINGLFUNC(opengl, glUniform3f);

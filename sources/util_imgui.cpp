@@ -9,20 +9,22 @@ struct GuiGL{
         GLint program;
         
         GLint positionLocation;
-        GLint glyphLocation;
-        GLint advanceLocation;
+        GLint textLocation;
         GLint ptLocation;
         GLint screenDimsLocation;
         GLint fontPixelSizeLocation;
-        GLint glyphPixelDimsLocation;
-        GLint glyphMarginLocation;
-
+        GLint glyphDataSamplerLocation;
         GLint overlayColorLocation;
-        GLint samplerLocation;
+        GLint atlasSamplerLocation;
+        GLint kerningSamplerLocation;
+        GLint atlasOffsetSamplerLocation;
         GLint textureOffsetLocation;
         GLint textureScaleLocation;
         
-        GLuint texture;
+        GLuint atlasTexture;
+        GLuint kerningTexture;
+        GLuint glyphDataTexture;
+        GLuint atlasOffsetTexture;
     } font;
     struct{
         GLint vertexShader;
@@ -33,24 +35,23 @@ struct GuiGL{
         GLint positionLocation;
         GLint overlayColorLocation;
     } flat;
-    GLuint quad;
+    GLuint mesh;
+    GLuint indices;
 };
 
 GuiGL * guiGl;
 
 static inline void initFontShader(){
     guiGl->font.positionLocation = glGetUniformLocation(guiGl->font.program, "position");
-    guiGl->font.glyphLocation = glGetUniformLocation(guiGl->font.program, "glyph");
-    guiGl->font.advanceLocation = glGetUniformLocation(guiGl->font.program, "advance");
+    guiGl->font.textLocation = glGetUniformLocation(guiGl->font.program, "text");
     guiGl->font.ptLocation = glGetUniformLocation(guiGl->font.program, "pt");
     guiGl->font.screenDimsLocation = glGetUniformLocation(guiGl->font.program, "screenDims");
     guiGl->font.fontPixelSizeLocation = glGetUniformLocation(guiGl->font.program, "fontPixelSize");
-    guiGl->font.glyphPixelDimsLocation = glGetUniformLocation(guiGl->font.program, "glyphPixelDims");
-    guiGl->font.glyphMarginLocation = glGetUniformLocation(guiGl->font.program, "glyphMargin");
+    guiGl->font.glyphDataSamplerLocation = glGetUniformLocation(guiGl->font.program, "samplerGlyphData");
     guiGl->font.overlayColorLocation = glGetUniformLocation(guiGl->font.program, "overlayColor");
-    guiGl->font.samplerLocation = glGetUniformLocation(guiGl->font.program, "sampler");
-    guiGl->font.textureOffsetLocation = glGetUniformLocation(guiGl->font.program, "textureOffset");
-    guiGl->font.textureScaleLocation = glGetUniformLocation(guiGl->font.program, "textureScale");
+    guiGl->font.atlasSamplerLocation = glGetUniformLocation(guiGl->font.program, "samplerAtlas");
+    guiGl->font.kerningSamplerLocation = glGetUniformLocation(guiGl->font.program, "samplerKerning");
+    guiGl->font.atlasOffsetSamplerLocation = glGetUniformLocation(guiGl->font.program, "samplerAtlasOffset");
 }
 
 static inline void initFlatShader(){
@@ -252,7 +253,7 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
     memset(CAST(void*, guiContext), 0, sizeof(GuiContext));
     guiGl = &PPUSH(GuiGL);
     memset(CAST(void*, guiGl), 0, sizeof(GuiGL));
-
+    glEnable(GL_TEXTURE_1D);
     bool r = true;    
     {//font
         LOG(default, startup, "Reading in font");
@@ -263,12 +264,54 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
             return false;
         }
         ASSERT(guiContext->font.data.info.interpretation == BitmapInterpretationType_RGBA);
-        glGenTextures(1, &guiGl->font.texture);
-        glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
+        
+        int onedsize= MAX(4*256, 1024);
+        glGenTextures(1, &guiGl->font.glyphDataTexture);
+        glBindTexture(GL_TEXTURE_1D, guiGl->font.glyphDataTexture);
+        {
+            i32 * data = &PUSHA_SCOPE(i32, onedsize);
+            for(i32 i = 0; i < 256; i++){
+                data[i*4 + 0] = guiContext->font.glyphs[i].AABB.width;
+                data[i*4 + 1] = guiContext->font.glyphs[i].AABB.height;
+                data[i*4 + 2] = guiContext->font.glyphs[i].marginX;
+                data[i*4 + 3] = guiContext->font.glyphs[i].marginY;
+            }
+            glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32I, onedsize, 0, GL_RGBA_INTEGER, GL_INT, data);
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
+        }
+        glGenTextures(1, &guiGl->font.atlasOffsetTexture);
+        glBindTexture(GL_TEXTURE_1D, guiGl->font.atlasOffsetTexture);
+        {
+            f32 * data = &PUSHA_SCOPE(f32, onedsize);
+            for(i32 i = 0; i < 256; i++){
+                data[i*4 + 0] = CAST(f32, guiContext->font.glyphs[i].AABB.x) / guiContext->font.data.info.width;
+                data[i*4 + 1] = CAST(f32, guiContext->font.glyphs[i].AABB.y) / guiContext->font.data.info.height;
+                data[i*4 + 2] = CAST(f32, guiContext->font.glyphs[i].AABB.width) / guiContext->font.data.info.width;
+                data[i*4 + 3] = CAST(f32, guiContext->font.glyphs[i].AABB.height) / guiContext->font.data.info.height;
+            }
+            glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, onedsize, 0, GL_RGBA, GL_FLOAT, data);
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
+        }
+        glGenTextures(1, &guiGl->font.kerningTexture);
+        glBindTexture(GL_TEXTURE_2D, guiGl->font.kerningTexture);
+        {
+            i32 * data = &PUSHA_SCOPE(i32, 256*256*4);
+            for(i32 i = 0; i < 256*256; i++){
+                data[i*2 + 0] = guiContext->font.glyphs[i/256].kerning[i&255];
+                data[i*2 + 1] = guiContext->font.glyphs[i&255].width;
+            }
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32I, 256, 256, 0, GL_RG_INTEGER, GL_INT, data);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+        }
+        
+        glGenTextures(1, &guiGl->font.atlasTexture);
+        glBindTexture(GL_TEXTURE_2D, guiGl->font.atlasTexture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, guiContext->font.data.info.width, guiContext->font.data.info.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, guiContext->font.data.data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-        
     }
 #ifndef RELEASE
     r &= loadAndCompileShaders("..\\sources\\shaders\\font.vert", "..\\sources\\shaders\\font.frag", &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
@@ -302,22 +345,55 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
     isInit = r;
     
     {
-        glGenBuffers(1, &guiGl->quad);
-        glBindBuffer(GL_ARRAY_BUFFER, guiGl->quad);
-        const f32 box[] = {
-            // triangle
-            1, 0,// 0.0f, 1.0f,
-            0, 0,// 0.0f, 1.0f,
-            1, 1,// 0.0f, 1.0f,
-            0, 1, //, 0.0f, 1.0f,
-            // lines
-            0, 0,
-            0, 1,
-            1, 1,
-            1, 0
-        };
-        
-        glBufferData(GL_ARRAY_BUFFER, sizeof(box), box, GL_STATIC_DRAW);
+        {
+            glGenBuffers(1, &guiGl->mesh);
+            glBindBuffer(GL_ARRAY_BUFFER, guiGl->mesh);
+            i32 dataSize = (6*2*256 + 4*2) * 4;
+            char * data = &PUSHA_SCOPE(char, dataSize);
+            f32 * triangles = CAST(f32*, data);
+            f32 * lines = CAST(f32*, data + 6*2*256*4);
+            for(i32 i = 0; i < 256; i++){
+                triangles[i*12 + 0] = 1;
+                triangles[i*12 + 1] = 0;
+                triangles[i*12 + 2] = 0;
+                triangles[i*12 + 3] = 0;
+                triangles[i*12 + 4] = 1;
+                triangles[i*12 + 5] = 1;
+                triangles[i*12 + 6] = 0;
+                triangles[i*12 + 7] = 1;
+                triangles[i*12 + 8] = 0;
+                triangles[i*12 + 9] = 0;
+                triangles[i*12 + 10] = 1;
+                triangles[i*12 + 11] = 1;
+            }
+             
+            lines[0] = 0;
+            lines[1] = 0;
+            lines[2] = 0;
+            lines[3] = 1;
+            lines[4] = 1;
+            lines[5] = 1;
+            lines[6] = 1;
+            lines[7] = 0;
+            glBufferData(GL_ARRAY_BUFFER, dataSize, data, GL_STATIC_DRAW);
+        }
+        {
+            i32 dataSize = (6*256) * 4;
+            char * data = &PUSHA_SCOPE(char, dataSize);
+            i32 * indices = CAST(i32*,data);
+            glGenBuffers(1, &guiGl->indices);
+            glBindBuffer(GL_ARRAY_BUFFER, guiGl->indices);
+
+            for(i32 i = 0; i < 256; i++){
+                indices[i*6 + 0] = i;
+                indices[i*6 + 1] = i;
+                indices[i*6 + 2] = i;
+                indices[i*6 + 3] = i;
+                indices[i*6 + 4] = i;
+                indices[i*6 + 5] = i;
+            }
+            glBufferData(GL_ARRAY_BUFFER, dataSize, data, GL_STATIC_DRAW);
+        }
     }
     return isInit;
 }
@@ -359,7 +435,6 @@ void guiSelectPreviousInput(){
     guiCancelCaretPositioning();
 }
 
-
 void guiBegin(i32 width, i32 height){
     PROFILE_SCOPE(gui_begin);
     f64 currentTimestamp = getProcessCurrentTime();
@@ -375,10 +450,14 @@ void guiBegin(i32 width, i32 height){
     guiContext->defaultContainer.defaultJustify = GuiJustify_Left;
     guiContext->addedContainersCount = 0;
     guiContext->selection.inputsRendered = 0;
-    glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
-    glBindBuffer(GL_ARRAY_BUFFER, guiGl->quad);
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, guiGl->mesh);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, guiGl->indices);
+    glEnableVertexAttribArray(1);
+    glVertexAttribIPointer(1, 1, GL_INT, 0, 0);
     
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -643,100 +722,34 @@ static bool registerInputAndIsSelected(){
 bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, f32 zIndex = 0){
     PROFILE_SCOPE(gui_render_text);
     glUseProgram(guiGl->font.program);
-    glBindTexture(GL_TEXTURE_2D, guiGl->font.texture);
-#if 1
-    i32 advance = 0;
-    char prevGlyph = 0;
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glBindTexture(GL_TEXTURE_1D, guiGl->font.glyphDataTexture);
+    glUniform1i(guiGl->font.glyphDataSamplerLocation, 0);
+    
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_1D, guiGl->font.atlasOffsetTexture);
+    glUniform1i(guiGl->font.atlasOffsetSamplerLocation, 1);
+    
+    glActiveTexture(GL_TEXTURE0 + 2);
+    glBindTexture(GL_TEXTURE_2D, guiGl->font.kerningTexture);
+    glUniform1i(guiGl->font.kerningSamplerLocation, 2);
+    
+    glActiveTexture(GL_TEXTURE0 + 3);
+    glBindTexture(GL_TEXTURE_2D, guiGl->font.atlasTexture);
+    glUniform1i(guiGl->font.atlasSamplerLocation, 3);
+    
+    glUniform4f(guiGl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
+    glUniform1f(guiGl->font.ptLocation, CAST(f32, pt));
+    glUniform2i(guiGl->font.screenDimsLocation, guiContext->width, guiContext->height);
+    glUniform1f(guiGl->font.fontPixelSizeLocation, CAST(f32, font->pixelSize));
+    glUniform3f(guiGl->font.positionLocation, CAST(f32, startX), CAST(f32, startY), zIndex);
+
     i32 len = text ? strlen(text) : 0;
-    for(int i = 0; i < len; i++){
-        const GlyphData * glyph = &font->glyphs[CAST(u8, text[i])];
-        //kerning
-        if(prevGlyph){
-            advance += glyph->kerning[prevGlyph];
-        }
-        
-        glUniform3f(guiGl->font.positionLocation, CAST(f32, startX), CAST(f32, startY), zIndex);
-
-        glUniform1i(guiGl->font.glyphLocation, CAST(i32, text[i]));
-        glUniform1i(guiGl->font.advanceLocation, advance);
-        glUniform1f(guiGl->font.ptLocation, CAST(f32, pt));
-        glUniform2i(guiGl->font.screenDimsLocation, guiContext->width, guiContext->height);
-        glUniform1f(guiGl->font.fontPixelSizeLocation, CAST(f32, font->pixelSize));
-        glUniform2f(guiGl->font.glyphPixelDimsLocation, CAST(f32, glyph->AABB.width), CAST(f32, glyph->AABB.height));
-        glUniform2f(guiGl->font.glyphMarginLocation, CAST(f32, glyph->marginX), CAST(f32, glyph->marginY));
-
-
-        // TODO(fidli): figure out in shader from texture
-        //texture offset
-        glUniform2f(guiGl->font.textureOffsetLocation, (f32)glyph->AABB.x / font->data.info.width,
-                    (f32)glyph->AABB.y / font->data.info.height);
-        
-        //texture scale
-        glUniform2f(guiGl->font.textureScaleLocation, ((f32)glyph->AABB.width) / font->data.info.width,
-                    ((f32)(glyph->AABB.height)) / font->data.info.height);
-        
-        //color
-        glUniform4f(guiGl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        
-        advance += glyph->width;
-        prevGlyph = glyph->glyph;
+    if(len){
+        ASSERT(len <= 256); // NOTE(fidli): from shader
+        glUniform1iv(guiGl->font.textLocation, MIN(64, ((len - 1) / 4) + 1), CAST(const GLint*, text));
+        glDrawArrays(GL_TRIANGLES, 0, 6*len);
     }
-#else
-    i32 advance = 0;
-    f32 resScaleY = 1.0f / (guiContext->height);
-    f32 resScaleX = 1.0f / (guiContext->width);
-    i32 targetSize = ptToPx(CAST(f32, pt));
-    f32 fontScale = CAST(f32, targetSize) / font->pixelSize;
-    char prevGlyph = 0;
-    i32 len = text ? strlen(text) : 0;
-    for(int i = 0; i < len; i++){
-        const GlyphData * glyph = &font->glyphs[CAST(u8, text[i])];
-        if(!glyph->valid){
-            continue;
-        }
-        i32 positionX = startX + CAST(i32, fontScale*(advance + glyph->marginX));
-        i32 positionY = startY + CAST(i32, fontScale*glyph->marginY);
-        //kerning
-        if(prevGlyph){
-            positionX += (i32)((f32)glyph->kerning[prevGlyph]*fontScale);
-            advance += (i32)((f32)glyph->kerning[prevGlyph]*fontScale);
-        }
-        
-        f32 zOffset = clamp(zIndex, CAST(f32, -INT8_MAX), CAST(f32, INT8_MAX)) / CAST(f32, INT8_MAX);
-        //position
-        glUniform3f(guiGl->font.positionLocation, resScaleX * 2 * positionX - 1, resScaleY * 2 * positionY - 1, zOffset);
-        //scale
-//        glUniform2f(guiGl->font.scaleLocation, fontScale * (glyph->AABB.width) * resScaleX * 2, fontScale * resScaleY * (glyph->AABB.height) * 2);
-//        glUniform2f(guiGl->font.glyphMarginLocation, fontScale * (glyph->AABB.width) * resScaleX * 2, fontScale * resScaleY * (glyph->AABB.height) * 2);
-        
-        //texture offset
-        glUniform2f(guiGl->font.textureOffsetLocation, (f32)glyph->AABB.x / font->data.info.width,
-                    (f32)glyph->AABB.y / font->data.info.height);
-        
-        //texture scale
-        glUniform2f(guiGl->font.textureScaleLocation, ((f32)glyph->AABB.width) / font->data.info.width,
-                    ((f32)(glyph->AABB.height)) / font->data.info.height);
-        
-        //color
-        glUniform4f(guiGl->font.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
-        
-        glUniform3f(guiGl->font.positionLocation, CAST(f32, startX), CAST(f32, startY), CAST(f32, zIndex));
-        glUniform1i(guiGl->font.glyphLocation, CAST(i32, text[i]));
-        glUniform1i(guiGl->font.advanceLocation, advance);
-        glUniform1f(guiGl->font.ptLocation, CAST(f32, pt));
-        glUniform2i(guiGl->font.screenDimsLocation, guiContext->width, guiContext->height);
-        glUniform1f(guiGl->font.fontPixelSizeLocation, CAST(f32, font->pixelSize));
-        glUniform2f(guiGl->font.glyphPixelDimsLocation, CAST(f32, glyph->AABB.width), CAST(f32, glyph->AABB.height));
-        glUniform2f(guiGl->font.glyphMarginLocation, CAST(f32, glyph->marginX), CAST(f32, glyph->marginY));
-        
-        //draw it
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        
-        advance += glyph->width;
-        prevGlyph = glyph->glyph;
-    }
-#endif
     return true;
 }
 
@@ -761,7 +774,7 @@ static bool renderRect(const i32 positionX, const i32 positionY, const i32 width
     glUniform4f(guiGl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
     
     //draw it
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
     
     return true;
 }
@@ -782,7 +795,7 @@ static bool renderWireRect(const i32 positionX, const i32 positionY, const i32 w
     glUniform4f(guiGl->flat.overlayColorLocation, color->x/255.0f, color->y/255.0f, color->z/255.0f, color->w/255.0f);
     
     //draw it
-    glDrawArrays(GL_LINE_LOOP, 4, 4);
+    glDrawArrays(GL_LINE_LOOP, 256*6, 4);
     
     return true;
 }
