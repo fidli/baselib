@@ -115,7 +115,7 @@ bool dirExists(const char * path){
 }
 
 bool createDirectory(const char * path){
-    return dirExists(path) || mkdir(path, S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP | S_IROTH | S_IWOTH) == 0;
+    return dirExists(path) || mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0;
 }
 
 
