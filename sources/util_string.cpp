@@ -7,6 +7,8 @@
 
 #ifndef CRT_PRESENT
 
+#include <emmintrin.h>
+
 i32 strcmp(const char * a, const char * b){
     i32 result = 0;
     for(u32 index = 0; ;index++){
@@ -62,6 +64,7 @@ char * strcpy(char * target, const char * source){
 }
 
 nint strnlen(const char * source, nint limit){
+    PROFILE_SCOPE(strnlen);
     nint length = 1;
     if(source){
         while(source[length-1] != '\0' && length-1 < limit){
@@ -72,6 +75,8 @@ nint strnlen(const char * source, nint limit){
 }
 
 nint strlen(const char * source){
+    PROFILE_SCOPE(strlen);
+#if 0
     nint length = 1;
     if(source){
         while(source[length-1] != '\0'){
@@ -79,6 +84,29 @@ nint strlen(const char * source){
         }
     }
     return length-1;
+#else
+    // TODO(fidli): make sure:
+    // 1) make memory allocation 16 byte aligned
+    // 2) avoid stac memory strigns, but however after local variable, there will probably be at least 15 bytes of instructions, ("")
+    // we have big stack, but no compiler option to extend local variables by 15 bytes to be aligned for simd
+    // 3) in link time, make sure there is 15 bytes reserve in .rdata section of PE
+    bool next = source;
+    __m128i zeros = _mm_set1_epi8(0);
+    nint count = 0;
+    i32 presence = 0xFFFF;
+    while(next){
+        __m128i chars = _mm_load_si128(CAST(__m128i *, source+count));
+        __m128i eq = _mm_cmpeq_epi8(chars, zeros);
+        presence =  _mm_movemask_epi8(eq);
+        next = presence == 0;
+        count += next * 16;
+    }
+    presence = ~presence;
+    for(i32 s = 0; s < 16 && presence & (1<<s); s++){
+        count++;
+    }
+    return count;
+#endif
 }
 
 const char * strstr(const char * data, const char * searchFor){

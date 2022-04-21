@@ -24,26 +24,34 @@ bool initProfile(){
 }
 
 ProfileEntry * createProfileEntry(const char * name){
-    ProfileEntry * result = &profile->slots[profile->slotsUsed];
-    memset(CAST(void *, result), 0, sizeof(ProfileEntry));
-    // NOTE(fidli): this mush be compile known or persistent string, which is the usual case
-    strncpy(profile->names[profile->slotsUsed], name, ARRAYSIZE(profile->names[0]));
-    profile->slotsUsed++;
-    return result;
+    if(profile){
+        ProfileEntry * result = &profile->slots[profile->slotsUsed];
+        memset(CAST(void *, result), 0, sizeof(ProfileEntry));
+        // NOTE(fidli): this mush be compile known or persistent string, which is the usual case
+        strncpy(profile->names[profile->slotsUsed], name, ARRAYSIZE(profile->names[0]));
+        profile->slotsUsed++;
+        return result;
+    }
+    return NULL;
 }
 
 void profileStart(ProfileEntry * target){
-    target->lastStartTime = getProcessCurrentTime();
+    if(target){
+        target->lastStartTime = getProcessCurrentTime();
+    }
 }
 
 void profileEnd(ProfileEntry * target){
-    target->timeSpentTotal += getProcessCurrentTime() - target->lastStartTime;
-    target->callCountTotal++; 
+    if(target){
+        target->timeSpentTotal += getProcessCurrentTime() - target->lastStartTime;
+        target->callCountTotal++; 
+    }
 }
 
 #define PROFILE_START(name) \
 static ProfileEntry * profile_##name = createProfileEntry(#name); \
-profileStart(profile_##name);
+if(!profile_##name) profile_##name = createProfileEntry(#name); \
+profileStart(profile_##name); 
 
 #define PROFILE_END(name) \
 profileEnd(profile_##name);
@@ -61,6 +69,7 @@ struct ProfileDefer{
 
 #define PROFILE_SCOPE(name) \
 static ProfileEntry * profile_##name = createProfileEntry(#name); \
+if(!profile_##name) profile_##name = createProfileEntry(#name); \
 ProfileDefer CONCAT(AutoProfileDeferFromLine, __LINE__)(profile_##name);
 
 void profileClearStats(){
