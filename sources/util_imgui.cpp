@@ -322,7 +322,7 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
     ASSERT(r);
     initFlatShader();
     LOG(default, shaders, "Flat shaders loaded");
-#elsej
+#else
     r &= compileShaders(___baselib_opengl_shaders_font_vert, ___baselib_opengl_shaders_font_vert_len, ___baselib_opengl_shaders_font_frag, ___baselib_opengl_shaders_font_frag_len, &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
     ASSERT(r);
     initFontShader();
