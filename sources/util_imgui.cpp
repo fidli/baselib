@@ -314,20 +314,20 @@ bool guiInit(const char * fontImagePath, const char * fontDescriptionPath){
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     }
 #ifndef RELEASE
-    r &= loadAndCompileShaders("..\\sources\\shaders\\font.vert", "..\\sources\\shaders\\font.frag", &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
+    r &= loadAndCompileShaders("..\\baselib\\opengl_shaders\\font.vert", "..\\baselib\\opengl_shaders\\font.frag", &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
     ASSERT(r);
     initFontShader();
     LOG(default, shaders, "Font shaders loaded");
-    r &= loadAndCompileShaders("..\\sources\\shaders\\flat.vert", "..\\sources\\shaders\\flat.frag", &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
+    r &= loadAndCompileShaders("..\\baselib\\opengl_shaders\\flat.vert", "..\\baselib\\opengl_shaders\\flat.frag", &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
     ASSERT(r);
     initFlatShader();
     LOG(default, shaders, "Flat shaders loaded");
-#else
-    r &= compileShaders(___sources_shaders_font_vert, ___sources_shaders_font_vert_len, ___sources_shaders_font_frag, ___sources_shaders_font_frag_len, &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
+#elsej
+    r &= compileShaders(___baselib_opengl_shaders_font_vert, ___baselib_opengl_shaders_font_vert_len, ___baselib_opengl_shaders_font_frag, ___baselib_opengl_shaders_font_frag_len, &guiGl->font.vertexShader, &guiGl->font.fragmentShader, &guiGl->font.program);
     ASSERT(r);
     initFontShader();
     LOG(default, shaders, "Font shaders loaded");
-    r &= compileShaders(___sources_shaders_flat_vert, ___sources_shaders_flat_vert_len, ___sources_shaders_flat_frag, ___sources_shaders_flat_frag_len, &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
+    r &= compileShaders(___baselib_opengl_shaders_flat_vert, ___baselib_opengl_shaders_flat_vert_len, ___baselib_opengl_shaders_flat_frag, ___baselib_opengl_shaders_flat_frag_len, &guiGl->flat.vertexShader, &guiGl->flat.fragmentShader, &guiGl->flat.program);
     ASSERT(r);
     initFlatShader();
     LOG(default, shaders, "Flat shaders loaded");
