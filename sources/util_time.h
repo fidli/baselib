@@ -46,7 +46,7 @@ f64 translateTickToTime(const u64 tick, const u64 tickDivisor);
 
 u64 getTickDivisor();
 
-f32 getProcessCurrentTime();
+f64 getProcessCurrentTime();
 
 
 LocalTime getLocalTime();

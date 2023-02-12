@@ -291,6 +291,12 @@ f64 fmodd64(f64 value, u64 modulus){
     f64 preResult = (f64)(wholePart % modulus) + (value - wholePart);
     return preResult; 
 }
+
+f32 fmod(f32 value, f32 modulus){
+    f32 divided = value / modulus;
+    f32 remain = divided - ((f32)(i32)divided);
+    return modulus*remain;
+}
 #else
 
 
@@ -747,6 +753,14 @@ dv2 operator/(const dv2 & a, const i32 b){
     return result;
 }
 
+v2 operator/(const v2 & a, const f32 b){
+    v2 result;
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = a.v[i] / b;
+    }
+    return result;
+}
+
 v3_64 operator/(const dv3_64 & a, const f64 b){
     v3_64 result;
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
@@ -929,6 +943,9 @@ vN operator*(const f32 a, const vN & b){
     return b * a;
 }
 
+f32 lerp(const f32 origin, const f32 target, f32 coeficient){
+    return origin + (target-origin) * coeficient;
+}
 
 v3 lerp(const v3 * origin, const v3 * target, f32 coeficient){
     return *origin + (*target-*origin) * coeficient;
@@ -1151,6 +1168,13 @@ v2 rotate(const dv2 & point, const f32 radAngle){
     result.y = sinA * point.x + cosA * point.y;
     return result;
 }
+
+v2 slerp(const v2 * origin, const v2 * target, f32 coeficient){
+    f32 angle = acos(dot(normalize(*origin), normalize(*target)));
+    f32 sinAngle = sin(angle);
+    return (sin((1-coeficient)*angle)/sinAngle)*(*origin) + (sin(coeficient*angle)/sinAngle)*(*target);
+}
+
 
 //-----------------------------------------------------------------------MATRICES
 

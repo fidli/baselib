@@ -133,13 +133,13 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
     }
     if(!info && !strncmp(loggerName, "default", 7)){
         //STD output
-        printf("%1024s", loggers->messagebuffer);
+        printf("%s", loggers->messagebuffer);
         return;
     }else if(info){
         if(info->level >= level){
             switch(info->target){
                 case LogTarget_Cli:{
-                    printf("%1024s", loggers->messagebuffer);
+                    printf("%s", loggers->messagebuffer);
                 }break;
                 case LogTarget_File:{
                     appendFile(info->file.path, loggers->messagebuffer, strnlen(loggers->messagebuffer, 1024));

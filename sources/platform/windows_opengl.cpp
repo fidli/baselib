@@ -32,6 +32,8 @@
 #define WGL_DEPTH_BITS_ARB 0x2022
 #define WGL_STENCIL_BITS_ARB 0x2023
 #define WGL_TYPE_RGBA_ARB 0x202B
+#define WGL_SAMPLE_BUFFERS_ARB 0x2041
+#define WGL_SAMPLES_ARB 0x2042
 
 DEFINEDLLFUNC(GLuint, glCreateShader, GLenum);
 DEFINEDLLFUNC(void, glShaderSource, GLuint, GLsizei, const char **, const GLint *);
@@ -70,7 +72,24 @@ DEFINEDLLFUNC(void, glUniform4f, GLint, GLfloat, GLfloat, GLfloat, GLfloat);
 #define OBTAINGLFUNC(HNDL, FNC) \
 FNC = (FNC##FuncType) wglGetProcAddress(#FNC);if(FNC == NULL){OBTAINDLLFUNC(HNDL, FNC);}ASSERT(FNC != NULL);
 
-bool initOpenGL(HDC dc){
+bool initOpenGL(){
+    WNDCLASSEX style = {};
+    style.cbSize = sizeof(WNDCLASSEX);
+    style.style = CS_OWNDC | CS_DBLCLKS;
+    style.hInstance = hInstance;
+    style.lpfnWndProc = DefWindowProc;
+    style.lpszClassName = "OpenGLInit";
+    bool r = RegisterClassEx(&style) != 0;
+    ASSERT(r);
+    HWND window_ = CreateWindowEx(NULL,
+                                "OpenGLInit", "OpenGL Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
+                                CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
+    r &= window_ != NULL;
+    if (r != true)
+    {
+        return r;
+    }
+    HDC dc = GetDC(window_);
     PIXELFORMATDESCRIPTOR pfd =
 		{
 			sizeof(PIXELFORMATDESCRIPTOR),
@@ -94,7 +113,7 @@ bool initOpenGL(HDC dc){
     ASSERT(res);
     HGLRC dummyContext = wglCreateContext(dc);
     ASSERT(dummyContext != NULL);
-    auto r = wglMakeCurrent(dc, dummyContext);
+    r = wglMakeCurrent(dc, dummyContext) == TRUE;
     ASSERT(r == TRUE);
     if(r != TRUE){
         return false;
@@ -140,6 +159,8 @@ bool initOpenGL(HDC dc){
         r = false;
     }
     wglMakeCurrent(NULL, NULL);
+    DestroyWindow(window_);
+    UnregisterClass("OpenGLInit", hInstance);
     wglDeleteContext(dummyContext);
     return r;
 }

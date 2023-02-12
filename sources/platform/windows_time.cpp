@@ -4,21 +4,21 @@
 #include "util_time.h"
 
 static LARGE_INTEGER frequency;
-static f32 frequencyF;
+static f64 frequencyF;
 
 bool initTime(){
     int result = QueryPerformanceFrequency(&frequency);
     if(result != 0){
-        frequencyF = (f32)frequency.QuadPart;
+        frequencyF = CAST(f64, frequency.QuadPart);
         return true;
     }
     return false;
 }
 
-f32 getProcessCurrentTime(){
+f64 getProcessCurrentTime(){
     LARGE_INTEGER counter;
     QueryPerformanceCounter(&counter);
-    return ((f32)counter.QuadPart / frequencyF);
+    return (CAST(f64, counter.QuadPart) / frequencyF);
     
 }
 
