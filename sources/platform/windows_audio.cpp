@@ -8,7 +8,17 @@ static LPDIRECTSOUNDBUFFER primarybuffer;
 static DWORD bufferSize;
 static DWORD lastWriteCursor;
 #define samplesPerSecond 44100
-static char secondOfC[samplesPerSecond * sizeof(i16) * 2];
+
+struct Audio{
+    char * data;
+    DWORD byteSize;
+    DWORD commitedBytes;
+    bool startedPlaying;
+};
+
+static Audio c;
+static Audio * mixedSounds[256];
+static i32 mixedSoundsCount;
 
 bool initAudio(HWND target){
     
@@ -60,13 +70,6 @@ bool initAudio(HWND target){
             r = primarybuffer->Unlock(data1, size1, data2, size2);
             ASSERT(r == DS_OK);
 
-            for (DWORD sample = 0; sample < i32(samplesPerSecond); sample++){
-                i16 value = CAST(i16, sin(fmod((CAST(f32, sample)/samplesPerSecond)*256*2*PI, 2*PI)) * 30000) + 3;
-                CAST(i16*, secondOfC)[sample*2] = value;
-                CAST(i16*, secondOfC)[sample*2+1] = value;
-            }
-
-            
             r = primarybuffer->Play(0, 0, DSBPLAY_LOOPING);
             ASSERT(r == DS_OK);
         }
@@ -80,28 +83,27 @@ bool initAudio(HWND target){
     return true;
 }
 
-struct AudioSnippet{
-    char * data;
-    DWORD byteSize;
-    DWORD commitedBytes;
-    bool startedPlaying;
-};
+void loadAudio(){
+    nint size = samplesPerSecond * sizeof(i16) * 2;
+    char * secondOfC = &PPUSHA(char, size);
+    for (DWORD sample = 0; sample < i32(samplesPerSecond); sample++){
+        i16 value = CAST(i16, sin(fmod((CAST(f32, sample)/samplesPerSecond)*256*2*PI, 2*PI)) * 30000) + 3;
+        CAST(i16*, secondOfC)[sample*2] = value;
+        CAST(i16*, secondOfC)[sample*2+1] = value;
+    }
+    c.data = secondOfC;
+    c.byteSize = CAST(DWORD, size);
+} 
 
-static AudioSnippet c;
+void playAudio(){
+    ASSERT(mixedSoundsCount <= ARRAYSIZE(mixedSounds));
+    mixedSounds[mixedSoundsCount++] = &c;
+}
 
 void mix(){
-    
-    DSBCAPS caps = {};
-    caps.dwSize = sizeof(DSBCAPS);
-    HRESULT r = primarybuffer->GetCaps(&caps);
-    ASSERT(r == DS_OK);
-    ASSERT(bufferSize == caps.dwBufferBytes);
-    c.data = secondOfC;
-    c.byteSize = ARRAYSIZE(secondOfC);
-
     DWORD playCursor;
     DWORD writeCursor;
-    r = primarybuffer->GetCurrentPosition(&playCursor, &writeCursor);
+    HRESULT r = primarybuffer->GetCurrentPosition(&playCursor, &writeCursor);
     ASSERT(r == DS_OK);
     // TODO some tolerance, dont need to write after 1 byte was played
     if(writeCursor == lastWriteCursor){
@@ -141,44 +143,57 @@ void mix(){
     ASSERT(data1 != NULL);
     ASSERT(toLock == size1 + size2);
 
-    // TODO for
-    if (c.startedPlaying){
-        c.commitedBytes = MIN(c.byteSize, c.commitedBytes + bytesCommited);
+    for(i32 i = 0; i < mixedSoundsCount; i++)
+    {
+        Audio * track = mixedSounds[i];
+        if (track->startedPlaying){
+            track->commitedBytes = MIN(track->byteSize, track->commitedBytes + bytesCommited);
+        }
+        ASSERT(track->commitedBytes <= track->byteSize);
     }
-    ASSERT(c.commitedBytes <= c.byteSize);
 
     ASSERT(size1%4 == 0);
+    // TODO condense
     for (DWORD i = 0; i < size1; i += 4)
     {
-        i16 sampleValueL = 0;
-        i16 sampleValueR = 0;
-        // TODO for
-        ASSERT(c.commitedBytes%4 == 0);
-        ASSERT(c.byteSize%4 == 0);
-        if (c.commitedBytes + 2*i + 4 < c.byteSize){
-            sampleValueL = *CAST(i16*,&c.data[c.commitedBytes + i]);
-            sampleValueR = *CAST(i16*,&c.data[c.commitedBytes + i + 2]);
+        i32 sampleValueL = 0;
+        i32 sampleValueR = 0;
+        for(i32 s = 0; s < mixedSoundsCount; s++)
+        {
+            Audio * track = mixedSounds[s];
+            ASSERT(track->commitedBytes%4 == 0);
+            ASSERT(track->byteSize%4 == 0);
+            if (track->commitedBytes + 2*i + 4 < track->byteSize){
+                sampleValueL += *CAST(i16*,&track->data[track->commitedBytes + i]);
+                sampleValueR += *CAST(i16*,&track->data[track->commitedBytes + i + 2]);
+            }
         }
-        ((i16*)data1)[i/2] = sampleValueL;
-        ((i16*)data1)[i/2 + 1] = sampleValueR;
+        ((i16*)data1)[i/2] = CAST(i16, sampleValueL/mixedSoundsCount);
+        ((i16*)data1)[i/2 + 1] = CAST(i16, sampleValueR/mixedSoundsCount);
     }
     ASSERT(size2%4 == 0);
     for (DWORD i = 0; i < size2; i += 4)
     {
-        i16 sampleValueL = 0;
-        i16 sampleValueR = 0;
-        // TODO for
-        ASSERT(c.commitedBytes%4 == 0);
-        ASSERT(c.byteSize%4 == 0);
-        if (c.commitedBytes + 2*i + 4 + size1 < c.byteSize){
-            sampleValueL = *CAST(i16*,&c.data[c.commitedBytes + size1 + i]);
-            sampleValueR = *CAST(i16*,&c.data[c.commitedBytes + size1 + i + 2]);
+        i32 sampleValueL = 0;
+        i32 sampleValueR = 0;
+        for(i32 s = 0; s < mixedSoundsCount; s++)
+        {
+            Audio * track = mixedSounds[s];
+            ASSERT(track->commitedBytes%4 == 0);
+            ASSERT(track->byteSize%4 == 0);
+            if (track->commitedBytes + 2*i + 4 + size1 < track->byteSize){
+                sampleValueL += *CAST(i16*,&track->data[track->commitedBytes + size1 + i]);
+                sampleValueR += *CAST(i16*,&track->data[track->commitedBytes + size1 + i + 2]);
+            }
         }
-        ((i16*)data2)[i/2] = sampleValueL;
-        ((i16*)data2)[i/2 + 1] = sampleValueR;
+        ((i16*)data2)[i/2] = CAST(i16, sampleValueL/mixedSoundsCount);
+        ((i16*)data2)[i/2 + 1] = CAST(i16, sampleValueR/mixedSoundsCount);
     }
-    // TODO for
-    c.startedPlaying = true;
+    for(i32 s = 0; s < mixedSoundsCount; s++)
+    {
+        Audio * track = mixedSounds[s];
+        track->startedPlaying = true;
+    }
 
     r = primarybuffer->Unlock(data1, size1, data2, size2);
     ASSERT(r == DS_OK);
