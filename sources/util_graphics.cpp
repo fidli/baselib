@@ -22,10 +22,10 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
     if(maxY < 0) maxY = 0;
     if(minX < 0) minX = 0;
     if(maxX < 0) maxX = 0;
-    if(minY >= target->info.height) minY = target->info.height - 1;
-    if(maxY >= target->info.height) maxY = target->info.height - 1;
-    if(minX >= target->info.width) minX = target->info.width - 1;
-    if(maxX >= target->info.width) maxX = target->info.width - 1;
+    if(CAST(u32, minY) >= target->info.height) minY = target->info.height - 1;
+    if(CAST(u32, maxY) >= target->info.height) maxY = target->info.height - 1;
+    if(CAST(u32, minX) >= target->info.width) minX = target->info.width - 1;
+    if(CAST(u32, maxX) >= target->info.width) maxX = target->info.width - 1;
     
     bool vertical = minX == maxX;
     
@@ -39,8 +39,8 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
             k = (f32)((i32)from->y - (i32)to->y)/((i32)from->x - (i32)to->x);
             q = (i32)to->y - k*(i32)to->x;
             
-            for(u32 w = minX; w <= maxX; w++){
-                u32 linepoint = (i32)(k*w + q);
+            for(i32 w = minX; w <= maxX; w++){
+                i32 linepoint = (i32)(k*w + q);
                 linepoint -= thickness/2;
                 for(u8 t = 0; t < thickness; t++){
                     if(linepoint >= minY && linepoint <= maxY){
@@ -56,8 +56,8 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
             k = (f32)((i32)from->x - (i32)to->x)/((i32)from->y - (i32)to->y);
             q = (i32)to->x - k*(i32)to->y;
             
-            for(u32 h = minY; h < maxY; h++){
-                u32 linepoint = (i32)(k*h + q);
+            for(i32 h = minY; h < maxY; h++){
+                i32 linepoint = (i32)(k*h + q);
                 linepoint -= thickness/2;
                 for(u8 t = 0; t < thickness; t++){
                     if(linepoint >= minX && linepoint <= maxX){
@@ -71,7 +71,7 @@ void drawLine(Image * target, const dv2 * from, const dv2 * to, const Color colo
         
         
     }else{
-        for(u32 h = minY; h < target->info.height && h <= maxY; h++){
+        for(i32 h = minY; h < CAST(i32, target->info.height) && h <= maxY; h++){
             u32 pitch = h*target->info.width;
             ((u32 *)target->data)[pitch + minX] = color.full;
         }
@@ -92,9 +92,9 @@ void drawRectangle(Image * target, const dv2 * topLeft, const dv2 * botRight, co
         drawLine(target, botRight, &botLeft, borderColor, borderThickness); 
         drawLine(target, &botLeft, topLeft, borderColor, borderThickness);
     }else{
-        for(i32 y = topLeft->y; y < target->info.height && y <= botRight->y; y++){
+        for(i32 y = topLeft->y; y < CAST(i32, target->info.height) && y <= botRight->y; y++){
             i32 pitch = y * target->info.width;
-            for(i32 x = topLeft->x; x < target->info.width && x <= botRight->x; x++){
+            for(i32 x = topLeft->x; x < CAST(i32, target->info.width) && x <= botRight->x; x++){
                 ((u32 *)target->data)[pitch + x] = borderColor.full;
             }
         }
@@ -146,8 +146,8 @@ void drawTriangle(Image * target, const dv2 * A, const dv2 * B, const dv2 * C, c
         dv2 rightBot;
         leftTop.x = MAX(0, MIN(MIN(A->x, B->x), C->x));
         leftTop.y = MAX(0, MIN(MIN(A->y, B->y), C->y));
-        rightBot.x = MIN(target->info.width - thicknessReal, MAX(MAX(A->x, B->x), C->x));
-        rightBot.y = MIN(target->info.height - thicknessReal, MAX(MAX(A->y, B->y), C->y));
+        rightBot.x = MIN(CAST(i32, target->info.width - thicknessReal), MAX(MAX(A->x, B->x), C->x));
+        rightBot.y = MIN(CAST(i32, target->info.height - thicknessReal), MAX(MAX(A->y, B->y), C->y));
         
         
         /*convex hull style (is convex hull still triangle?)

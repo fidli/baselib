@@ -9,7 +9,7 @@ struct PersistentStackAllocator{
 struct StackAllocator{
     void * mem_start;
     u64 * offsets;
-    u32 stackIndex;
+    u16 stackIndex;
 	u32 stackSize;
 	
     u16 * bulkStackOffsets;

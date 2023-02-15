@@ -28,7 +28,7 @@ int readConsole(char * buffer, u16 maxsize){
         DWORD read;
         ASSERT(ReadConsoleInput(consoleIn.handle, events, amount, &read) > 0);
         
-        for(int i = 0; i < read; i++){
+        for(DWORD i = 0; i < read; i++){
             if(events[i].EventType == KEY_EVENT && events[i].Event.KeyEvent.wRepeatCount == 1 && events[i].Event.KeyEvent.bKeyDown){
                 char readChar = events[i].Event.KeyEvent.uChar.AsciiChar;
                 if(readChar == '\r'){

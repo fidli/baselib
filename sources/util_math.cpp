@@ -173,18 +173,22 @@ f32 atan2(f32, f32){
 }
 
 f32 sin(f32 xRad){
-    return xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19;
+    ASSERT(xRad <= 2*PI && xRad >= 0);
+    return CAST(f32, xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19);
 }
 
 f32 sin64(f64 xRad){
-    return xRad - powd64(xRad,3)/6.0 + powd64(xRad,5)/120.0 - powd64(xRad,7)/5040.0 +  powd64(xRad,9)/362880.0 - powd64(xRad,11)/39916800.0 + powd64(xRad,13)/6227020800.0 - powd64(xRad,15)/1307674368000.0 +  powd64(xRad,17)/355687428096000.0 - powd64(xRad,19)/1.216451e+17 + powd64(xRad,21)/5.1090942e+19;
+    ASSERT(xRad <= 2*PI && xRad >= 0);
+    return CAST(f32, xRad - powd64(xRad,3)/6.0 + powd64(xRad,5)/120.0 - powd64(xRad,7)/5040.0 +  powd64(xRad,9)/362880.0 - powd64(xRad,11)/39916800.0 + powd64(xRad,13)/6227020800.0 - powd64(xRad,15)/1307674368000.0 +  powd64(xRad,17)/355687428096000.0 - powd64(xRad,19)/1.216451e+17 + powd64(xRad,21)/5.1090942e+19);
 }
 
 f32 cos(f32 xRad){
-    return 1 - powd(xRad,2)/2.0 + powd(xRad,4)/24.0 - powd(xRad,6)/720.0 + powd(xRad,8)/40320.0 - powd(xRad,10)/3628800.0 + powd(xRad,12)/479001600.0 - powd(xRad,14)/87178291200.0 + powd(xRad,16)/20922789888000.0 - powd(xRad,18)/6.402373705728e+15 + powd(xRad,20)/2.43290200817664e+18;
+    ASSERT(xRad <= 2*PI && xRad >= 0);
+    return CAST(f32, 1 - powd(xRad,2)/2.0 + powd(xRad,4)/24.0 - powd(xRad,6)/720.0 + powd(xRad,8)/40320.0 - powd(xRad,10)/3628800.0 + powd(xRad,12)/479001600.0 - powd(xRad,14)/87178291200.0 + powd(xRad,16)/20922789888000.0 - powd(xRad,18)/6.402373705728e+15 + powd(xRad,20)/2.43290200817664e+18);
 }
 
 f64 cos64(f64 xRad){
+    ASSERT(xRad <= 2*PI && xRad >= 0);
     return 1 - powd64(xRad,2)/2.0 + powd64(xRad,4)/24.0 - powd64(xRad,6)/720.0 + powd64(xRad,8)/40320.0 - powd64(xRad,10)/3628800.0 + powd64(xRad,12)/479001600.0 - powd64(xRad,14)/87178291200.0 + powd64(xRad,16)/20922789888000.0 - powd64(xRad,18)/6.402373705728e+15 + powd64(xRad,20)/2.43290200817664e+18;
 }
 
@@ -238,8 +242,8 @@ f32 epow(f32 power){
     //taylor
     f32 abspow = ABS(power) - (u32) ABS(power);
     f32 result = 1 + abspow + powd(abspow, 2)/2.0f + powd(abspow, 3)/6.0f + powd(abspow, 4)/24.0f + powd(abspow, 5)/120.0f  + powd(abspow, 6)/720.0f + powd(abspow, 7)/5040.0f + powd(abspow, 8)/40320.0f + powd(abspow, 9)/362880.0f + powd(abspow, 10)/3628800.0f + powd(abspow, 11)/39916800.0f + powd(abspow, 12)/479001600.0f +powd(abspow, 13)/6881080200.0f + powd(abspow, 14)/87178291200.0f;
-    result *= powd(E, (u32) ABS(power));
-    return (power < 0) ? (1.0 / result) : result;
+    result *= powd(CAST(f32, E), (u16) ABS(power));
+    return (power < 0) ? (1.0f / result) : result;
 }
 
 f32 pow(f32 base, f32 power){
@@ -249,7 +253,6 @@ f32 pow(f32 base, f32 power){
 
 f32 log(f32 number, f32 base = 10){
     ASSERT(number != 0);
-    f32 temp = ABS(number);
     f32 result = ln(number) / ln(base);
     return (number < 0) ? -result : result;
     
@@ -297,6 +300,12 @@ f32 fmod(f32 value, f32 modulus){
     f32 remain = divided - ((f32)(i32)divided);
     return modulus*remain;
 }
+
+f64 fmod64(f64 value, f64 modulus){
+    f64 divided = value / modulus;
+    f64 remain = divided - ((f64)(i64)divided);
+    return modulus*remain;
+}
 #else
 
 
@@ -340,7 +349,7 @@ f64 sin64(f64 radAngle){
 #endif
 
 u8 numlen(i64 number){
-    int result = 1;
+    u8 result = 1;
     if(number < 0){
         result++;
     }
@@ -586,7 +595,7 @@ v4_64 V4_64(f64 x, f64 y, f64 z, f64 w){
 }
 
 v3 operator+(const v3 & a, const v3 & b){
-    v3 result;
+    v3 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
@@ -594,7 +603,7 @@ v3 operator+(const v3 & a, const v3 & b){
 }
 
 v3 operator-(const v3 & a){
-    v3 result;
+    v3 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = -a.v[i];
     }
@@ -602,7 +611,7 @@ v3 operator-(const v3 & a){
 }
 
 v3_64 operator+(const v3_64 & a, const v3_64 & b){
-    v3_64 result;
+    v3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
@@ -618,7 +627,7 @@ dv3_64 operator/=(dv3_64 & a, i64 b){
 
 
 v2 operator+(const v2 & a, const v2 & b){
-    v2 result;
+    v2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
@@ -626,7 +635,7 @@ v2 operator+(const v2 & a, const v2 & b){
 }
 
 dv2 operator+(const dv2 & a, const dv2 & b){
-    dv2 result;
+    dv2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
@@ -634,7 +643,7 @@ dv2 operator+(const dv2 & a, const dv2 & b){
 }
 
 v2 operator+(const v2 & a, const dv2 & b){
-    v2 result;
+    v2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
@@ -646,7 +655,7 @@ v2 operator+(const dv2 & a, const v2 & b){
 }
 
 v2 operator-(const v2 & a, const v2 & b){
-    v2 result;
+    v2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
@@ -654,7 +663,7 @@ v2 operator-(const v2 & a, const v2 & b){
 }
 
 v2_64 operator-(const v2_64 & a, const v2_64 & b){
-    v2_64 result;
+    v2_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
@@ -662,7 +671,7 @@ v2_64 operator-(const v2_64 & a, const v2_64 & b){
 }
 
 dv2 operator-(const dv2 & a, const dv2 & b){
-    dv2 result;
+    dv2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
@@ -672,7 +681,7 @@ dv2 operator-(const dv2 & a, const dv2 & b){
 
 
 dv2 operator-(const dv2 & a){
-    dv2 result;
+    dv2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = -a.v[i];
     }
@@ -694,7 +703,7 @@ dv2 & operator+=(dv2 & a, const dv2 & b){
 }
 
 v3 operator-(const v3 & a, const v3 & b){
-    v3 result;
+    v3 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
@@ -702,7 +711,7 @@ v3 operator-(const v3 & a, const v3 & b){
 }
 
 v3_64 operator-(const v3_64 & a, const v3_64 & b){
-    v3_64 result;
+    v3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] - b.v[i];
     }
@@ -746,7 +755,7 @@ dv3_64 & operator+=(dv3_64 & a, const dv3_64 & b){
 }
 
 dv2 operator/(const dv2 & a, const i32 b){
-    dv2 result;
+    dv2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] / b;
     }
@@ -754,7 +763,7 @@ dv2 operator/(const dv2 & a, const i32 b){
 }
 
 v2 operator/(const v2 & a, const f32 b){
-    v2 result;
+    v2 result= {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] / b;
     }
@@ -762,7 +771,7 @@ v2 operator/(const v2 & a, const f32 b){
 }
 
 v3_64 operator/(const dv3_64 & a, const f64 b){
-    v3_64 result;
+    v3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = (f64) a.v[i] / b;
     }
@@ -770,7 +779,7 @@ v3_64 operator/(const dv3_64 & a, const f64 b){
 }
 
 v3_64 operator*(const dv3_64 & a, const f64 b){
-    v3_64 result;
+    v3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] * b;
     }
@@ -778,7 +787,7 @@ v3_64 operator*(const dv3_64 & a, const f64 b){
 }
 
 dv3_64 operator*(const dv3_64 & a, const i32 b){
-    dv3_64 result;
+    dv3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] * b;
     }
@@ -786,7 +795,7 @@ dv3_64 operator*(const dv3_64 & a, const i32 b){
 }
 
 dv3_64 operator+(const dv3_64 & a, const dv3_64 & b){
-    dv3_64 result;
+    dv3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] + b.v[i];
     }
@@ -794,7 +803,7 @@ dv3_64 operator+(const dv3_64 & a, const dv3_64 & b){
 }
 
 dv3_64 operator-(const dv3_64 & a, const dv3_64 & b){
-    dv3_64 result;
+    dv3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a.v[i] -  b.v[i];
     }
@@ -842,7 +851,7 @@ bool operator==(const v3 & a, const v3 & b){
 }
 
 v2 operator*(const v2 & b, const f32 a){
-    v2 result;
+    v2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a*b.v[i];
     }
@@ -850,7 +859,7 @@ v2 operator*(const v2 & b, const f32 a){
 }
 
 v2 operator*(const v2 & b, const i32 a){
-    v2 result;
+    v2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = ((f32)a)*b.v[i];
     }
@@ -867,7 +876,7 @@ v2 operator*(const i32 a, const v2 & b){
 
 
 dv2 operator*(const dv2 & b, const i32 a){
-    dv2 result;
+    dv2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a*b.v[i];
     }
@@ -885,7 +894,7 @@ v2 operator*=(v2 & v, const f32 a){
 }
 
 v2 operator*(const dv2 & b, const f32 a){
-    v2 result;
+    v2 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a*(f32)b.v[i];
     }
@@ -907,7 +916,7 @@ dv2 v2Todv2(const v2 & a){
 }
 
 v3 operator*(const v3 & b, const f32 a){
-    v3 result;
+    v3 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a*b.v[i];
     }
@@ -919,7 +928,7 @@ v3 operator*(const f32 a, const v3 & b){
 }
 
 v3_64 operator*(const v3_64 & b, const f64 a){
-    v3_64 result;
+    v3_64 result = {};
     for(int i = 0; i < ARRAYSIZE(result.v); i++){
         result.v[i] = a*b.v[i];
     }
@@ -1266,7 +1275,7 @@ v3_64 operator*(const mat4_64 & matrix, const v4_64 & originalVector){
 }
 
 mat4 operator*(const mat4 & matrix, const f32 alfa){
-    mat4 result;
+    mat4 result = {};
     for(int cellIndex = 0; cellIndex < ARRAYSIZE(matrix.c); cellIndex++){
         result.c[cellIndex] = alfa * matrix.c[cellIndex];
     }

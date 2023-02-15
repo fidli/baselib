@@ -18,19 +18,19 @@ int printf(const char * format, ...){
     
     FileContents con;
     con.contents = buffer;
-    u32 successfullyPrinted = printFormatted(ARRAYSIZE(buffer), con.contents, format, ap);
-    con.size = strlen(con.contents);
+    nint successfullyPrinted = printFormatted(ARRAYSIZE(buffer), con.contents, format, ap);
+    con.size = CAST(u32, strlen(con.contents));
     ASSERT(con.size < 1024);
     va_end(ap);
     
     writeConsole(&con);
-    return successfullyPrinted;
+    return CAST(int, successfullyPrinted);
 }
 
 void print(char * source){
     FileContents con;
     con.contents = source;
-    con.size = strlen(con.contents);
+    con.size = CAST(u32, strlen(con.contents));
     ASSERT(con.size < 1024);
     writeConsole(&con);
 }

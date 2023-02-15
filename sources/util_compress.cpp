@@ -66,6 +66,21 @@ static inline u16 invertBits(const u16 sourceBits, u8 bitCount){
     return result;
 }
 
+static inline u8 invertBits(const u8 sourceBits, u8 bitCount){
+    u8 result = 0;
+    
+    u8 workBits = sourceBits;
+    i8 currentBit = bitCount-1;
+    
+    while(currentBit >= 0){
+        result |= ((workBits & 1) << currentBit);
+        currentBit--;
+        workBits >>= 1;
+    }
+    
+    return result;
+}
+
 static inline u16 readBits(ReadHeadBit * head, const u8 bits){
     ASSERT(bits > 0);
     ASSERT(bits <= 16);
@@ -89,7 +104,7 @@ static inline u16 readBits(ReadHeadBit * head, const u8 bits){
             }
         }
         
-        u8 reading = (toRead >= remainingBits) ? remainingBits : toRead;
+        u8 reading = CAST(u8, (toRead >= remainingBits) ? remainingBits : toRead);
         result <<= reading;
         result |=(u8)( (u8)((u8)((u8)head->currentByte << head->bitOffset) >> head->bitOffset) >> (8-head->bitOffset - reading));
         ASSERT(reading <= toRead);
@@ -121,9 +136,8 @@ u32 decompressLZW(const byte * source, const u32 sourceSize, byte * target){
     table->bits = 9;
     stack->currentIndex = 0;
     u16 currentTableIndex;
-    u16 previousTableIndex;
+    u16 previousTableIndex = 0;
     u32 targetIndex = 0;
-    u8 previousFirstCharacter;
     ASSERT(*source == 128 && (~*(source + 1) & 128) == 128);
     if(*source != 128 || (~*(source + 1) & 128) != 128){
         POPI;
@@ -135,7 +149,8 @@ u32 decompressLZW(const byte * source, const u32 sourceSize, byte * target){
         currentTableIndex = readBits(&compressedDataHead, table->bits);
         if(currentTableIndex == clearCode){
             for(u16 i = 0; i < 258; i++){
-                table->data.carryingSymbol[i] = i;
+                INV; // check correctness of i > 255
+                table->data.carryingSymbol[i] = CAST(u8, i);
                 table->data.previousNode[i] = endOfInfo;
             }
             //256 = clear code = reinitialize code table
@@ -262,14 +277,14 @@ u32 compressLZW(byte * source, const u32 sourceSize, byte * target){
     table->bits = 9;
     
     u16 currentCrawl = source[0];
-    bool fresh = true;
     for(u32 i = 1; i < sourceSize; i++){
         if(table->count == 4094){
             ASSERT((i == 1 && table->bits == 9) || (i != 1 && table->bits == 12));
             writeBits(&compressedDataHead, clearCode, table->bits);
-            for(u16 i = 0; i < 258; i++){
-                table->data.carryingSymbol[i] = i;
-                table->data.children[i] = NULL;
+            for(u16 j = 0; j < 258; j++){
+                INV;    // check u16 -> u8 correctness
+                table->data.carryingSymbol[j] = CAST(u8, j);
+                table->data.children[j] = NULL;
             }
             //256 = clear code = reinitialize code table
             //257 = end of info code
@@ -374,7 +389,8 @@ inline static u32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * lite
                 if(currentNode->value < 265){
                     count = currentNode->value - 254;
                 }else if(currentNode->value < 285){
-                    u8 bits = (currentNode->value - 261) / 4;
+                    ASSERT(((currentNode->value - 261)/4) <= 255 && ((currentNode->value - 261)/4) >= 0);
+                    u8 bits = CAST(u8, (currentNode->value - 261) / 4);
                     count = invertBits(readBits(head, bits), bits) + extraCounts[currentNode->value - 265];
                 }else{
                     count = 258;
@@ -402,7 +418,8 @@ inline static u32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * lite
                 
                 
                 if(backOffset > 3){
-                    u8 bits = (backOffset-2)/2;
+                    ASSERT((backOffset-2)/2 <= 255 && (backOffset-2)/2 >= 0);
+                    u8 bits = CAST(u8, (backOffset-2)/2);
                     backOffset =  invertBits(readBits(head, bits), bits) + extraBackOffsets[backOffset-4];
                 }
                 
@@ -541,7 +558,8 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, u32 item
         node->one = NULL;
         node->zero = NULL;
         
-        addHuffmanNodeRec(&tree, node, invertBits(codeWords[i].code, codeWords[i].bitSize), codeWords[i].bitSize);
+        ASSERT(codeWords[i].code <= 65535);
+        addHuffmanNodeRec(&tree, node, invertBits(CAST(u16, codeWords[i].code), codeWords[i].bitSize), codeWords[i].bitSize);
         
     }
     
@@ -554,7 +572,7 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, u32 item
 static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeWord * target, u32 limit){
     
     const HuffmanNode * currentNode = tree;
-    i32 i = 0;
+    u32 i = 0;
     while(i < limit){
         
         if(readBits(head, 1) & 1){
@@ -598,7 +616,8 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
                     i++;
                 }
             }else{
-                target[i].bitSize = currentNode->value;
+                ASSERT(currentNode->value <= 255 && currentNode->value >= 0);
+                target[i].bitSize = CAST(u8, currentNode->value);
                 target[i].weight = i;
                 i++;
             }
@@ -620,7 +639,7 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
 //http://www.gzip.org/algorithm.txt - idea
 
 //more specific - https://en.wikipedia.org/wiki/DEFLATE or RFC
-bool decompressDeflate(const char * compressedData, const u32 compressedSize, char * target){
+bool decompressDeflate(const char * compressedData, char * target){
     
     //dict 32kbytes
     //maxLen = 256
@@ -647,13 +666,13 @@ bool decompressDeflate(const char * compressedData, const u32 compressedSize, ch
             //a stored/raw/literal section, between 0 and 65,535 bytes in length.
             //http://www.bolet.org/~pornin/deflate-flush.html
             while(head.bitOffset != 0){
-                u16 bits = readBits(&head, 1);
+                readBits(&head, 1);
                 //ASSERT(bits == 0);
             } //get rid of 0 bytes
             
             u16 dataSize = readBits(&head, 16);
             //this is redundancy
-            u16 complement = readBits(&head, 16);
+            readBits(&head, 16); //complement
             //now the data should be present
             ASSERT(head.bitOffset == 0);
             for(u32 i = 0; i < dataSize; i++){
@@ -762,7 +781,7 @@ bool decompressDeflate(const char * compressedData, const u32 compressedSize, ch
             
             //kinda RlE 
             for(u8 bci = 0; bci < howMany3bitCodes; bci++){
-                u16 codeLength = invertBits(readBits(&head, 3), 3);
+                u8 codeLength = invertBits(CAST(u8, readBits(&head, 3)), 3);
                 codeWords[bci].bitSize = codeLength;
             }
             

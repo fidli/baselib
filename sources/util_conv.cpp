@@ -153,7 +153,7 @@ bool decodeBMP(const FileContents * source, Image * target){
     if(source->contents[0] != 'B' || source->contents[1] != 'M'){
         return false;
     }
-    u32 filesize = *((u32 *)(source->contents + 2));
+    //u32 filesize = *((u32 *)(source->contents + 2));
     i32 dataOffset = *((i32 *)(source->contents + 10));
     
     Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(source->contents + 14);
@@ -166,7 +166,8 @@ bool decodeBMP(const FileContents * source, Image * target){
     if((infoheader->compression != 0 && infoheader->compression != 3) || infoheader->colorPlanes != 1 || infoheader->bitsPerPixel % 8 != 0){
         return false;
     }
-    target->info.bitsPerSample = infoheader->bitsPerPixel;
+    ASSERT(infoheader->bitsPerPixel <= 255);
+    target->info.bitsPerSample = CAST(u8, infoheader->bitsPerPixel);
     target->info.samplesPerPixel = 1;
     u64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
     target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
@@ -245,7 +246,7 @@ bool decodeBMP(const FileContents * source, Image * target){
 
 bool encodeBMP(const Image * source, FileContents * target){
     bool palette = false;
-    u32 bitsPerPixel = source->info.bitsPerSample * source->info.samplesPerPixel;
+    u16 bitsPerPixel = source->info.bitsPerSample * source->info.samplesPerPixel;
     u32 savewidth = source->info.width;
     //each line must be within 32 bits boundary, filled with zeroes
     while(((savewidth * bitsPerPixel) / 32) * 32 != savewidth * bitsPerPixel){
@@ -281,7 +282,7 @@ bool encodeBMP(const Image * source, FileContents * target){
     if(palette){
         ASSERT((1 << bitsPerPixel) == 256);
         ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01);
-        for(u32 i = 0; i < (1 << bitsPerPixel); i++){
+        for(u16 i = 0; i < (1 << bitsPerPixel); i++){
             //R
             *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4) = (u8)i;
             //G
@@ -297,7 +298,7 @@ bool encodeBMP(const Image * source, FileContents * target){
     ASSERT(bitsPerPixel % 8 == 0);
     ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01 || source->info.interpretation == BitmapInterpretationType_RGB);
     //the r g b  flipped to b g r
-    u8 bytesPerPixel = bitsPerPixel/8;
+    u16 bytesPerPixel = bitsPerPixel/8;
     if(source->info.origin == BitmapOriginType_BottomLeft){
         for(u32 h = 0; h < infoheader->height; h++){
             for(u32 w = 0; w < infoheader->width; w++){
@@ -363,7 +364,7 @@ bool decodeTiff(const FileContents * file, Image * target){
     u16 entries = scanWord(&head);
     
     u32 * stripOffsets = NULL;
-    u32 rowsPerStrip = -1; //infinity (1 strip for all data)
+    u32 rowsPerStrip = CAST(u32, -1); //infinity (1 strip for all data)
     u32 * stripSizes = NULL;
     u32 stripAmount = 0;
     
@@ -399,7 +400,8 @@ bool decodeTiff(const FileContents * file, Image * target){
             }break;
             case 258:{
                 //bits per sample //could wary, depends on samples per pixel
-                target->info.bitsPerSample = headerOffset;
+                ASSERT(headerOffset <= 255);
+                target->info.bitsPerSample = CAST(u8, headerOffset);
             }break;
             case 259:{
                 //compression
@@ -479,7 +481,8 @@ bool decodeTiff(const FileContents * file, Image * target){
                     return false;
                 }
                 //support BW for now only
-                target->info.samplesPerPixel = headerOffset;
+                ASSERT(headerOffset <= 255);
+                target->info.samplesPerPixel = CAST(u8, headerOffset);
             }break;
             case 278:{
                 rowsPerStrip = headerOffset;
@@ -551,7 +554,7 @@ bool decodeTiff(const FileContents * file, Image * target){
     target->data = &PPUSHA(byte, target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8));
     
     for(u32 i = 0; i < target->info.width * target->info.height * target->info.samplesPerPixel * (target->info.bitsPerSample / 8); i++){
-        target->data[i] = (char)255;
+        target->data[i] = 255;
     }
     
     u32 total = 0;
@@ -621,7 +624,7 @@ bool encodeTiff(const Image * source, FileContents * target){
     PUSHI;
     
     //this should be calculated dynamically later
-    u32 entries  = 10;
+    u16 entries  = 10;
     
     u32 bytesize = source->info.width * source->info.height * (source->info.bitsPerSample/8) * source->info.samplesPerPixel;
     u32 rowBytesize = bytesize / source->info.height;
@@ -718,7 +721,8 @@ bool encodeTiff(const Image * source, FileContents * target){
         writeDword(&head, source->info.bitsPerSample);
     }else{
         ASSERT(!"check me");
-        writeDword(&head, dataHead.offset - target->contents);
+        ASSERT(dataHead.offset >= target->contents);
+        writeDword(&head, CAST(u32, dataHead.offset - target->contents));
         for(u16 i = 0; i < source->info.samplesPerPixel; i++){
             writeWord(&dataHead, source->info.bitsPerSample);
         }
@@ -755,8 +759,9 @@ bool encodeTiff(const Image * source, FileContents * target){
     writeWord(&head, 270);
     writeWord(&head, 2);
     const char * desc = "Generated by GeLab. Visit gelab.fidli.eu for more information";
-    writeDword(&head, strlen(desc) + 1);
-    writeDword(&head, dataHead.offset - target->contents);
+    writeDword(&head, CAST(u32, strlen(desc) + 1));
+    ASSERT(dataHead.offset >= target->contents);
+    writeDword(&head, CAST(u32, dataHead.offset - target->contents));
     strcpy(dataHead.offset, desc);
     dataHead.offset += strlen(desc) + 1;
     
@@ -770,7 +775,8 @@ bool encodeTiff(const Image * source, FileContents * target){
         stripOffsets = (u32 *) head.offset;
         head.offset += 4;
     }else{
-        writeDword(&head, dataHead.offset - target->contents);
+        ASSERT(dataHead.offset >= target->contents);
+        writeDword(&head, CAST(u32, dataHead.offset - target->contents));
         stripOffsets = (u32 *) dataHead.offset;
         dataHead.offset += stripAmount * 4; //allocate space for future
     }
@@ -816,7 +822,8 @@ bool encodeTiff(const Image * source, FileContents * target){
         stripSizes = (u32 *) head.offset;
         head.offset += 4;
     }else{
-        writeDword(&head, dataHead.offset - target->contents);
+        ASSERT(dataHead.offset >= target->contents);
+        writeDword(&head, CAST(u32, dataHead.offset - target->contents));
         stripSizes = (u32 *) dataHead.offset;
         dataHead.offset += stripAmount * 4; //allocate space for future
     }
@@ -859,12 +866,14 @@ bool encodeTiff(const Image * source, FileContents * target){
         }
         u32 size = compressLZW((byte *) (source->data + stripIndex * rowsPerStrip * source->info.width), sourceSize, (byte *) dataHead.offset); 
         stripSizes[stripIndex] = size;
-        stripOffsets[stripIndex] = dataHead.offset - target->contents;
+        ASSERT(dataHead.offset >= target->contents);
+        stripOffsets[stripIndex] = CAST(u32, dataHead.offset - target->contents);
         dataHead.offset += size;
     }
     
     ASSERT(target->size >= dataHead.offset - target->contents);
-    target->size = dataHead.offset - target->contents;
+    ASSERT(dataHead.offset >= target->contents);
+    target->size = CAST(u32, dataHead.offset - target->contents);
     
     
     POPI;

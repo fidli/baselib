@@ -44,7 +44,7 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, u32 * read
     buffer[0] = '\0';
     i32 r = sscanf(xml->contents + *readIndex, "<%64[^/ >]", newNode->name);
     ASSERT(r >= 1);
-    *readIndex += strlen(newNode->name) + 1;
+    *readIndex += CAST(u32, strlen(newNode->name) + 1);
     
     {//parsing attributes
         char name[50];
@@ -60,7 +60,7 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, u32 * read
             if(value[0] == 0){
                 ASSERT(!strncmp(xml->contents + *readIndex + strlen(name), "=\"\"", 3));
             }
-            *readIndex += 3 + strlen(name) + strlen(value);
+            *readIndex += CAST(u32, 3 + strlen(name) + strlen(value));
             //whitespaces between
             trimWhitespace(xml->contents, readIndex, xml->size - *readIndex);
             
@@ -100,7 +100,7 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, u32 * read
         buffer[0] = '\0';
         r = sscanf(xml->contents + *readIndex, "</%1024[^>]>", buffer);
         ASSERT(r >= 1);
-        *readIndex += strlen(buffer) + 3;
+        *readIndex += CAST(u32, strlen(buffer) + 3);
         ASSERT(strncmp(buffer, newNode->name, 1024) == 0);
         trimWhitespace(xml->contents, readIndex, xml->size - *readIndex);
         target->children[target->childrenCount] = newNode;
@@ -112,7 +112,7 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, u32 * read
         r = sscanf(xml->contents + *readIndex, "%1023[^<]", buffer);
         ASSERT(r == 1);
         
-        newNode->valueLength = strlen(buffer);
+        newNode->valueLength = CAST(u32, strlen(buffer));
         newNode->value = &PUSHA(char, newNode->valueLength+1);
         strcpy(newNode->value, buffer);
         newNode->value[newNode->valueLength] = '\0';
@@ -120,7 +120,7 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, u32 * read
         buffer[0] = '\0';
         r = sscanf(xml->contents + *readIndex, "</%1024[^>]>", buffer);
         ASSERT(r >= 1)
-        *readIndex += strlen(buffer) + 3;
+        *readIndex += CAST(u32, strlen(buffer) + 3);
         ASSERT(strncmp(buffer, newNode->name, 1024) == 0);
         trimWhitespace(xml->contents, readIndex, xml->size - *readIndex);
         ASSERT(target->childrenCount <= ARRAYSIZE(target->children));
@@ -132,12 +132,11 @@ static XMLNode * parseXMLRec(char * buffer, const FileContents * xml, u32 * read
 
 XMLNode * parseXML(const FileContents * xml){
     u32 readIndex = 0;
-    XMLHeader header;
     
     char * buffer = &PUSHA(char, 1024);
     if(sscanf(xml->contents + readIndex, "<?xml%1023[^?]?>", buffer) >= 1){
         //forget header for now
-        readIndex += strlen(buffer) + 7;
+        readIndex += CAST(u32, strlen(buffer) + 7);
         trimWhitespace(xml->contents, &readIndex, xml->size - readIndex);
         XMLNode * result = parseXMLRec(buffer, xml, &readIndex, NULL);
         ASSERT(readIndex <= xml->size);

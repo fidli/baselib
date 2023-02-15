@@ -137,10 +137,10 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
                         if(!shiftDown){
                             guiCancelCaretPositioning();
-                            guiContext->caretPos = textlen;
+                            guiContext->caretPos = CAST(i32, textlen);
                             guiResetCaretVisually();
                         }else{
-                            guiContext->caretWidth = textlen - guiContext->caretPos;
+                            guiContext->caretWidth = CAST(i32, textlen - guiContext->caretPos);
                         }
                         inputHandled = true;
                     }break;
@@ -181,7 +181,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         if(wParam == 0x41 && ctrlDown){
                             guiSelectWholeInput();
                             guiCancelCaretPositioning();
-                            nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+                            i32 textlen = CAST(i32, strnlen(guiContext->inputText, guiContext->inputMaxlen));
                             guiContext->caretPos = 0;
                             guiContext->caretWidth = textlen; 
                             inputHandled = true;
@@ -224,7 +224,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                         if(guiContext->caretWidth != 0){
                             guiDeleteInputCharacters(guiContext->caretPos, guiContext->caretPos + guiContext->caretWidth);
                         }
-                        char c = wParam;//assuming ascii character
+                        char c = CAST(char, wParam);//assuming ascii character
                         // '.'
                         if(wParam == 0xBE){
                             c = '.';
@@ -234,7 +234,7 @@ bool guiHandleInputWin(UINT message, WPARAM wParam, LPARAM lParam){
                             c = ',';
                         }
                         
-                        if(c == (char)0x6D || c == (char)0xBD){ //minus
+                        if(c == 0x6D || c == 0xBD){ //minus
                             c = '-';
                         }
                         if(c >= (char)0x60 && c <= (char)0x69){//numpad

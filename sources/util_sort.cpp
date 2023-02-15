@@ -17,7 +17,7 @@ void static inline swap(byte * source, byte * destination, const u16 elemsize){
 //0 if a == b
 //negative if a < b
 template<typename elemType, typename func>
-void insertSort(elemType * target, i32 arraySize, func cmp){
+void insertSort(elemType * target, u32 arraySize, func cmp){
     for(u32 i = 1; i < arraySize; i++){
         u32 s = i;
         u32 t = i;
@@ -35,10 +35,10 @@ void insertSort(elemType * target, i32 arraySize, func cmp){
 }
 
 //fisher yates - https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
-void shuffle(byte * target, const u16 elemsize, i64 arraySize){
+void shuffle(byte * target, const u16 elemsize, i32 arraySize){
     for(i32 i = arraySize-1; i > 0; i--){
         //terrible rng, but whatever
-        u16 randomIndex = randlcgRange(i+1);
+        u16 randomIndex = randlcgRange(CAST(u16, i+1));
         swap(target + i*elemsize, target+randomIndex*elemsize, elemsize);
     }
     

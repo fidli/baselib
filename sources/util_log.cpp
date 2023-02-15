@@ -13,14 +13,14 @@ u32 snprintf(char * target, nint limit, const char * format, ...);
 #endif
 inline void * allocate(PersistentStackAllocator * allocator, u64 bytes);
 nint strnlen(const char * target, nint limit);
-u32 printFormatted(u32 maxprint, char * target, const char * format, va_list ap);
+nint printFormatted(nint maxprint, char * target, const char * format, va_list ap);
 int printf(const char * format, ...);
 
 u8 numlen(i64 number);
 f64 powd64(f64 base, i16 power);
 f32 powd(f32 base, i16 power);
 
-bool appendFile(const char * path, char * data, u32 length);
+bool appendFile(const char * path, char * data, nint length);
 bool createEmptyFile(const char * path);
 #endif
 //NOTE(AK):
@@ -76,11 +76,11 @@ struct LoggerInfo{
         } file;
         struct{
             char lastStatus[255];
-            f32 lastStatusTime;
+            f64 lastStatusTime;
         } status;
         struct{
             char lastStates[100][255];
-            f32 lastStatusTime;
+            f64 lastStatusTime;
             i32 count;
             i32 size;
             i32 head;
@@ -213,7 +213,7 @@ const char * getLoggerStatus(const char * loggerName, i32 recentMessageIndex = 0
     return NULL;
 }
 
-f32 getLoggerStatusTime(const char * loggerName){
+f64 getLoggerStatusTime(const char * loggerName){
     for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             if(loggers->loggers[i].target == LogTarget_Status){

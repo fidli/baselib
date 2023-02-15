@@ -148,8 +148,8 @@ struct{
             bool leftTripleClick;
         } buttons;
         bool leftHold;
-        f32 lastDoubleClickTime;
-        f32 lastClickTime;
+        f64 lastDoubleClickTime;
+        f64 lastClickTime;
     } mouse;
 } guiInput;
 
@@ -175,8 +175,8 @@ struct GuiContext{
     GuiId activeDropdown;
     
     GuiId activeInput;
-    f32 activeInputLastTimestamp;
-    f32 activeInputTimeAccumulator;
+    f64 activeInputLastTimestamp;
+    f64 activeInputTimeAccumulator;
     i32 caretPos;
     i32 caretWidth;
     bool caretPositioning;
@@ -744,11 +744,11 @@ bool renderText(const AtlasFont * font, const char * text, int startX, int start
     glUniform1f(guiGl->font.fontPixelSizeLocation, CAST(f32, font->pixelSize));
     glUniform3f(guiGl->font.positionLocation, CAST(f32, startX), CAST(f32, startY), zIndex);
 
-    i32 len = text ? strlen(text) : 0;
+    nint len = text ? strlen(text) : 0;
     if(len){
         ASSERT(len <= 256); // NOTE(fidli): from shader
-        glUniform1iv(guiGl->font.textLocation, MIN(64, ((len - 1) / 4) + 1), CAST(const GLint*, text));
-        glDrawArrays(GL_TRIANGLES, 0, 6*len);
+        glUniform1iv(guiGl->font.textLocation, CAST(GLsizei, MIN(64, ((len - 1) / 4) + 1)), CAST(const GLint*, text));
+        glDrawArrays(GL_TRIANGLES, 0, CAST(GLsizei, 6*len));
     }
     return true;
 }
@@ -806,7 +806,7 @@ void guiResetCaretVisually(){
     guiContext->caretVisible = true;
 }
 
-void guiInputCharacters(const char * input, i32 len){
+void guiInputCharacters(const char * input, nint len){
     char digitRangeLow = 0;
     char digitRangeHigh = 0;
     char smallLetterRangeLow = 0;
@@ -873,7 +873,7 @@ void guiInputCharacters(const char * input, i32 len){
         //end parse format
     }
     ASSERT(guiContext->inputText);
-    i32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+    i32 textlen = CAST(i32, strnlen(guiContext->inputText, guiContext->inputMaxlen));
     i32 ci = 0;
     bool isValid = true;
     for(; ci < len && isValid; ci++){
@@ -942,7 +942,7 @@ void guiDeleteInputCharacters(i32 from, i32 to){
     if(end < start){
         SWAP(end, start);
     }
-    i32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+    i32 textlen = CAST(i32, strnlen(guiContext->inputText, guiContext->inputMaxlen));
     start = clamp(start, 0, textlen);
     end = clamp(end, 0, textlen);
     if(start != end){
@@ -954,7 +954,7 @@ void guiDeleteInputCharacters(i32 from, i32 to){
 }
 
 static i32 guiFindNextWordCaret(i32 start){
-    i32 textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+    i32 textlen = CAST(i32, strnlen(guiContext->inputText, guiContext->inputMaxlen));
     i32 caretPos = start;
     bool jumped = false;
     // inner word
@@ -1063,7 +1063,7 @@ void guiAppendPrevWordToSelection(){
 
 void guiSelectWholeInput(){
     guiCancelCaretPositioning();
-    nint textlen = strnlen(guiContext->inputText, guiContext->inputMaxlen);
+    i32 textlen = CAST(i32, strnlen(guiContext->inputText, guiContext->inputMaxlen));
     guiContext->caretPos = 0;
     guiContext->caretWidth = textlen; 
 }
@@ -1077,7 +1077,6 @@ static bool renderSlider(f32 * progress, const i32 positionX, const i32 position
     i32 marginY = MIN(10, height/10);
     bool isHoverNow = guiInput.mouse.x >= positionX + marginX && guiInput.mouse.x <= positionX + width - marginX && guiInput.mouse.y >= positionY + marginY && guiInput.mouse.y <= positionY + height - marginY;
     bool isSelected = registerInputAndIsSelected();
-    bool wasSubmitted = isSelected && guiContext->selection.activate;
     if(isHoverNow){
         if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
             guiContext->currentHover = id;
@@ -1129,7 +1128,6 @@ static bool renderInput(const AtlasFont * font, i32 pt, char * text, i32 textMax
     i32 margin = MIN(height/10, 10);
     bool isHoverNow = guiInput.mouse.x >= positionX + margin && guiInput.mouse.x <= positionX + width - margin && guiInput.mouse.y >= positionY + margin && guiInput.mouse.y <= positionY + height - margin;
     bool isSelected = registerInputAndIsSelected();
-    bool wasSubmitted = isSelected && guiContext->selection.activate;
     if(isHoverNow){
         if(!guiValid(guiContext->currentHover) || guiContext->currentHover.z < zIndex){
             guiContext->currentHover = id;
@@ -1578,7 +1576,6 @@ void guiEnd(){
         guiInvalidate(&guiContext->activeDropdown);
     }
     // messages
-    bool close = false;
     for(i32 i = 0; i < guiContext->messagePopupCount; i++){
         if(guiIsPopupOpened(guiContext->messagePopupTitles[i])){
             GuiStyle * style = &guiContext->messagePopupStyles[i];

@@ -62,12 +62,13 @@ bool getNextLine(FileContents * contents, char * line, u32 linelen)
 	i32 remains = contents->size-contents->head;
 	if(remains <= 0) return false;
     char format[30];
-	u32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, remains));
+	u32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, CAST(u32, remains)));
+    ASSERT(res == 1);
     memset(line, 0, linelen);
     if(sscanf(contents->contents + contents->head, format, line) == 1)
     {
         nint len = strlen(line);
-        contents->head += len;
+        contents->head += CAST(u32, len);
         char trail = contents->contents[contents->head];
         while((trail == '\r' || trail == '\n') && trail != '\0')
         {
@@ -104,7 +105,7 @@ bool ungetLine(FileContents * contents){
     if(contents->head == 0){
         return true;
     }
-    i64 newHead = contents->head;
+    i32 newHead = contents->head;
     while(newHead > 0 && contents->contents[newHead] != '\n'){
         newHead--;
     }
@@ -127,7 +128,7 @@ bool appendBytes(FileContents * contents, const char * bytes, i32 bytesize)
 bool appendLine(FileContents * contents, const char * line)
 {
 	i32 remains = contents->size-contents->head;
-	i32 linelen = strlen(line);
+	i32 linelen = CAST(i32, strlen(line));
 	if(remains < linelen) return false;
 	u32 res = sprintf(contents->contents + contents->head, "%s\r\n", line);
 	contents->head += linelen + 2;
@@ -138,15 +139,15 @@ bool appendLinef(FileContents * contents, const char * format, ...)
     {
 	bool result = false;
 	char * formate = &PUSHA(char, strlen(format) + 2);
-	nint res = sprintf(formate, "%s\r\n", format);
-	if(res > 0)
+	nint resp = sprintf(formate, "%s\r\n", format);
+	if(resp > 0)
     {
 		i32 remains = contents->size-contents->head;
 		if(remains > 0)
         {
 			va_list ap;    
 			va_start(ap, format);
-			u32 res = vsnprintf(contents->contents + contents->head, remains, formate, ap);
+			u32 res = vsnprintf(contents->contents + contents->head, CAST(nint, remains), formate, ap);
 			va_end(ap);
 			if(res > 0)
             {
@@ -207,7 +208,7 @@ void skipBytes(FileContents * contents, i32 amount)
 
 u8 readUint8(FileContents * contents)
 {
-    u16 result = CAST(u8, *(contents->contents + contents->head));
+    u8 result = CAST(u8, *(contents->contents + contents->head));
     contents->head += 1;
     return result;
 }
@@ -238,9 +239,9 @@ bool deleteFile(const char * path);
 bool moveFile(const char * oldPath, const char * newPath);
 bool createDirectory(const char *path);
 
-bool appendFile(const char * path, char * data, u32 length){
+bool appendFile(const char * path, char * data, nint length){
     FileContents c = {};
-    c.size = length;
+    c.size = CAST(u32, length);
     c.contents = data;
     return appendFile(path, &c); 
 }
@@ -252,7 +253,7 @@ bool createEmptyFile(const char * path){
 
 // NOTE(fidli): this can be platform-split so you can check just one
 const char * filename(const char *path){
-    i32 len = strlen(path);
+    i32 len = CAST(i32, strlen(path));
     for(i32 i = len-1; i >= 0; i--){
         if(path[i] == '\\' || path[i] == '/'){
             return &path[i+1];
@@ -262,7 +263,7 @@ const char * filename(const char *path){
 }
 
 const char * extension(const char *path){
-    i32 len = strlen(path);
+    i32 len = CAST(i32, strlen(path));
     for(i32 i = len-1; i >= 0; i--){
         if(path[i] == '.'){
             return &path[i+1];

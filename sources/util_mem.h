@@ -23,7 +23,7 @@ void * allocate(StackAllocator * allocator, u64 bytes)
 	void * result = ((byte *) allocator->mem_start) + allocator->offsets[allocator->stackIndex];
 	allocator->offsets[allocator->stackIndex+1] = bytes + allocator->offsets[allocator->stackIndex];
 	allocator->stackIndex++;
-	if((allocator->offsets[allocator->stackIndex] < allocator->effectiveSize) && (allocator->stackIndex < allocator->stackSize));
+	if((allocator->offsets[allocator->stackIndex] < allocator->effectiveSize) && (allocator->stackIndex < allocator->stackSize))
 	{
 		return result;
 	}

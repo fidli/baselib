@@ -78,10 +78,10 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
     }else{
     }
     
-    for(i32 i = 0; i < font->childrenCount && success; i++){
+    for(u32 i = 0; i < font->childrenCount && success; i++){
         XMLNode * ch = font->children[i];
         if(!strncmp(ch->name, "info", 4)){
-            for(i32 a = 0; a < ch->attributesCount && success; a++){
+            for(u32 a = 0; a < ch->attributesCount && success; a++){
                 if(!strncmp("size", ch->attributeNames[a], 4)){
                     if(!sscanf(ch->attributeValues[a], "%d", &target->pixelSize)){
                         INV;
@@ -91,7 +91,7 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                 }
             }
         }else if(!strncmp(ch->name, "common", 6)){
-            for(i32 a = 0; a < ch->attributesCount && success; a++){
+            for(u32 a = 0; a < ch->attributesCount && success; a++){
                 if(!strncmp("lineHeight", ch->attributeNames[a], 6)){
                     if(!sscanf(ch->attributeValues[a], "%d", &target->lineHeight)){
                         INV;
@@ -108,11 +108,11 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                 }
             }
         }else if(!strncmp(ch->name, "char", 4)){
-            for(i32 j = 0; j < ch->childrenCount && success; j++){
+            for(u32 j = 0; j < ch->childrenCount && success; j++){
                 XMLNode * chr = ch->children[j];
-                char glyph;
+                char glyph = 0;
                 GlyphData tmp = {};
-                for(i32 a = 0; a < chr->attributesCount; a++){
+                for(u32 a = 0; a < chr->attributesCount; a++){
                     if(!strncmp("width", chr->attributeNames[a], 5)){
                         if(!sscanf(chr->attributeValues[a], "%d", &tmp.AABB.width)){
                             INV;
@@ -160,8 +160,8 @@ bool initAtlasFont(AtlasFont * target, const char * atlasBMPPath, const char * d
                             tmp.glyph = glyph;
                         }else{
                             success = false;
-                            break;
                             INV;
+                            break;
                         }
                     }
                 }
