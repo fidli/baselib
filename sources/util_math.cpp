@@ -173,8 +173,9 @@ f32 atan2(f32, f32){
 }
 
 f32 sin(f32 xRad){
-    ASSERT(xRad <= 2*PI && xRad >= 0);
-    return CAST(f32, xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19);
+    f32 result = CAST(f32, xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19);
+    ASSERT(xRad <= 2*PI && xRad >= -2*PI);
+    return result;
 }
 
 f32 sin64(f64 xRad){
@@ -183,8 +184,9 @@ f32 sin64(f64 xRad){
 }
 
 f32 cos(f32 xRad){
-    ASSERT(xRad <= 2*PI && xRad >= 0);
-    return CAST(f32, 1 - powd(xRad,2)/2.0 + powd(xRad,4)/24.0 - powd(xRad,6)/720.0 + powd(xRad,8)/40320.0 - powd(xRad,10)/3628800.0 + powd(xRad,12)/479001600.0 - powd(xRad,14)/87178291200.0 + powd(xRad,16)/20922789888000.0 - powd(xRad,18)/6.402373705728e+15 + powd(xRad,20)/2.43290200817664e+18);
+    f32 result = CAST(f32, 1 - powd(xRad,2)/2.0 + powd(xRad,4)/24.0 - powd(xRad,6)/720.0 + powd(xRad,8)/40320.0 - powd(xRad,10)/3628800.0 + powd(xRad,12)/479001600.0 - powd(xRad,14)/87178291200.0 + powd(xRad,16)/20922789888000.0 - powd(xRad,18)/6.402373705728e+15 + powd(xRad,20)/2.43290200817664e+18);
+    ASSERT(xRad <= 2*PI && xRad >= -2*PI);
+    return result;
 }
 
 f64 cos64(f64 xRad){
