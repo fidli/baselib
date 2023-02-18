@@ -82,6 +82,7 @@ bool initAudio(HWND target){
     return true;
 }
 
+/*
 AudioTrack loadAudio(){
     AudioTrack result = {};
     nint size = CAST(nint, 0.5f*mixer.samplesPerSecond * sizeof(i16) * 2);
@@ -103,6 +104,7 @@ AudioTrack loadAudio(){
     result.byteSize = CAST(DWORD, size);
     return result;
 } 
+*/
 
 void playAudio(AudioTrack * track){
     ASSERT(mixer.mixedSoundsCount <= ARRAYSIZE(mixer.mixedSounds));
