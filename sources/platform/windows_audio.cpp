@@ -25,8 +25,7 @@ bool initAudio(HWND target){
     mixer.samplesPerSecond = 44100;
     LPDIRECTSOUND8 d8;
     if(SUCCEEDED(DirectSoundCreate8(0, &d8, 0))){
-        //if(SUCCEEDED(d8->SetCooperativeLevel(target, DSSCL_WRITEPRIMARY))){
-        if(SUCCEEDED(d8->SetCooperativeLevel(target, DSSCL_PRIORITY))){
+        if(SUCCEEDED(d8->SetCooperativeLevel(target, DSSCL_WRITEPRIMARY))){
             
             WAVEFORMATEX wf = {};
             wf.wFormatTag = WAVE_FORMAT_PCM;
@@ -37,44 +36,30 @@ bool initAudio(HWND target){
             wf.nAvgBytesPerSec = wf.nSamplesPerSec*wf.nBlockAlign;
             wf.cbSize = 0;
             
-            LPDIRECTSOUNDBUFFER prbuffer;
             DSBUFFERDESC pbuffdesc = {};
             pbuffdesc.dwSize = sizeof(DSBUFFERDESC);
             pbuffdesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
             
-            if(SUCCEEDED(d8->CreateSoundBuffer(&pbuffdesc, &prbuffer, 0))){
-                if(!SUCCEEDED(prbuffer->SetFormat(&wf))){
+            if(SUCCEEDED(d8->CreateSoundBuffer(&pbuffdesc, &mixer.buffer, 0))){
+                if(!SUCCEEDED(mixer.buffer->SetFormat(&wf))){
                     return false;
                 }
             }else{
                 return false;
             }      
     
-            
-            DSBUFFERDESC sbuffdesc = {};
-            sbuffdesc.dwSize = sizeof(DSBUFFERDESC);
-            sbuffdesc.dwBufferBytes = mixer.samplesPerSecond * 2 * 2 * 2;
-            sbuffdesc.lpwfxFormat = &wf;
-            
-            if(!SUCCEEDED(d8->CreateSoundBuffer(&sbuffdesc, &mixer.buffer, 0))){
-                return false;
-            }      
-            
-            /*
             DSBCAPS caps = {};
             caps.dwSize = sizeof(DSBCAPS);
             HRESULT r = mixer.buffer->GetCaps(&caps);
             ASSERT(r == DS_OK);
             mixer.bufferSize = caps.dwBufferBytes;
-            */
-            mixer.bufferSize = sbuffdesc.dwBufferBytes;
 
             void * data1 = NULL;
             void * data2 = NULL;
             DWORD size1 = 0;
             DWORD size2 = 0;
 
-            HRESULT r = mixer.buffer->Lock(0, mixer.bufferSize, &data1, &size1, &data2, &size2, 0);
+            r = mixer.buffer->Lock(0, mixer.bufferSize, &data1, &size1, &data2, &size2, 0);
             ASSERT(r == DS_OK);
             ASSERT(data1 != NULL);
             ASSERT(size1 == mixer.bufferSize);
@@ -99,17 +84,18 @@ bool initAudio(HWND target){
 
 AudioTrack loadAudio(){
     AudioTrack result = {};
-    nint size = mixer.samplesPerSecond * sizeof(i16) * 2;
+    nint size = CAST(nint, 0.5f*mixer.samplesPerSecond * sizeof(i16) * 2);
     char * secondOfC = &PPUSHA(char, size);
-    for (DWORD sample = 0; sample < i32(mixer.samplesPerSecond); sample++){
+    DWORD samplesFade = 1000;
+    for (DWORD sample = 0; sample < i32(size/4); sample++){
         f32 fade = 1.0f;
-        if (sample <= mixer.samplesPerSecond/4){
-            fade = 1.0f - (ABS(CAST(f32, sample) - CAST(f32, mixer.samplesPerSecond/4))/(mixer.samplesPerSecond/4));
+        if (sample < samplesFade){
+            fade = CAST(f32, sample) / CAST(f32, samplesFade);
         }
-        else if (sample >= mixer.samplesPerSecond - mixer.samplesPerSecond/4){
-            fade = 1.0f - (ABS(CAST(f32, sample) - CAST(f32, (mixer.samplesPerSecond*3)/4))/(mixer.samplesPerSecond/4));
+        else if (size/4 - sample < samplesFade){
+            fade = CAST(f32, size/4 - sample) / CAST(f32, samplesFade);
         }
-        i16 value = CAST(i16, fade * sin(fmod((CAST(f32, sample)/mixer.samplesPerSecond)*256*2*PI, 2*PI)) * 30000);
+        i16 value = CAST(i16, fade * sin(fmod((CAST(f32, sample)/mixer.samplesPerSecond)*256*2*PI, 2*PI)) * 10000);
         CAST(i16*, secondOfC)[sample*2] = value;
         CAST(i16*, secondOfC)[sample*2+1] = value;
     }
@@ -125,28 +111,9 @@ void playAudio(AudioTrack * track){
     replay->byteSize = track->byteSize;
     replay->commitedBytes = 0;
     replay->startedPlaying = false;
-#if 0
-            void * data1 = NULL;
-            void * data2 = NULL;
-            DWORD size1 = 0;
-            DWORD size2 = 0;
-            HRESULT r = mixer.buffer->Lock(0, mixer.bufferSize, &data1, &size1, &data2, &size2, 0);
-            ASSERT(r == DS_OK);
-            ASSERT(data1 != NULL);
-            ASSERT(size1 == mixer.bufferSize);
-            ASSERT(replay->byteSize <= size1);
-            for (DWORD i = 0; i < size1; i++){
-                CAST(char*, data1)[i] = replay->data[i];
-            }
-            r = mixer.buffer->Unlock(data1, size1, data2, size2);
-            ASSERT(r == DS_OK);
-
-            r = mixer.buffer->Play(0, 0, 0);
-#endif
 }
 
 void mix(){
-#if 1
     DWORD playCursor;
     DWORD writeCursor;
     HRESULT r = mixer.buffer->GetCurrentPosition(&playCursor, &writeCursor);
@@ -197,6 +164,7 @@ void mix(){
         }
         ASSERT(track->commitedBytes <= track->byteSize);
     }
+    ASSERT(bytesCommited%4 == 0);
 
     void * data[2] = {data1, data2};
     DWORD sizes[2] = {size1, size2};
@@ -222,8 +190,8 @@ void mix(){
                     mixerValueR += sampleValueR;
                 }
             }
-            mixerValueL = clamp(mixerValueL, -32768, 32767); 
-            mixerValueR = clamp(mixerValueR, -32768, 32767);
+            mixerValueL = clamp(CAST(i32, mixerValueL), -32768, 32767); 
+            mixerValueR = clamp(CAST(i32, mixerValueR), -32768, 32767);
             ((i16*)data[p])[i/2] = CAST(i16, mixerValueL);
             ((i16*)data[p])[i/2 + 1] = CAST(i16, mixerValueR);
         }
@@ -241,7 +209,6 @@ void mix(){
 
     r = mixer.buffer->Unlock(data1, size1, data2, size2);
     ASSERT(r == DS_OK);
-#endif
 }
 
 #endif
