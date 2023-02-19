@@ -7,6 +7,35 @@
 
 #ifndef CRT_PRESENT
 
+//returns number of unmached chars
+u32 convUTF8toAscii(const byte * source, const u32 bytesize, char ** target, u32 * targetSize){
+    
+    *targetSize = 0;
+    
+    u32 errors = 0;
+    char glyf;
+    for(u32 i = 0; i < bytesize; i++){
+        if(!(source[i] & 128)){
+            glyf = source[i];
+        }else if(!(source[i] & 32)){
+            glyf = '_';
+            i++;
+            errors++;
+        }else if(!(source[i] & 16)){
+            glyf = '_';
+            i+=2;
+            errors++;
+        }else{
+            glyf = '_';
+            i+=4;
+            errors++;
+        }
+        (*target)[*targetSize] = glyf;
+        *targetSize = *targetSize + 1;
+    }
+    return errors;
+}
+
 #include <emmintrin.h>
 
 i32 strcmp(const char * a, const char * b){

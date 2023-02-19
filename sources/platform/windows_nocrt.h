@@ -1,5 +1,5 @@
 #pragma once
-
+#define _CRT_SECURE_NO_WARNINGS // using unsafe stds
 //NOTE(AK): ---------------- instead of cstd
 extern "C" void * __cdecl memset(void *, int, size_t);
 #pragma intrinsic(memset)

@@ -60,7 +60,7 @@ static inline void initFlatShader(){
     guiGl->flat.overlayColorLocation = glGetUniformLocation(guiGl->flat.program, "overlayColor");
 }
 
-#include "util_graphics.cpp"
+#include "util_draw.cpp"
 #include "util_font.cpp"
 #include "util_sort.cpp"
 

@@ -15,8 +15,6 @@ enum NeuralNetTrainLossFunctionType{
 };
 
 
-
-
 static inline f32 sigmoidActivationFunction(f32 value){
     return 1.0 / (1.0 + epow(-1*value));
 }

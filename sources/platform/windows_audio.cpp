@@ -2,7 +2,7 @@
 #define WINDOWS_AUDIO_CPP
 
 #include <DSound.h>
-#include "util_audio.h"
+#include "util_audio.cpp"
 
 struct AudioReplay{
     char * data;
