@@ -690,6 +690,14 @@ dv2 operator-(const dv2 & a){
     return result;
 }
 
+v2 operator-(const v2 & a){
+    v2 result = {};
+    for(int i = 0; i < ARRAYSIZE(result.v); i++){
+        result.v[i] = -a.v[i];
+    }
+    return result;
+}
+
 v2 & operator+=(v2 & a, const v2 & b){
     for(int i = 0; i < ARRAYSIZE(b.v); i++){
         a.v[i] += b.v[i];
@@ -1212,6 +1220,33 @@ union mat3{
     f32 c[9];
 };
 
+mat3 operator*(const mat3 & A, const mat3 & B){
+    mat3 result = {};
+    
+    for(int matrixCol = 0; matrixCol < 3; matrixCol++){
+        for(int matrixRow = 0; matrixRow < 3; matrixRow++){
+            f32 val = 0;
+            for(int i = 0; i < 3; i++){
+                val += A.c[matrixRow*3 + i] * B.c[i*3 + matrixCol]; 
+            }
+            result.c[matrixRow*3 + matrixCol] = val;
+        }
+    }
+    return result;
+}
+v2 operator*(const mat3 & matrix, const v2 & vector){
+    v3 originalVector = V3(vector.x, vector.y, 1);
+    
+    v3 resultVector = {};
+    
+    for(int matrixRow = 0; matrixRow < 3; matrixRow++){
+        for(int vectorMember = 0; vectorMember < 3; vectorMember++){
+            resultVector.v[matrixRow] += matrix.c[3*matrixRow + vectorMember] * originalVector.v[vectorMember];
+        }
+    }
+    return V2(resultVector.x, resultVector.y);
+}
+
 v3 operator*(const mat4 & matrix, const v3 & vector){
     v4 originalVector = V4(vector.x, vector.y, vector.z, 1);
     
@@ -1458,6 +1493,56 @@ mat4_64 quaternionToMatrix64(const v4_64 & quaternion){
     result.c[10] = 1 - 2*powd64(quaternion.x,2) - 2*powd64(quaternion.y,2);
     result.c[15] = 1;
     
+    return result;
+}
+
+// 0 1 2
+// 3 4 5
+// 6 7 8
+mat3 translationMatrix(const v2 offset){
+    mat3 result = {};
+    result.c[0] = 1.0f;
+    result.c[2] = offset.x;
+    result.c[4] = 1.0f;
+    result.c[5] = offset.y;
+    result.c[8] = 1.0f;
+    return result;
+}
+
+// 0 1 2
+// 3 4 5
+// 6 7 8
+mat3 scalingMatrix(const v2 scale){
+    mat3 result = {};
+    result.c[0] = scale.x;
+    result.c[4] = scale.y;
+    result.c[8] = 1.0f;
+    return result;
+}
+
+// 0 1 2
+// 3 4 5
+// 6 7 8
+mat3 ortoProjectionMatrix(v2 worldResolution, dv2 pxResolution)
+{
+    ASSERT(worldResolution.x >= worldResolution.y);
+    f32 displayAspectRatio = CAST(f32, pxResolution.x) / pxResolution.y;
+    f32 desiredWorldResolution = worldResolution.x / displayAspectRatio;
+    if (desiredWorldResolution < worldResolution.y){
+        f32 enlarge = worldResolution.y / desiredWorldResolution;
+        worldResolution.x *= enlarge;
+    }
+    else{
+        worldResolution.y = desiredWorldResolution;
+    }
+    v2 worldTopLeft = V2(-worldResolution.x/2.0f, worldResolution.y/2.0f);
+    v2 worldBotRight = V2(+worldResolution.x/2.0f, -worldResolution.y/2.0f);
+    mat3 result = {};
+    result.c[0] = (2.0f / (worldBotRight.x - worldTopLeft.x));
+    result.c[2] = -1.0f * ((worldBotRight.x + worldTopLeft.x)/(worldBotRight.x - worldTopLeft.x));
+    result.c[4] = 2.0f / (worldTopLeft.y - worldBotRight.y);
+    result.c[5] = -1.0f * ((worldTopLeft.y + worldBotRight.y)/(worldTopLeft.y - worldBotRight.y));
+    result.c[8] = 1.0f;
     return result;
 }
 

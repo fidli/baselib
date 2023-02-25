@@ -67,6 +67,7 @@ DEFINEDLLFUNC(void, glUniform1f, GLint, GLfloat);
 DEFINEDLLFUNC(void, glUniform2f, GLint, GLfloat, GLfloat);
 DEFINEDLLFUNC(void, glUniform2i, GLint, GLint, GLint);
 DEFINEDLLFUNC(void, glUniform3f, GLint, GLfloat, GLfloat, GLfloat);
+DEFINEDLLFUNC(void, glUniformMatrix3fv, GLint, GLsizei, GLboolean, const GLfloat*);
 DEFINEDLLFUNC(void, glUniform4f, GLint, GLfloat, GLfloat, GLfloat, GLfloat);
 
 #define OBTAINGLFUNC(HNDL, FNC) \
@@ -153,6 +154,7 @@ bool initOpenGL(){
         OBTAINGLFUNC(opengl, glUniform2f);
         OBTAINGLFUNC(opengl, glUniform2i);
         OBTAINGLFUNC(opengl, glUniform3f);
+        OBTAINGLFUNC(opengl, glUniformMatrix3fv);
         OBTAINGLFUNC(opengl, glUniform4f);
         r = true;
     }else{
