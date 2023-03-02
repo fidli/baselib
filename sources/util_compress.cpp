@@ -3,6 +3,100 @@
 
 #include "util_sort.cpp"
 
+enum ByteOrder{
+    ByteOrder_Invalid,
+    ByteOrder_LittleEndian,
+    ByteOrder_BigEndian
+};
+// TODO do this really
+
+#define NATIVE_BYTE_ORDER ByteOrder_LittleEndian
+
+struct ReadHead{
+    u8 * offset;
+};
+
+union converter{
+    u8 bytes[8];
+    u16 words[4];
+    u32 dwords[2];
+    u64 qword;
+};
+
+
+static converter martyr;
+
+static inline u8 scanByte(ReadHead * head){
+    u8 res = head->offset[0];
+    head->offset++;
+    return res;
+}
+
+static inline u16 scanWord(ReadHead * head, ByteOrder order){
+    u16 res;
+    if (order == NATIVE_BYTE_ORDER)
+    {
+        martyr.bytes[0] = head->offset[0];
+        martyr.bytes[1] = head->offset[1];
+    }else{
+        martyr.bytes[1] = head->offset[0];
+        martyr.bytes[0] = head->offset[1];
+    }
+    head->offset += 2;
+    res = martyr.words[0];
+    return res;
+}
+
+
+static inline u32 scanDword(ReadHead * head, ByteOrder order){
+    u32 res;
+    if (order == NATIVE_BYTE_ORDER)
+    {
+        martyr.bytes[0] = head->offset[0];
+        martyr.bytes[1] = head->offset[1];
+        martyr.bytes[2] = head->offset[2];
+        martyr.bytes[3] = head->offset[3];
+    }
+    else{
+        martyr.bytes[3] = head->offset[0];
+        martyr.bytes[2] = head->offset[1];
+        martyr.bytes[1] = head->offset[2];
+        martyr.bytes[0] = head->offset[3];
+    }
+    head->offset += 4;
+    res = martyr.dwords[0];
+    return res;
+}
+
+
+static inline u64 scanQword(ReadHead * head, ByteOrder order){
+    u64 res;
+    if (order == NATIVE_BYTE_ORDER)
+    {
+        martyr.bytes[0] = head->offset[0];
+        martyr.bytes[1] = head->offset[1];
+        martyr.bytes[2] = head->offset[2];
+        martyr.bytes[3] = head->offset[3];
+        martyr.bytes[4] = head->offset[4];
+        martyr.bytes[5] = head->offset[5];
+        martyr.bytes[6] = head->offset[6];
+        martyr.bytes[7] = head->offset[7];
+    }
+    else{
+        martyr.bytes[7] = head->offset[0];
+        martyr.bytes[6] = head->offset[1];
+        martyr.bytes[5] = head->offset[2];
+        martyr.bytes[4] = head->offset[3];
+        martyr.bytes[3] = head->offset[4];
+        martyr.bytes[2] = head->offset[5];
+        martyr.bytes[1] = head->offset[6];
+        martyr.bytes[0] = head->offset[7];
+    }
+    head->offset += 8;
+    res = martyr.qword;
+    return res;
+}
+
 struct LZWCompressNode{
     u16 index;
     LZWCompressNode * next;
@@ -44,7 +138,7 @@ static inline bool LZWempty(const LZWStack * stack){
 }
 
 struct ReadHeadBit{
-    const byte * source;
+    u8 * source;
     byte currentByte;
     bool inverted;
     u32 byteOffset;
@@ -118,10 +212,13 @@ static inline u16 readBits(ReadHeadBit * head, const u8 bits){
         head->byteOffset++;
     }
     
+    if (head->inverted){
+        result = invertBits(result, bits);
+    }
     return result;
 }
 
-u32 decompressLZW(const byte * source, const u32 sourceSize, byte * target){
+u32 decompressLZW(u8 * source, const u32 sourceSize, byte * target){
     //http://www.fileformat.info/format/tiff/corion-lzw.htm
     //every message begins with clear code and ends with end of information code
     
@@ -391,7 +488,7 @@ inline static u32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * lite
                 }else if(currentNode->value < 285){
                     ASSERT(((currentNode->value - 261)/4) <= 255 && ((currentNode->value - 261)/4) >= 0);
                     u8 bits = CAST(u8, (currentNode->value - 261) / 4);
-                    count = invertBits(readBits(head, bits), bits) + extraCounts[currentNode->value - 265];
+                    count = readBits(head, bits) + extraCounts[currentNode->value - 265];
                 }else{
                     count = 258;
                 }
@@ -420,7 +517,7 @@ inline static u32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * lite
                 if(backOffset > 3){
                     ASSERT((backOffset-2)/2 <= 255 && (backOffset-2)/2 >= 0);
                     u8 bits = CAST(u8, (backOffset-2)/2);
-                    backOffset =  invertBits(readBits(head, bits), bits) + extraBackOffsets[backOffset-4];
+                    backOffset =  readBits(head, bits) + extraBackOffsets[backOffset-4];
                 }
                 
                 unsigned char * start = target + localOffset - 1 - backOffset;
@@ -506,39 +603,48 @@ static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, u32 item
                }
                return -1;
                });
-    
+    // remove 0 bit sizes
+    i32 zeroes = 0;
+    for (; zeroes < CAST(i32, itemCount); zeroes++){
+        if (codeWords[zeroes].bitSize != 0){
+            break;
+        }
+    }
+    if (zeroes > 0){
+        memcpy(CAST(void*, codeWords), CAST(void*, &codeWords[zeroes]), sizeof(CodeWord) * (itemCount-zeroes));
+    }
+    itemCount -= zeroes;
     
     u8 maxCodeLength = codeWords[itemCount-1].bitSize;
     
     u32 * amounts = &PUSHA(u32, maxCodeLength+1);
-    for(u8 i = 0; i < maxCodeLength; i++){
+    for(u8 i = 0; i <= maxCodeLength; i++){
         amounts[i] = 0;
     }
-    u32 * codeDispenser = &PUSHA(u32, maxCodeLength+1);
-    u32 code = 0;
-    codeDispenser[0] = code;
-    
-    
+
     for(u32 i = 0; i < itemCount; i++){
         amounts[codeWords[i].bitSize]++;
     }
+    ASSERT(amounts[0] == 0);
+
+    u32 * codeDispenser = &PUSHA(u32, maxCodeLength+1);
+    for(u8 i = 0; i <= maxCodeLength; i++){
+        codeDispenser[i] = 0;
+    }
     
-    for(u8 i = 1; i <= maxCodeLength; i++){
+    u32 code = 0;
+    for(i8 i = 1; i <= CAST(i8, maxCodeLength); i++){
         code = (code + amounts[i-1]) << 1;
         codeDispenser[i] = code;
     }
     
     
-    
-    
     for(u32 i = 0; i < itemCount; i++){
         //proccess each code length
-        
-        if(codeWords[i].bitSize == 0) continue;
-        
-        
+        ASSERT(codeWords[i].bitSize != 0);
         
         codeWords[i].code = codeDispenser[codeWords[i].bitSize];
+        ASSERT(((codeWords[i].code << (32 - codeWords[i].bitSize)) >> (32 - codeWords[i].bitSize)) == codeWords[i].code);
         codeDispenser[codeWords[i].bitSize]++;
         
     }
@@ -585,7 +691,7 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
             
             //17 repeat 0 n times n = 3 bits
             if(currentNode->value == 17){
-                u16 times0 = invertBits(readBits(head, 3), 3);
+                u16 times0 = readBits(head, 3);
                 times0 += 3;
                 
                 for(u16 ri = 0; ri < times0; ri++){
@@ -597,7 +703,7 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
                 
             }else if(currentNode->value == 18){
                 //18 repeat 0 n times n = 7 bits
-                u16 times0 = invertBits(readBits(head, 7), 7);
+                u16 times0 = readBits(head, 7);
                 times0 += 11;
                 for(u16 ri = 0; ri  < times0; ri++){
                     target[i].bitSize = 0;
@@ -607,7 +713,7 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
                 
             }else if(currentNode->value == 16){
                 ////16 repeat previous n times
-                u16 timesRepeat = invertBits(readBits(head, 2), 2);
+                u16 timesRepeat = readBits(head, 2);
                 timesRepeat += 3;
                 ASSERT(i-1 >= 0);
                 for(u16 ri = 0; ri < timesRepeat; ri++){
@@ -625,13 +731,8 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
             
             currentNode = tree;
         }
-        
-        
-        
-        
     }
     ASSERT(i == limit);
-    
 }
 
 
@@ -639,7 +740,7 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
 //http://www.gzip.org/algorithm.txt - idea
 
 //more specific - https://en.wikipedia.org/wiki/DEFLATE or RFC
-bool decompressDeflate(const char * compressedData, char * target){
+u32 decompressDeflate(u8 * compressedData, u8 * target){
     
     //dict 32kbytes
     //maxLen = 256
@@ -647,7 +748,7 @@ bool decompressDeflate(const char * compressedData, char * target){
     //start of block - huffman trees for indices and lenghts
     ReadHeadBit head = {};
     head.inverted = true;
-    head.source = (const unsigned char*)compressedData;
+    head.source = compressedData;
     
     //phase1 repeat counts, is this hardcoded defined? or where do these repeat times come from?
     u8 dynamicCodes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
@@ -658,8 +759,8 @@ bool decompressDeflate(const char * compressedData, char * target){
     bool processBlock = true;
     while(processBlock){
         PUSHI;
-        processBlock = readBits(&head, 1);
-        u16 header = invertBits(readBits(&head, 2), 2);
+        processBlock = readBits(&head, 1) == 0;
+        u16 header = readBits(&head, 2);
         
         
         if((header & 3) == 0){
@@ -676,144 +777,128 @@ bool decompressDeflate(const char * compressedData, char * target){
             //now the data should be present
             ASSERT(head.bitOffset == 0);
             for(u32 i = 0; i < dataSize; i++){
-                target[targetOffset++] = (byte) readBits(&head, 8);
+                target[targetOffset++] = CAST(u8, readBits(&head, 8));
             }
             
-        }else if((header & 3) == 1){
-            ASSERT(false);
-            //a static Huffman compressed block, using a pre-agreed Huffman tree.
-            /** 
-            * Build a Huffman tree for the following values:
-            *   0 - 143: 00110000  - 10111111     (8)
-            * 144 - 255: 110010000 - 111111111    (9)
-            * 256 - 279: 0000000   - 0010111      (7)
-            * 280 - 287: 11000000  - 11000111     (8)
-            * According to the RFC 1951 rules in section 3.2.2
-            * This is used to (de)compress small inputs.
-            */
-            
-            HuffmanNode tree;
-            tree.leaf = false;
-            tree.value = -1;
-            tree.one = NULL;
-            tree.zero = NULL;
-            
-            u16 code = 48;
-            
-            for(i32 value = 0; value <= 143; value++){
-                HuffmanNode * node = &PUSH(HuffmanNode);
-                
-                node->value = value;
-                node->one = NULL;
-                node->zero = NULL;
-                node->leaf = true;
-                
-                addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
-                code++;
-            }
-            code = 400;
-            for(i32 value = 144; value <= 255; value++){
-                HuffmanNode * node = &PUSH(HuffmanNode);
-                
-                node->value = value;
-                node->one = NULL;
-                node->zero = NULL;
-                node->leaf = true;
-                
-                addHuffmanNodeRec(&tree, node, invertBits(code, 9), 9);
-                code++;
-            }
-            code = 0;
-            for(i32 value = 256; value <= 279; value++){
-                HuffmanNode * node = &PUSH(HuffmanNode);
-                
-                node->value = value;
-                node->one = NULL;
-                node->zero = NULL;
-                node->leaf = true;
-                
-                addHuffmanNodeRec(&tree, node, invertBits(code, 7), 7);
-                code++;
-            }
-            
-            code = 192;
-            for(i32 value = 280; value <= 287; value++){
-                HuffmanNode * node = &PUSH(HuffmanNode);
-                
-                node->value = value;
-                node->one = NULL;
-                node->zero = NULL;
-                node->leaf = true;
-                
-                addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
-                code++;
-            }
-            
-            
-            //call to func
-            
-        }else if((header & 3) == 2){
-            
-            
+        }else{
             // - http://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art001
             //see Listing 14: Read the GZIP pre-header
             
-            u16 litCode = invertBits(readBits(&head, 5), 5);
-            u16 distCode = invertBits(readBits(&head, 5), 5);
+            HuffmanNode literalTree;
+            HuffmanNode distanceTree;
             
-            
-            //huffmann tree for following lenghts
-            u16 howMany3bitCodes = invertBits(readBits(&head, 4), 4);
-            howMany3bitCodes += 4;
-            
-            u16 codeLengthsForRepeat[19];
-            for(u8 i = 0; i < ARRAYSIZE(codeLengthsForRepeat); i++){
-                codeLengthsForRepeat[i] = 0;
+            if((header & 3) == 1){
+                //a static Huffman compressed block, using a pre-agreed Huffman tree.
+                /** 
+                * Build a Huffman tree for the following values:
+                *   0 - 143: 00110000  - 10111111     (8)
+                * 144 - 255: 110010000 - 111111111    (9)
+                * 256 - 279: 0000000   - 0010111      (7)
+                * 280 - 287: 11000000  - 11000111     (8)
+                * According to the RFC 1951 rules in section 3.2.2
+                * This is used to (de)compress small inputs.
+                */
+                
+                HuffmanNode tree;
+                tree.leaf = false;
+                tree.value = -1;
+                tree.one = NULL;
+                tree.zero = NULL;
+                
+                u16 code = 48;
+                
+                for(i32 value = 0; value <= 143; value++){
+                    HuffmanNode * node = &PUSH(HuffmanNode);
+                    
+                    node->value = value;
+                    node->one = NULL;
+                    node->zero = NULL;
+                    node->leaf = true;
+                    
+                    addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
+                    code++;
+                }
+                code = 400;
+                for(i32 value = 144; value <= 255; value++){
+                    HuffmanNode * node = &PUSH(HuffmanNode);
+                    
+                    node->value = value;
+                    node->one = NULL;
+                    node->zero = NULL;
+                    node->leaf = true;
+                    
+                    addHuffmanNodeRec(&tree, node, invertBits(code, 9), 9);
+                    code++;
+                }
+                code = 0;
+                for(i32 value = 256; value <= 279; value++){
+                    HuffmanNode * node = &PUSH(HuffmanNode);
+                    
+                    node->value = value;
+                    node->one = NULL;
+                    node->zero = NULL;
+                    node->leaf = true;
+                    
+                    addHuffmanNodeRec(&tree, node, invertBits(code, 7), 7);
+                    code++;
+                }
+                
+                code = 192;
+                for(i32 value = 280; value <= 287; value++){
+                    HuffmanNode * node = &PUSH(HuffmanNode);
+                    
+                    node->value = value;
+                    node->one = NULL;
+                    node->zero = NULL;
+                    node->leaf = true;
+                    
+                    addHuffmanNodeRec(&tree, node, invertBits(code, 8), 8);
+                    code++;
+                }
+                distanceTree = literalTree = tree;
             }
-            
-            
-            CodeWord codeWords[19];
-            for(u8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
-                codeWords[ci].weight = dynamicCodes[ci];
-                codeWords[ci].bitSize = 0;
+            else if((header & 3) == 2){
+                u16 litCode = readBits(&head, 5);
+                u16 distCode = readBits(&head, 5);
+                
+                //huffmann tree for following lenghts
+                u16 howMany3bitCodes = readBits(&head, 4);
+                howMany3bitCodes += 4;
+                
+                CodeWord codeWords[19];
+                for(u8 ci = 0; ci < ARRAYSIZE(codeWords); ci++){
+                    codeWords[ci].weight = dynamicCodes[ci];
+                    codeWords[ci].bitSize = 0;
+                }
+                
+                
+                for(u8 bci = 0; bci < howMany3bitCodes; bci++){
+                    u8 codeLength = CAST(u8, readBits(&head, 3));
+                    codeWords[bci].bitSize = codeLength;
+                }
+                
+                
+                //now we have code book for following lz77 lengths
+                HuffmanNode quickTree = assignCodesAndBuildTree(codeWords, howMany3bitCodes);
+                
+                
+                //now decoding literals
+                CodeWord * literalCodes = &PUSHA(CodeWord, 257 + litCode); 
+                readCodes(&head, &quickTree, literalCodes, 257 + litCode);
+                
+                
+                CodeWord * distanceCodes = &PUSHA(CodeWord, distCode + 1);
+                readCodes(&head, &quickTree, distanceCodes, distCode + 1);
+                
+                literalTree = assignCodesAndBuildTree(literalCodes, 257 + litCode);
+                distanceTree = assignCodesAndBuildTree(distanceCodes, distCode + 1);
             }
-            
-            
-            //kinda RlE 
-            for(u8 bci = 0; bci < howMany3bitCodes; bci++){
-                u8 codeLength = invertBits(CAST(u8, readBits(&head, 3)), 3);
-                codeWords[bci].bitSize = codeLength;
-            }
-            
-            
-            
-            //now we have code book for following lz77 lengths
-            HuffmanNode quickTree = assignCodesAndBuildTree(codeWords, howMany3bitCodes);
-            
-            
-            //now decoding literals
-            CodeWord * literalCodes = &PUSHA(CodeWord, 257 + litCode); 
-            readCodes(&head, &quickTree, literalCodes, 257 + litCode);
-            
-            
-            CodeWord * distanceCodes = &PUSHA(CodeWord, distCode + 1);
-            readCodes(&head, &quickTree, distanceCodes, distCode + 1);
-            
-            HuffmanNode literalTree = assignCodesAndBuildTree(literalCodes, 257 + litCode);
-            
-            HuffmanNode distanceTree = assignCodesAndBuildTree(distanceCodes, distCode + 1);
-            
-            
             targetOffset += decompressHuffman(&head, &literalTree, &distanceTree, (unsigned char *)target + targetOffset);
-            
-        }else{
-            ASSERT(false);
-            return false;
+            POPI;
         }
-        POPI;
     }
     
-    return true;
+    return targetOffset;
 }
 
 

@@ -31,7 +31,7 @@ struct Image{
         BitmapInterpretationType interpretation;
         BitmapOriginType origin;
     } info;
-    byte * data;
+    u8 * data;
     
 };
 
@@ -344,104 +344,146 @@ bool scaleCanvas(Image * target, u32 newWidth, u32 newHeight, u32 originalOffset
     return true;
 }
 
-enum ByteOrder{
-    ByteOrder_Invalid,
-    ByteOrder_LittleEndian,
-    ByteOrder_BigEndian
-};
+bool decodePNG(const FileContents * source, Image * target){
+    ReadHead head;
+    head.offset = CAST(u8*, source->contents) + source->head;
+    u8 firstByte = scanByte(&head);
+    ASSERT(firstByte == 0x89);
+    ASSERT(strncmp(CAST(char*, head.offset), "PNG", 3) == 0);
+    head.offset += 3;
+    u32 headDword = scanDword(&head, ByteOrder_BigEndian);
+    ASSERT(headDword == 0x0D0A1A0A);
+    
+    bool running = true;
+    i32 checks = 0;
+    u8* compressed = &PUSHA(u8, source->size);
+    u32 compressedOffset = 0;
+    u8* uncompressed = NULL;
+    while(head.offset < CAST(u8*, source->contents) + source->head + source->size && running){
+        u32 chunkLength = scanDword(&head, ByteOrder_BigEndian);
+        char * chunkType = CAST(char*, head.offset);
+        head.offset += 4;
+        if (strncmp(chunkType, "IHDR", 4) == 0){
+            checks++;
+            ASSERT(chunkLength == 13);
+            target->info.width = scanDword(&head, ByteOrder_BigEndian);
+            target->info.height = scanDword(&head, ByteOrder_BigEndian);
+            u8 bitsPerChannel = scanByte(&head);
+            u8 colorType = scanByte(&head);
+            u8 compressionMethod = scanByte(&head);
+            ASSERT(compressionMethod == 0);
+            if (colorType == 6){
+                target->info.interpretation = BitmapInterpretationType_RGBA;
+                target->info.bitsPerSample = bitsPerChannel*4;
+            }
+            u8 filterMethod = scanByte(&head);
+            ASSERT(filterMethod == 0);
+            u8 interlaceMethod = scanByte(&head);
+            ASSERT(interlaceMethod == 0);
 
-struct ReadHead{
-    char * offset;
-};
-
-union converter{
-    u8 bytes[8];
-    u16 words[4];
-    u32 dwords[2];
-    u64 qword;
-};
-
-static inline void swapEndians(converter * martyr){
-    for(u8 i = 0; i < 8; i++){
-        u8 tmp = 0;
-        for(u8 b = 0; b < 8; b++){
-            tmp |= ((martyr->bytes[i] >> b) << (7-b));
+            target->info.samplesPerPixel = 1;
+            target->info.origin = BitmapOriginType_TopLeft;
+            u64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
+            target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
+            target->data = &PPUSHA(byte, target->info.totalSize);
+            // first byte of each row is filter type
+            uncompressed = &PUSHA(u8, target->info.samplesPerPixel * target->info.bitsPerSample * (target->info.width+1) * target->info.height);
         }
-        martyr->bytes[i] = tmp;
-    }
-}
-
-static inline u32 swapEndians(const u32 source){
-    u32 target = 0;
-    for(u8 b = 0; b < 32; b++){
-        target |= ((source >> b) << (31-b));
-    }
-    return target;
-}
-
-static inline void swapEndians(char * source, u32 length, char * target){
-    for(u32 i = 0; i < length; i++){
-        target[i] = 0;
-        for(u8 b = 0; b < 8; b++){
-            target[i] |= ((source[i] >> b) << (7-b));
+        else if(strncmp(chunkType, "IDAT", 4) == 0){
+            ASSERT(compressedOffset + chunkLength <= source->size);
+            memcpy(compressed + compressedOffset, head.offset, chunkLength);
+            head.offset += chunkLength;
+            compressedOffset += chunkLength;
         }
-        
+        else if(strncmp(chunkType, "IEND", 4) == 0){
+            running = false;
+            checks++;
+        }
+        else{
+            head.offset += chunkLength;
+        }
+        u32 crc = scanDword(&head, ByteOrder_BigEndian);
+        // TODO crc
     }
+    // Zlib encap then deflate
+    // need to concat first
+    ReadHead compressedHead = {compressed};
+    u8 methodAndTag = scanByte(&compressedHead);
+    ASSERT((methodAndTag & 0x0F) == 0x08); // deflate
+    u32 windowSize = (1 << (((methodAndTag & 0xF0)>>4) + 8));
+    u8 flags = scanByte(&compressedHead);
+    ASSERT((flags & 0x20) == 0); // FDICT
+    ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
+    u32 decodedBytes = decompressDeflate(compressedHead.offset, uncompressed);
+    ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
+    ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
+    u32 bytesPerPixel = 4;
+    u32 stride = bytesPerPixel * target->info.width;
+    for(u32 h = 0; h < target->info.height; h++){
+        u32 pitch = h * stride;
+        u8 filterType = *(uncompressed + pitch + h);
+        if (filterType == 0)
+        {
+            memcpy(target->data + pitch, uncompressed + pitch + (h+1), target->info.width * bytesPerPixel);
+        }
+        else if (filterType == 1){
+            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
+                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + left;
+            }
+        }
+        else if (filterType == 2){
+            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
+                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + up;
+            }
+        } 
+        else if (filterType == 3){
+            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
+                u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
+                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + CAST(u8, ((CAST(u16, left) + CAST(u16, up)) / 2));
+            }
+        } 
+        else if (filterType == 4){
+            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
+                u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
+                u8 leftUp = (h > 0 && w >= bytesPerPixel) ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w  - bytesPerPixel) : 0;
+                i32 p = CAST(i32, left) + CAST(i32, up) - CAST(i32, leftUp);
+                i32 distLeft = ABS(CAST(i32, left)-p);
+                i32 distUp = ABS(CAST(i32, up)-p);
+                i32 distLeftUp = ABS(CAST(i32, leftUp)-p);
+                u8 least = 0;
+                if (distLeft <= distUp && distLeft <= distLeftUp){
+                    least = left; 
+                }
+                else if (distUp <= distLeftUp){
+                    least = up;
+                }
+                else{
+                    least = leftUp;
+                }
+                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + least;
+            }
+            
+        }
+        else{
+            INV;
+        }
+    }
+    compressedHead.offset = compressed + compressedOffset - 4;
+    u32 adler = scanDword(&compressedHead, ByteOrder_BigEndian);
+    POP;
+    return checks == 2 && (decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
 }
-
-static converter martyr;
-
-static inline u8 scanByte(ReadHead * head){
-    u8 res = head->offset[0];
-    head->offset++;
-    return res;
-}
-
-static inline u16 scanWord(ReadHead * head){
-    u16 res;
-    martyr.bytes[0] = head->offset[0];
-    martyr.bytes[1] = head->offset[1];
-    head->offset += 2;
-    res = martyr.words[0];
-    return res;
-}
-
-
-static inline u32 scanDword(ReadHead * head){
-    u32 res;
-    martyr.bytes[0] = head->offset[0];
-    martyr.bytes[1] = head->offset[1];
-    martyr.bytes[2] = head->offset[2];
-    martyr.bytes[3] = head->offset[3];
-    head->offset += 4;
-    res = martyr.dwords[0];
-    return res;
-}
-
-
-static inline u64 scanQword(ReadHead * head){
-    u64 res;
-    martyr.bytes[0] = head->offset[0];
-    martyr.bytes[1] = head->offset[1];
-    martyr.bytes[2] = head->offset[2];
-    martyr.bytes[3] = head->offset[3];
-    martyr.bytes[4] = head->offset[4];
-    martyr.bytes[5] = head->offset[5];
-    martyr.bytes[6] = head->offset[6];
-    martyr.bytes[7] = head->offset[7];
-    head->offset += 8;
-    res = martyr.qword;
-    return res;
-}
-
-
 
 struct Bitmapinfoheader{
     union{
         struct{
             u32 size;
-            u32 width;
-            u32 height;
+            i32 width;
+            i32 height;
             u16 colorPlanes;
             u16 bitsPerPixel;
             u32 compression;
@@ -450,8 +492,21 @@ struct Bitmapinfoheader{
             i32 pixelPerMeterVertical;
             u32 colorsInPallette;
             u32 importantColorsAmount;
+            u32 redMask;
+            u32 greenMask;
+            u32 blueMask;
+            u32 alphaMask;
+            char colorSpace[4];
+            char whatever[36];
+            u32 gammaRed;
+            u32 gammaGreen;
+            u32 gammaBlue;
+            u32 imageIntent;
+            u32 profileData;
+            u32 profileSize;
+            u32 reserved;
         };
-        char data[40];
+        char data[124];
     };
 };
 
@@ -512,16 +567,16 @@ bool decodeBMP(const FileContents * source, Image * target){
     }else if(infoheader->compression == 3){
         if(infoheader->bitsPerPixel == 32){
             ASSERT(infoheader->compression == 3);
-            u32 redMask = *(CAST(u32*, infoheader+1)+0);
+            u32 redMask = infoheader->redMask;
             u32 redMaskFallShift = redMask > 0xFF ? (redMask > 0xFF00 ? (redMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            u32 greenMask = *(CAST(u32*,infoheader+1)+1);
+            u32 greenMask = infoheader->greenMask;
             u32 greenMaskFallShift = greenMask > 0xFF ? (greenMask > 0xFF00 ? (greenMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            u32 blueMask = *(CAST(u32*,infoheader+1)+2);
+            u32 blueMask = infoheader->blueMask;
             u32 blueMaskFallShift = blueMask > 0xFF ? (blueMask > 0xFF00 ? (blueMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
-            u32 alfaMask = *(CAST(u32*,infoheader+1)+3);
+            u32 alfaMask = infoheader->alphaMask;
             u32 alfaMaskFallShift = alfaMask > 0xFF ? (alfaMask > 0xFF00 ? (alfaMask > 0xFF0000 ? 24 : 16) : 8) : 0;
             
             target->info.interpretation = BitmapInterpretationType_RGBA;
@@ -563,10 +618,12 @@ bool encodeBMP(const Image * source, FileContents * target){
     if(bitsPerPixel <= 8){
         palette = true;
     }
+    
+    u32 headerSize = sizeof(Bitmapinfoheader);
     if(!palette){
-        target->size = 14 + sizeof(Bitmapinfoheader) + (savewidth * source->info.height * bitsPerPixel/8);
+        target->size = 14 + headerSize + (savewidth * source->info.height * bitsPerPixel/8);
     }else{
-        target->size = 14 + sizeof(Bitmapinfoheader) + (savewidth * source->info.height * bitsPerPixel/8) + (4 * (1 << bitsPerPixel));
+        target->size = 14 + headerSize + (savewidth * source->info.height * bitsPerPixel/8) + (4 * (1 << bitsPerPixel));
     }
     target->contents = &PUSHA(char, target->size);
     
@@ -574,62 +631,85 @@ bool encodeBMP(const Image * source, FileContents * target){
     target->contents[1] = 'M';
     *((u32 *)(target->contents + 2)) = target->size;
     *((u32 *)(target->contents + 6)) = 0;
-    u32 dataOffset = *((u32 *)(target->contents + 10)) = 14 + sizeof(Bitmapinfoheader) + (palette ? (4 * (1 << bitsPerPixel)) : 0);
+    u32 dataOffset = *((u32 *)(target->contents + 10)) = 14 + headerSize + (palette ? (4 * (1 << bitsPerPixel)) : 0);
     
     Bitmapinfoheader * infoheader = (Bitmapinfoheader *)(target->contents + 14);
+    memset(infoheader, 0, sizeof(Bitmapinfoheader));
     infoheader->size = sizeof(Bitmapinfoheader);
     infoheader->width = source->info.width;
     infoheader->height = source->info.height;
     infoheader->colorPlanes = 1;
     infoheader->bitsPerPixel = bitsPerPixel;
-    infoheader->compression = 0; //RGB
+    u8 map[4] = {};
+    if (source->info.interpretation == BitmapInterpretationType_GrayscaleBW01 || source->info.interpretation == BitmapInterpretationType_RGB){
+        infoheader->compression = 0; //RGB
+        map[0] = 3;
+        map[1] = 2;
+        map[2] = 1;
+        map[3] = 0;
+    }
+    else if (source->info.interpretation == BitmapInterpretationType_RGBA){
+       infoheader->compression = 3; //RGBA
+       memcpy(infoheader->colorSpace, "BGRs", 4);
+       ASSERT(infoheader->bitsPerPixel == 32);
+       infoheader->redMask  = 0x00FF0000;
+       infoheader->greenMask  = 0x0000FF00;
+       infoheader->blueMask  = 0x000000FF;
+       infoheader->alphaMask  = 0xFF000000;
+        map[0] = 2;
+        map[1] = 1;
+        map[2] = 0;
+        map[3] = 3;
+    }
+    else{
+        INV;
+    }
     infoheader->datasize = savewidth * source->info.height * bitsPerPixel/8;
-    infoheader->pixelPerMeterVertical = infoheader->pixelPerMeterHorizontal = 0;
-    infoheader->colorsInPallette = 1 << infoheader->bitsPerPixel;
-    infoheader->importantColorsAmount = 1 << infoheader->bitsPerPixel;
     if(palette){
+        infoheader->colorsInPallette = 1 << infoheader->bitsPerPixel;
+        infoheader->importantColorsAmount = 1 << infoheader->bitsPerPixel;
         ASSERT((1 << bitsPerPixel) == 256);
         ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01);
         for(u16 i = 0; i < (1 << bitsPerPixel); i++){
             //R
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4) = (u8)i;
+            *(target->contents + 14 + headerSize + i*4) = (u8)i;
             //G
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 1) = (u8)i;
+            *(target->contents + 14 + headerSize + i*4 + 1) = (u8)i;
             //B
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 2) = (u8)i;
+            *(target->contents + 14 + headerSize + i*4 + 2) = (u8)i;
             //unused
-            *(target->contents + 14 + sizeof(Bitmapinfoheader) + i*4 + 3) = (u8)0;
+            *(target->contents + 14 + headerSize + i*4 + 3) = (u8)0;
         }
     }
     //@Incomplete
     //Implement other possibilities
     ASSERT(bitsPerPixel % 8 == 0);
-    ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01 || source->info.interpretation == BitmapInterpretationType_RGB);
+    ASSERT(source->info.interpretation == BitmapInterpretationType_GrayscaleBW01 || source->info.interpretation == BitmapInterpretationType_RGB || source->info.interpretation == BitmapInterpretationType_RGBA);
     //the r g b  flipped to b g r
     u16 bytesPerPixel = bitsPerPixel/8;
     if(source->info.origin == BitmapOriginType_BottomLeft){
-        for(u32 h = 0; h < infoheader->height; h++){
-            for(u32 w = 0; w < infoheader->width; w++){
+        for(i32 h = 0; h < infoheader->height; h++){
+            for(i32 w = 0; w < infoheader->width; w++){
                 for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
-                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + (bytesPerPixel-1-byteIndex)] = source->data[h * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex]; 
+                    (CAST(u8*, target->contents) + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + map[byteIndex]] = source->data[h * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex]; 
                 }
             }
             for(u32 w = infoheader->width; w < savewidth; w++){
                 for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
-                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
+                    (CAST(u8*, target->contents) + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
                 }
             }
         }
     }else if(source->info.origin == BitmapOriginType_TopLeft){
-        for(u32 h = 0; h < infoheader->height; h++){
-            for(u32 w = 0; w < infoheader->width; w++){
+        for(i32 h = 0; h < infoheader->height; h++){
+            for(i32 w = 0; w < infoheader->width; w++){
                 for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
-                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + (bytesPerPixel-1-byteIndex)] =  source->data[(infoheader->height - 1 - h) * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex];
+                    (CAST(u8*, target->contents) + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + map[byteIndex]] =  source->data[(infoheader->height - 1 - h) * infoheader->width * bytesPerPixel + w * bytesPerPixel + byteIndex];
                 }
             }
             for(u32 w = infoheader->width; w < savewidth; w++){
                 for(u8 byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++){
-                    (target->contents + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
+                    (CAST(u8*, target->contents) + dataOffset)[h * savewidth * bytesPerPixel + w * bytesPerPixel + byteIndex] = 0;
                 }
             }
         }
@@ -644,7 +724,7 @@ bool decodeTiff(const FileContents * file, Image * target){
     PUSHI;
     //http://www.fileformat.info/format/tiff/corion.htm
     ReadHead head;
-    head.offset = file->contents;
+    head.offset = CAST(u8*, file->contents);
     ByteOrder order = ByteOrder_Invalid;
     char end = scanByte(&head);
     if(end == 'I'  && scanByte(&head) == 'I'){
@@ -659,17 +739,17 @@ bool decodeTiff(const FileContents * file, Image * target){
     }
     
     
-    u16 tiffMagicFlag = scanWord(&head);
+    u16 tiffMagicFlag = scanWord(&head, ByteOrder_LittleEndian);
     //tiff const flag
     if(tiffMagicFlag != 42){
         INV;
         return false;
     }
     
-    u32 imageOffset = scanDword(&head);
-    head.offset = file->contents + imageOffset;
+    u32 imageOffset = scanDword(&head, ByteOrder_LittleEndian);
+    head.offset = CAST(u8*, file->contents) + imageOffset;
     
-    u16 entries = scanWord(&head);
+    u16 entries = scanWord(&head, ByteOrder_LittleEndian);
     
     u32 * stripOffsets = NULL;
     u32 rowsPerStrip = CAST(u32, -1); //infinity (1 strip for all data)
@@ -681,10 +761,10 @@ bool decodeTiff(const FileContents * file, Image * target){
     target->info.samplesPerPixel = 1;
     
     for(u16 ei = 0; ei < entries; ei++){
-        u16 tag = scanWord(&head);
-        u16 type = scanWord(&head);
-        u32 length = scanDword(&head);
-        u32 headerOffset = scanDword(&head);
+        u16 tag = scanWord(&head, ByteOrder_LittleEndian);
+        u16 type = scanWord(&head, ByteOrder_LittleEndian);
+        u32 length = scanDword(&head, ByteOrder_LittleEndian);
+        u32 headerOffset = scanDword(&head, ByteOrder_LittleEndian);
         
         ASSERT(type >= 1 && type <= 5);
         //these appear in ascending order, but we do not care
@@ -853,7 +933,7 @@ bool decodeTiff(const FileContents * file, Image * target){
         }
     }
     
-    u32 nextFile = scanDword(&head);
+    u32 nextFile = scanDword(&head, ByteOrder_LittleEndian);
     if(nextFile != 0){
         INV;
         return false;
@@ -869,7 +949,7 @@ bool decodeTiff(const FileContents * file, Image * target){
     u32 last = 0;
     
     for(u32 stripIndex = 0; stripIndex < stripAmount; stripIndex++){
-        last = decompressLZW((const byte *)file->contents + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex * rowsPerStrip * target->info.width);
+        last = decompressLZW(CAST(u8*, file->contents) + stripOffsets[stripIndex], stripSizes[stripIndex], target->data + stripIndex * rowsPerStrip * target->info.width);
         if(last == 0){
             POPI;
             return false;
