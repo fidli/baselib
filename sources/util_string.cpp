@@ -138,6 +138,16 @@ nint strlen(const char * source){
 #endif
 }
 
+const char * strchr(const char * data, int searchFor){
+    nint dataLen = strlen(data);
+    for(nint i = 0; i <= dataLen; i++){
+        if(data[i] == (char)searchFor){
+            return data + i;
+        }
+    }
+    return NULL;
+}
+
 const char * strstr(const char * data, const char * searchFor){
     nint searchLen = strlen(searchFor);
     nint dataLen = strlen(data);

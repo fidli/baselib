@@ -4,12 +4,20 @@
 #include "util_string.cpp"
 #include "util_filesystem.cpp"
 
-bool loadConfig(const char * file, bool (*lineCallback)(const u64, const char *, void ** context), void * initialContext = NULL){
+bool loadConfig(const char * file, bool (*lineCallback)(const i32, const u64, const char *, const char *, void ** context), void * initialContext = NULL){
     FileContents contents = {};
     if(readFile(file, &contents)){
-        
+        i32 fileVersion = 0;
+        char ver[10];
+        bool r = true;
+        r &= getNextLine(&contents, ver, 10);
+        r &= snscanf(ver, 10, "%d", &fileVersion) > 0;
+        if (!r){
+            POP; // read file pushes
+            return false;
+        }
         char line[1024];
-        u64 lineIndex = 0;
+        u64 lineIndex = 1;
         while(getNextLine(&contents, line, ARRAYSIZE(line))){
             u32 localOffset = 0;
             while(line[localOffset] == ' ' || line[localOffset] == '\t'){
@@ -17,7 +25,9 @@ bool loadConfig(const char * file, bool (*lineCallback)(const u64, const char *,
             }
             //skip commentary or empty line
 			if(line[localOffset] == '#' || line[localOffset] == 0) continue;
-            if(!lineCallback(lineIndex, line+localOffset, &initialContext)){
+            char * divisor = strchr(line+localOffset, ':');
+            *divisor = 0;
+            if(!lineCallback(fileVersion, lineIndex, line+localOffset, divisor+1, &initialContext)){
                 POP; // read file pushes
                 return false;
             }

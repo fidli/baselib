@@ -1,6 +1,15 @@
 #ifndef UTIL_TIME
 #define UTIL_TIME
 
+struct Timer{
+    f64 period;
+    f64 progressAbsolute;
+    f64 progressNormalized;
+    bool ticked;
+};
+
+static Timer timers[255];
+static i32 timersCount;
 
 struct LocalTime{
     u16 day;
@@ -50,5 +59,25 @@ f64 getProcessCurrentTime();
 
 
 LocalTime getLocalTime();
+
+Timer* addTimer(f64 tick){
+    Timer * t = &timers[timersCount++];
+    memset(CAST(void*, t), 0, sizeof(Timer));
+    t->period = tick;
+    return t;
+}
+
+void advanceTimers(f64 dt){
+    for(i32 i = 0; i < timersCount; i++){
+        Timer * t = &timers[i];
+        t->progressAbsolute += dt;
+        t->ticked = false;
+        while(t->progressAbsolute > t->period){
+            t->progressAbsolute -= t->period;
+            t->ticked = true;
+        }
+        t->progressNormalized = t->progressAbsolute / t->period;
+    }
+}
 
 #endif

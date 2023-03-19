@@ -1189,6 +1189,9 @@ v2 rotate(const dv2 & point, const f32 radAngle){
 }
 
 v2 slerp(const v2 * origin, const v2 * target, f32 coeficient){
+    if (length(*origin) < 0.00005f || length(*target) < 0.00005f) {
+        return *origin;
+    }
     f32 angle = acos(dot(normalize(*origin), normalize(*target)));
     f32 sinAngle = sin(angle);
     return (sin((1-coeficient)*angle)/sinAngle)*(*origin) + (sin(coeficient*angle)/sinAngle)*(*target);
@@ -1516,6 +1519,18 @@ mat3 scalingMatrix(const v2 scale){
     mat3 result = {};
     result.c[0] = scale.x;
     result.c[4] = scale.y;
+    result.c[8] = 1.0f;
+    return result;
+}
+
+// 0 1 2
+// 3 4 5
+// 6 7 8
+mat3 rotationYMatrix3(f32 radAngle){
+    mat3 result = {};
+    result.c[0] = cos(radAngle);
+    result.c[2] = sin(radAngle);
+    result.c[4] = 1.0f;
     result.c[8] = 1.0f;
     return result;
 }

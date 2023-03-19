@@ -63,7 +63,7 @@ bool getNextLine(FileContents * contents, char * line, u32 linelen)
 	if(remains <= 0) return false;
     char format[30];
 	u32 res = snprintf(format, 30, "%%%u[^\r\n]", MIN(linelen-1, CAST(u32, remains)));
-    ASSERT(res == 1);
+    ASSERT(res > 0);
     memset(line, 0, linelen);
     if(sscanf(contents->contents + contents->head, format, line) == 1)
     {

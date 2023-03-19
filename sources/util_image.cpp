@@ -387,7 +387,7 @@ bool decodePNG(const FileContents * source, Image * target){
             target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
             target->data = &PPUSHA(byte, target->info.totalSize);
             // first byte of each row is filter type
-            uncompressed = &PUSHA(u8, target->info.samplesPerPixel * target->info.bitsPerSample * (target->info.width+1) * target->info.height);
+            uncompressed = &PUSHA(u8, target->info.samplesPerPixel * (target->info.bitsPerSample/8) * (target->info.width+1) * target->info.height);
         }
         else if(strncmp(chunkType, "IDAT", 4) == 0){
             ASSERT(compressedOffset + chunkLength <= source->size);
