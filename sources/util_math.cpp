@@ -1020,6 +1020,9 @@ f32 dot(vN a, vN b){
     return result;
 }
 
+v3 cross(v2 a, v2 b){
+    return V3(a.y*0 - 0*b.y, -(a.x*0 - b.x*0), a.x*b.y - b.x*a.y);
+}
 
 f32 det(v2 a, v2 b){
     return a.x*b.y - b.x*a.y;
@@ -1180,6 +1183,15 @@ dv2 translate(const dv2 & point, const dv2 & translation){
 }
 
 v2 rotate(const dv2 & point, const f32 radAngle){
+    v2 result;
+    f32 cosA = cos(radAngle);
+    f32 sinA = sin(radAngle);
+    result.x = cosA * point.x - sinA * point.y;
+    result.y = sinA * point.x + cosA * point.y;
+    return result;
+}
+
+v2 rotate(const v2 & point, const f32 radAngle){
     v2 result;
     f32 cosA = cos(radAngle);
     f32 sinA = sin(radAngle);
