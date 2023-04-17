@@ -13,7 +13,7 @@ bool collide(CollisionRect A, CollisionRect B)
     // minkowski difference
     CollisionRect diff = {};
     diff.size = A.size + B.size;
-    diff.pos = A.pos - B.pos;
+    diff.pos = B.pos - A.pos;
     v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
     v2 upperRightCorner = lowerLeftCorner + diff.size;
     // is 0 inside?
@@ -53,16 +53,17 @@ v2 collidePop(CollisionRect A, CollisionRect B, v2 direction)
 
 v2 collideReflect(CollisionRect A, CollisionRect B, v2 direction)
 {
+    ASSERT(length(direction) > 0.005f);
     CollisionRect diff = {};
     diff.size = A.size + B.size;
-    diff.pos = B.pos;
+    diff.pos = B.pos - A.pos;
     v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
     v2 upperRightCorner = lowerLeftCorner + diff.size;
-    v2 contact = V2(clamp(-direction.x + A.pos.x, lowerLeftCorner.x, upperRightCorner.x), clamp(-direction.y + A.pos.y, lowerLeftCorner.y, upperRightCorner.y));
-    if(contact.x == lowerLeftCorner.x || contact.x == upperRightCorner.x){
+    ASSERT(lowerLeftCorner.x == 0 || upperRightCorner.x == 0 || lowerLeftCorner.y == 0 || upperRightCorner.y == 0);
+    if(0 == lowerLeftCorner.x || 0 == upperRightCorner.x){
         direction.x *= -1.0f;
     }
-    else if(contact.y == lowerLeftCorner.y || contact.y == upperRightCorner.y){
+    if(0 == lowerLeftCorner.y || 0 == upperRightCorner.y){
         direction.y *= -1.0f;
     }
     return direction;
