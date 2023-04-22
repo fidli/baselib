@@ -31,6 +31,7 @@ v2 collidePop(CollisionRect A, CollisionRect B, v2 direction)
     v2 upperRightCorner = lowerLeftCorner + diff.size;
     ASSERT(lowerLeftCorner.x < 0 && upperRightCorner.x > 0 && lowerLeftCorner.y < 0 && upperRightCorner.y > 0);
     f32 scale = 0;
+    // TODO corner hit?
     if (direction.x < 0){
         scale = lowerLeftCorner.x/direction.x;
     }else if (direction.x > 0){
@@ -51,7 +52,7 @@ v2 collidePop(CollisionRect A, CollisionRect B, v2 direction)
     return direction * scale;
 }
 
-v2 collideReflect(CollisionRect A, CollisionRect B, v2 direction)
+v2 collideSlide(CollisionRect A, CollisionRect B, v2 direction)
 {
     ASSERT(length(direction) > 0.005f);
     CollisionRect diff = {};
@@ -59,11 +60,32 @@ v2 collideReflect(CollisionRect A, CollisionRect B, v2 direction)
     diff.pos = B.pos - A.pos;
     v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
     v2 upperRightCorner = lowerLeftCorner + diff.size;
-    ASSERT(lowerLeftCorner.x == 0 || upperRightCorner.x == 0 || lowerLeftCorner.y == 0 || upperRightCorner.y == 0);
-    if(0 == lowerLeftCorner.x || 0 == upperRightCorner.x){
+    ASSERT(ABS(lowerLeftCorner.x) < 0.005f|| ABS(upperRightCorner.x) < 0.005f || ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f);
+
+    // TODO corner hit dont slide?
+    if(ABS(lowerLeftCorner.x) < 0.005f || ABS(upperRightCorner.x) < 0.005f){
+        return dot(direction, V2(0.0f, 1.0f)) * V2(0.0f, 1.0f);
+    }
+    if(ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f){
+        return dot(direction, V2(1.0f, 0.0f)) * V2(1.0f, 0.0f);
+    }
+    return direction;
+}
+
+v2 collideReflect(CollisionRect A, CollisionRect B, v2 direction)
+{
+    // TODO corner hit
+    ASSERT(length(direction) > 0.005f);
+    CollisionRect diff = {};
+    diff.size = A.size + B.size;
+    diff.pos = B.pos - A.pos;
+    v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
+    v2 upperRightCorner = lowerLeftCorner + diff.size;
+    ASSERT(ABS(lowerLeftCorner.x) < 0.005f|| ABS(upperRightCorner.x) < 0.005f || ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f);
+    if(ABS(lowerLeftCorner.x) < 0.005f || ABS(upperRightCorner.x) < 0.005f){
         direction.x *= -1.0f;
     }
-    if(0 == lowerLeftCorner.y || 0 == upperRightCorner.y){
+    if(ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f){
         direction.y *= -1.0f;
     }
     return direction;
