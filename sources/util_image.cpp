@@ -345,6 +345,7 @@ bool scaleCanvas(Image * target, u32 newWidth, u32 newHeight, u32 originalOffset
 }
 
 bool decodePNG(const FileContents * source, Image * target){
+    PROFILE_FUNC;
     ReadHead head;
     head.offset = CAST(u8*, source->contents) + source->head;
     u8 firstByte = scanByte(&head);

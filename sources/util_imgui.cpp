@@ -436,7 +436,7 @@ void guiSelectPreviousInput(){
 }
 
 void guiBegin(i32 width, i32 height){
-    PROFILE_SCOPE(gui_begin);
+    PROFILE_FUNC;
     f64 currentTimestamp = getProcessCurrentTime();
     guiContext->activeInputTimeAccumulator += currentTimestamp - guiContext->activeInputLastTimestamp;
     guiContext->activeInputLastTimestamp = currentTimestamp;
@@ -648,7 +648,7 @@ static void recalculateParentUsage(GuiContainer * container){
 }
 
 static void calculateAndAdvanceCursor(GuiContainer ** container, const GuiStyle * style, const GuiElementStyle * elementStyle, const char * text, GuiJustify justify, RenderElementInfo * info){
-    PROFILE_SCOPE(gui_calcnadvance);
+    PROFILE_FUNC;
     if(!*container){
         *container = &guiContext->defaultContainer;
     }
@@ -720,7 +720,7 @@ static bool registerInputAndIsSelected(){
 }
 
 bool renderText(const AtlasFont * font, const char * text, int startX, int startY, int pt, const Color * color, f32 zIndex = 0){
-    PROFILE_SCOPE(gui_render_text);
+    PROFILE_FUNC;
     glUseProgram(guiGl->font.program);
     glActiveTexture(GL_TEXTURE0 + 0);
     glBindTexture(GL_TEXTURE_1D, guiGl->font.glyphDataTexture);
@@ -758,7 +758,7 @@ bool renderTextXYCentered(const AtlasFont * font, const char * text, int centerX
 }
 
 static bool renderRect(const i32 positionX, const i32 positionY, const i32 width, const i32 height, const Color * color, f32 zIndex = 0){
-    PROFILE_SCOPE(gui_render_rect);
+    PROFILE_FUNC;
     glUseProgram(guiGl->flat.program);
     
     f32 resScaleY = 1.0f / (guiContext->height);
@@ -1434,7 +1434,7 @@ static bool renderDropdown(const AtlasFont * font, i32 pt, char * searchtext, i3
 }
 
 void guiRenderText(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
-    PROFILE_SCOPE(gui_render_text);
+    PROFILE_FUNC;
     RenderElementInfo rei;
     const GuiElementStyle * elementStyle = &style->text;
     if(overrideStyle != NULL){
@@ -1445,7 +1445,7 @@ void guiRenderText(GuiContainer * container, const GuiStyle * style, const char 
 }
 
 void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
-    PROFILE_SCOPE(gui_render_box_text);
+    PROFILE_FUNC;
     RenderElementInfo rei;
     const GuiElementStyle * elementStyle = &style->text;
     if(overrideStyle != NULL){
@@ -1457,7 +1457,7 @@ void guiRenderBoxText(GuiContainer * container, const GuiStyle * style, const ch
 }
 
 bool guiRenderButton(GuiContainer * container, const GuiStyle * style, const char * text, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
-    PROFILE_SCOPE(gui_render_button);
+    PROFILE_FUNC;
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->button.active;
     const GuiElementStyle * elementStylePassive = &style->button.passive;
@@ -1477,7 +1477,7 @@ void guiSetCheckboxValue(GuiBool * target, bool newValue){
 }
 
 bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool * checked, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiJustify justify = GuiJustify_Default){
-    PROFILE_SCOPE(gui_render_checkbox);
+    PROFILE_FUNC;
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->button.active;
     const GuiElementStyle * elementStylePassive = &style->button.passive;
@@ -1507,7 +1507,7 @@ bool guiRenderCheckbox(GuiContainer * container, const GuiStyle * style, GuiBool
 }
 
 bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * text, i32 textMaxlen, const char * dictionary, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiElementStyle * overrideStyleSelection = NULL, const GuiJustify justify = GuiJustify_Default){
-    PROFILE_SCOPE(gui_render_input);
+    PROFILE_FUNC;
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
     const GuiElementStyle * elementStylePassive = &style->input.passive;
@@ -1526,7 +1526,7 @@ bool guiRenderInput(GuiContainer * container, const GuiStyle * style, char * tex
 }
 
 bool guiRenderSlider(GuiContainer * container, const GuiStyle * style, float leftValue, float rightValue, float * currentValue, const GuiElementStyle * overrideStyle = NULL, const GuiJustify justify = GuiJustify_Default){
-    PROFILE_SCOPE(gui_render_slider);
+    PROFILE_FUNC;
     RenderElementInfo rei;
     const GuiElementStyle * elementStyle = &style->input.passive;
     if(overrideStyle != NULL){
@@ -1541,7 +1541,7 @@ bool guiRenderSlider(GuiContainer * container, const GuiStyle * style, float lef
 }
 
 bool guiRenderDropdown(GuiContainer * container, const GuiStyle * style, char * searchtext, i32 searchMaxlen, const char * buttonText, const char ** fullList, i32 listSize, i32 * resultIndex, const GuiElementStyle * overrideStylePassive = NULL, const GuiElementStyle * overrideStyleActive = NULL, const GuiElementStyle * overrideStyleSelection = NULL, const GuiJustify justify = GuiJustify_Default){
-    PROFILE_SCOPE(gui_render_dropdown);
+    PROFILE_FUNC;
     RenderElementInfo rei;
     const GuiElementStyle * elementStyleActive = &style->input.active;
     const GuiElementStyle * elementStylePassive = &style->input.passive;
@@ -1571,7 +1571,7 @@ void guiOpenPopupMessage(GuiStyle * style, const char * title, const char * mess
 }
 
 void guiEnd(){
-    PROFILE_SCOPE(gui_end);
+    PROFILE_FUNC;
     if(guiContext->escapeClick){
         guiInvalidate(&guiContext->activeDropdown);
     }

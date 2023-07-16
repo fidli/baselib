@@ -129,6 +129,7 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
     for(i32 i = 0; i < ARRAYSIZE(loggers->loggerNames); i++){
         if(!strncmp(loggerName, loggers->loggerNames[i], ARRAYSIZE(loggers->loggerNames[0]))){
             info = &loggers->loggers[i];
+            break;
         }
     }
     if(!info && !strncmp(loggerName, "default", 7)){

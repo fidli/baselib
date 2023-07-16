@@ -93,7 +93,7 @@ char * strcpy(char * target, const char * source){
 }
 
 nint strnlen(const char * source, nint limit){
-    PROFILE_SCOPE(strnlen);
+    PROFILE_SCOPE("strnlen");
     nint length = 1;
     if(source){
         while(source[length-1] != '\0' && length-1 < limit){
@@ -104,7 +104,7 @@ nint strnlen(const char * source, nint limit){
 }
 
 nint strlen(const char * source){
-    PROFILE_SCOPE(strlen);
+    PROFILE_SCOPE("strlen");
 #if 0
     nint length = 1;
     if(source){
@@ -822,49 +822,47 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
                 //float is promoted to double,...
                 f64 source = (f64)va_arg(ap, f64);
                 i64 wholePart = (i64) source;
+                u8 precision = info.real.precision;
                 
                 u8 numlength = numlen(ABS(wholePart));
                 bool negative = source < 0;
                 
-                if(numlength + info.real.precision + 1 <= info.width){
-                    if(!info.leftJustify || info.padding0){
-                        nint prependLen = 0;
-                        if (info.width > numlength)
-                        {
-                            prependLen = info.width - numlength;
-                        }
-                        if((info.forceSign || negative) && prependLen > 0){
-                            prependLen--;
-                        }
-                        if(info.padding0){
-                            targetIndex += printPrepend(target + targetIndex, '0', prependLen);
-                        }else{
-                            targetIndex += printPrepend(target + targetIndex, ' ', prependLen);
-                        }
+                if(!info.leftJustify || info.padding0){
+                    nint prependLen = 0;
+                    if (info.width > numlength + precision + 1)
+                    {
+                        prependLen = info.width - (numlength + precision + 1);
                     }
-                    if(info.forceSign && !negative){
-                        target[targetIndex] = '+';
-                        targetIndex++;
-                    }else if(negative){
-                        target[targetIndex] = '-';
-                        targetIndex++;
+                    if((info.forceSign || negative) && prependLen > 0){
+                        prependLen--;
                     }
-                    targetIndex += printDigits(target + targetIndex, ABS(wholePart));
-                    
-                    target[targetIndex] = delim;
-                    
-                    targetIndex++;
-                    u8 precision = info.real.precision;
-                    
-                    i64 decimalPart = ABS((i64)((source - wholePart) * powd64(10, precision)));
-                    i32 prependLen = precision - numlen(decimalPart);
-                    for(int i = 0; i < prependLen; i++){
-                        target[targetIndex] = '0';
-                        targetIndex++;
+                    if(info.padding0){
+                        targetIndex += printPrepend(target + targetIndex, '0', prependLen);
+                    }else{
+                        targetIndex += printPrepend(target + targetIndex, ' ', prependLen);
                     }
-                    targetIndex += printDigits(target + targetIndex, decimalPart);
-                    successfullyPrinted++;
                 }
+                if(info.forceSign && !negative){
+                    target[targetIndex] = '+';
+                    targetIndex++;
+                }else if(negative){
+                    target[targetIndex] = '-';
+                    targetIndex++;
+                }
+                targetIndex += printDigits(target + targetIndex, ABS(wholePart));
+                
+                target[targetIndex] = delim;
+                
+                targetIndex++;
+                i64 decimalPart = ABS((i64)((source - wholePart) * powd64(10, precision)));
+                u8 decimalNumlength = numlen(decimalPart);
+                i32 decimalPrependLen = precision - decimalNumlength;
+                for(int i = 0; i < decimalPrependLen; i++){
+                    target[targetIndex] = '0';
+                    targetIndex++;
+                }
+                targetIndex += printDigits(target + targetIndex, decimalPart);
+                successfullyPrinted++;
             }break;
             case FormatType_Invalid:
             default:{

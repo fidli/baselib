@@ -5,6 +5,7 @@
 #include "util_filesystem.cpp"
 
 bool loadConfig(const char * file, bool (*lineCallback)(const i32, const u64, const char *, const char *, void ** context), void * initialContext = NULL){
+    PROFILE_FUNC;
     FileContents contents = {};
     if(readFile(file, &contents)){
         i32 fileVersion = 0;

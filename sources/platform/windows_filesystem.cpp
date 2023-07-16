@@ -18,6 +18,7 @@ bool getFileSize(const char * path, u32 * result){
 }
 
 bool readFile(const char * path, FileContents * target){
+    PROFILE_FUNC;
     HANDLE file = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, 0);
     if(file ==  INVALID_HANDLE_VALUE) return false;
     if(target->size == 0){
