@@ -360,6 +360,7 @@ bool decodePNG(const FileContents * source, Image * target){
     u8* compressed = &PUSHA(u8, source->size);
     u32 compressedOffset = 0;
     u8* uncompressed = NULL;
+    PROFILE_START("PNG - pre parsing & concat");
     while(head.offset < CAST(u8*, source->contents) + source->head + source->size && running){
         u32 chunkLength = scanDword(&head, ByteOrder_BigEndian);
         char * chunkType = CAST(char*, head.offset);
@@ -406,6 +407,8 @@ bool decodePNG(const FileContents * source, Image * target){
         u32 crc = scanDword(&head, ByteOrder_BigEndian);
         // TODO crc
     }
+    PROFILE_END();
+    PROFILE_START("PNG - decompress");
     // Zlib encap then deflate
     // need to concat first
     ReadHead compressedHead = {compressed};
@@ -417,6 +420,8 @@ bool decodePNG(const FileContents * source, Image * target){
     ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
     u32 decodedBytes = decompressDeflate(compressedHead.offset, uncompressed);
     ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
+    PROFILE_END();
+    PROFILE_START("PNG - filter");
     ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
     u32 bytesPerPixel = 4;
     u32 stride = bytesPerPixel * target->info.width;
@@ -476,6 +481,7 @@ bool decodePNG(const FileContents * source, Image * target){
     compressedHead.offset = compressed + compressedOffset - 4;
     u32 adler = scanDword(&compressedHead, ByteOrder_BigEndian);
     POP;
+    PROFILE_END();
     return checks == 2 && (decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
 }
 

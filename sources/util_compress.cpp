@@ -457,10 +457,11 @@ struct CodeWord{
 };
 
 inline static u32 decompressHuffman(ReadHeadBit * head, const HuffmanNode * literalsTree, const HuffmanNode * distancesTree, byte * target){
+    PROFILE_FUNC;
     
     
-    i32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
-    i32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
+    const i32 extraCounts[] = {11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,195, 227};
+    const i32 extraBackOffsets[] = {4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576};
     
     
     //inflating huffman codes
@@ -741,6 +742,7 @@ static inline void readCodes(ReadHeadBit * head, const HuffmanNode * tree, CodeW
 
 //more specific - https://en.wikipedia.org/wiki/DEFLATE or RFC
 u32 decompressDeflate(u8 * compressedData, u8 * target){
+    PROFILE_FUNC;
     
     //dict 32kbytes
     //maxLen = 256
@@ -752,7 +754,6 @@ u32 decompressDeflate(u8 * compressedData, u8 * target){
     
     //phase1 repeat counts, is this hardcoded defined? or where do these repeat times come from?
     u8 dynamicCodes[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
-    //uint8 ascendingIndices[] = { 3, 17, 15, 13, 11, 9, 7, 5, 4, 6, 8, 10, 12, 14, 16, 18, 0, 1, 2};
     
     u32 targetOffset = 0;
     
@@ -764,6 +765,7 @@ u32 decompressDeflate(u8 * compressedData, u8 * target){
         
         
         if((header & 3) == 0){
+            PROFILE_SCOPE("Huffman literal");
             //a stored/raw/literal section, between 0 and 65,535 bytes in length.
             //http://www.bolet.org/~pornin/deflate-flush.html
             while(head.bitOffset != 0){
@@ -788,6 +790,7 @@ u32 decompressDeflate(u8 * compressedData, u8 * target){
             HuffmanNode distanceTree;
             
             if((header & 3) == 1){
+                PROFILE_SCOPE("Huffman static");
                 //a static Huffman compressed block, using a pre-agreed Huffman tree.
                 /** 
                 * Build a Huffman tree for the following values:
@@ -858,6 +861,7 @@ u32 decompressDeflate(u8 * compressedData, u8 * target){
                 distanceTree = literalTree = tree;
             }
             else if((header & 3) == 2){
+                PROFILE_SCOPE("Huffman dynamic");
                 u16 litCode = readBits(&head, 5);
                 u16 distCode = readBits(&head, 5);
                 
