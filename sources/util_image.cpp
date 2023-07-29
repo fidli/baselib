@@ -360,128 +360,132 @@ bool decodePNG(const FileContents * source, Image * target){
     u8* compressed = &PUSHA(u8, source->size);
     u32 compressedOffset = 0;
     u8* uncompressed = NULL;
-    PROFILE_START("PNG - pre parsing & concat");
-    while(head.offset < CAST(u8*, source->contents) + source->head + source->size && running){
-        u32 chunkLength = scanDword(&head, ByteOrder_BigEndian);
-        char * chunkType = CAST(char*, head.offset);
-        head.offset += 4;
-        if (strncmp(chunkType, "IHDR", 4) == 0){
-            checks++;
-            ASSERT(chunkLength == 13);
-            target->info.width = scanDword(&head, ByteOrder_BigEndian);
-            target->info.height = scanDword(&head, ByteOrder_BigEndian);
-            u8 bitsPerChannel = scanByte(&head);
-            u8 colorType = scanByte(&head);
-            u8 compressionMethod = scanByte(&head);
-            ASSERT(compressionMethod == 0);
-            if (colorType == 6){
-                target->info.interpretation = BitmapInterpretationType_RGBA;
-                target->info.bitsPerSample = bitsPerChannel*4;
-            }
-            u8 filterMethod = scanByte(&head);
-            ASSERT(filterMethod == 0);
-            u8 interlaceMethod = scanByte(&head);
-            ASSERT(interlaceMethod == 0);
+    {
+        PROFILE_SCOPE("PNG - pre parsing & concat");
+        while(head.offset < CAST(u8*, source->contents) + source->head + source->size && running){
+            u32 chunkLength = scanDword(&head, ByteOrder_BigEndian);
+            char * chunkType = CAST(char*, head.offset);
+            head.offset += 4;
+            if (strncmp(chunkType, "IHDR", 4) == 0){
+                checks++;
+                ASSERT(chunkLength == 13);
+                target->info.width = scanDword(&head, ByteOrder_BigEndian);
+                target->info.height = scanDword(&head, ByteOrder_BigEndian);
+                u8 bitsPerChannel = scanByte(&head);
+                u8 colorType = scanByte(&head);
+                u8 compressionMethod = scanByte(&head);
+                ASSERT(compressionMethod == 0);
+                if (colorType == 6){
+                    target->info.interpretation = BitmapInterpretationType_RGBA;
+                    target->info.bitsPerSample = bitsPerChannel*4;
+                }
+                u8 filterMethod = scanByte(&head);
+                ASSERT(filterMethod == 0);
+                u8 interlaceMethod = scanByte(&head);
+                ASSERT(interlaceMethod == 0);
 
-            target->info.samplesPerPixel = 1;
-            target->info.origin = BitmapOriginType_TopLeft;
-            u64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
-            target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
-            target->data = &PPUSHA(byte, target->info.totalSize);
-            // first byte of each row is filter type
-            uncompressed = &PUSHA(u8, target->info.samplesPerPixel * (target->info.bitsPerSample/8) * (target->info.width+1) * target->info.height);
+                target->info.samplesPerPixel = 1;
+                target->info.origin = BitmapOriginType_TopLeft;
+                u64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
+                target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
+                target->data = &PPUSHA(byte, target->info.totalSize);
+                // first byte of each row is filter type
+                uncompressed = &PUSHA(u8, target->info.samplesPerPixel * (target->info.bitsPerSample/8) * (target->info.width+1) * target->info.height);
+            }
+            else if(strncmp(chunkType, "IDAT", 4) == 0){
+                ASSERT(compressedOffset + chunkLength <= source->size);
+                memcpy(compressed + compressedOffset, head.offset, chunkLength);
+                head.offset += chunkLength;
+                compressedOffset += chunkLength;
+            }
+            else if(strncmp(chunkType, "IEND", 4) == 0){
+                running = false;
+                checks++;
+            }
+            else{
+                head.offset += chunkLength;
+            }
+            u32 crc = scanDword(&head, ByteOrder_BigEndian);
+            // TODO crc
         }
-        else if(strncmp(chunkType, "IDAT", 4) == 0){
-            ASSERT(compressedOffset + chunkLength <= source->size);
-            memcpy(compressed + compressedOffset, head.offset, chunkLength);
-            head.offset += chunkLength;
-            compressedOffset += chunkLength;
-        }
-        else if(strncmp(chunkType, "IEND", 4) == 0){
-            running = false;
-            checks++;
-        }
-        else{
-            head.offset += chunkLength;
-        }
-        u32 crc = scanDword(&head, ByteOrder_BigEndian);
-        // TODO crc
     }
-    PROFILE_END();
-    PROFILE_START("PNG - decompress");
-    // Zlib encap then deflate
-    // need to concat first
     ReadHead compressedHead = {compressed};
-    u8 methodAndTag = scanByte(&compressedHead);
-    ASSERT((methodAndTag & 0x0F) == 0x08); // deflate
-    u32 windowSize = (1 << (((methodAndTag & 0xF0)>>4) + 8));
-    u8 flags = scanByte(&compressedHead);
-    ASSERT((flags & 0x20) == 0); // FDICT
-    ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
-    u32 decodedBytes = decompressDeflate(compressedHead.offset, uncompressed);
-    ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
-    PROFILE_END();
-    PROFILE_START("PNG - filter");
-    ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
-    u32 bytesPerPixel = 4;
-    u32 stride = bytesPerPixel * target->info.width;
-    for(u32 h = 0; h < target->info.height; h++){
-        u32 pitch = h * stride;
-        u8 filterType = *(uncompressed + pitch + h);
-        if (filterType == 0)
-        {
-            memcpy(target->data + pitch, uncompressed + pitch + (h+1), target->info.width * bytesPerPixel);
-        }
-        else if (filterType == 1){
-            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
-                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + left;
+    u32 decodedBytes = 0;
+    {
+        PROFILE_SCOPE("PNG - decompress");
+        // Zlib encap then deflate
+        // need to concat first
+        u8 methodAndTag = scanByte(&compressedHead);
+        ASSERT((methodAndTag & 0x0F) == 0x08); // deflate
+        u32 windowSize = (1 << (((methodAndTag & 0xF0)>>4) + 8));
+        u8 flags = scanByte(&compressedHead);
+        ASSERT((flags & 0x20) == 0); // FDICT
+        ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
+        decodedBytes = decompressDeflate(compressedHead.offset, uncompressed);
+        ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
+    }
+    {
+        PROFILE_SCOPE("PNG - filter");
+        ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
+        u32 bytesPerPixel = 4;
+        u32 stride = bytesPerPixel * target->info.width;
+        for(u32 h = 0; h < target->info.height; h++){
+            u32 pitch = h * stride;
+            u8 filterType = *(uncompressed + pitch + h);
+            if (filterType == 0)
+            {
+                memcpy(target->data + pitch, uncompressed + pitch + (h+1), target->info.width * bytesPerPixel);
             }
-        }
-        else if (filterType == 2){
-            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
-                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + up;
-            }
-        } 
-        else if (filterType == 3){
-            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
-                u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
-                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + CAST(u8, ((CAST(u16, left) + CAST(u16, up)) / 2));
-            }
-        } 
-        else if (filterType == 4){
-            for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
-                u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
-                u8 leftUp = (h > 0 && w >= bytesPerPixel) ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w  - bytesPerPixel) : 0;
-                i32 p = CAST(i32, left) + CAST(i32, up) - CAST(i32, leftUp);
-                i32 distLeft = ABS(CAST(i32, left)-p);
-                i32 distUp = ABS(CAST(i32, up)-p);
-                i32 distLeftUp = ABS(CAST(i32, leftUp)-p);
-                u8 least = 0;
-                if (distLeft <= distUp && distLeft <= distLeftUp){
-                    least = left; 
+            else if (filterType == 1){
+                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                    u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
+                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + left;
                 }
-                else if (distUp <= distLeftUp){
-                    least = up;
-                }
-                else{
-                    least = leftUp;
-                }
-                *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + least;
             }
-            
-        }
-        else{
-            INV;
+            else if (filterType == 2){
+                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                    u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
+                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + up;
+                }
+            } 
+            else if (filterType == 3){
+                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                    u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
+                    u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
+                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + CAST(u8, ((CAST(u16, left) + CAST(u16, up)) / 2));
+                }
+            } 
+            else if (filterType == 4){
+                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
+                    u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
+                    u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
+                    u8 leftUp = (h > 0 && w >= bytesPerPixel) ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w  - bytesPerPixel) : 0;
+                    i32 p = CAST(i32, left) + CAST(i32, up) - CAST(i32, leftUp);
+                    i32 distLeft = ABS(CAST(i32, left)-p);
+                    i32 distUp = ABS(CAST(i32, up)-p);
+                    i32 distLeftUp = ABS(CAST(i32, leftUp)-p);
+                    u8 least = 0;
+                    if (distLeft <= distUp && distLeft <= distLeftUp){
+                        least = left; 
+                    }
+                    else if (distUp <= distLeftUp){
+                        least = up;
+                    }
+                    else{
+                        least = leftUp;
+                    }
+                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + least;
+                }
+                
+            }
+            else{
+                INV;
+            }
+            compressedHead.offset = compressed + compressedOffset - 4;
+            u32 adler = scanDword(&compressedHead, ByteOrder_BigEndian);
         }
     }
-    compressedHead.offset = compressed + compressedOffset - 4;
-    u32 adler = scanDword(&compressedHead, ByteOrder_BigEndian);
     POP;
-    PROFILE_END();
     return checks == 2 && (decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
 }
 

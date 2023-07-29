@@ -5,6 +5,8 @@ extern "C" void * __cdecl memset(void *, int, size_t);
 #pragma intrinsic(memset)
 extern "C" void * __cdecl memcpy(void *, const void *, size_t);
 #pragma intrinsic(memcpy)
+extern "C" int __cdecl memcmp(const void *, const void *, size_t);
+#pragma intrinsic(memcmp)
 
 extern "C"{
 #pragma function(memset)
@@ -30,8 +32,23 @@ extern "C"{
         }
         return dest;
     }
-}
-extern "C"{
+
+#pragma function(memcmp)
+    int memcmp(const void *lhs, const void *rhs, size_t count)
+    {
+        const unsigned char *lhs8 = (const unsigned char *)lhs;
+        const unsigned char *rhs8 = (const unsigned char *)rhs;
+        int diff = 0;
+        
+        while (count-- && diff == 0)
+        {
+            diff = *lhs8 - *rhs8;
+            lhs8++;
+            rhs8++;
+        }
+        return diff;
+    }
+
     int _fltused;
 };
 

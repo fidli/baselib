@@ -2,7 +2,12 @@
 #include "util_time.h"
 #include "util_sort.cpp"
 
+#ifndef PROFILE
+#define PROFILE 0
+#endif
+
 int printf(const char * format, ...);
+#if PROFILE
 
 struct ProfileEntry{
     u64 callCountTotal;
@@ -12,62 +17,49 @@ struct ProfileEntry{
     f64 lastStartTime;
     ProfileEntry * parentCaller;
 };
+#endif
 
 struct Profile{
+#if PROFILE
     ProfileEntry slots[100];
-    char names[100][30];
+    const char * names[100];
     i32 slotsUsed;
 
     ProfileEntry * lastCaller;
+#endif
+    f64 startTime;
+    f64 endTime;
 };
 
 Profile profile;
 
+#if PROFILE
 ProfileEntry * createProfileEntry(const char * name){
     ProfileEntry * result = &profile.slots[profile.slotsUsed];
     memset(CAST(void *, result), 0, sizeof(ProfileEntry));
     // NOTE(fidli): this mush be compile known or persistent string, which is the usual case
-    strncpy(profile.names[profile.slotsUsed], name, ARRAYSIZE(profile.names[0]));
+    profile.names[profile.slotsUsed] = name;
     profile.slotsUsed++;
     return result;
 }
-
-void profileStart(ProfileEntry * target){
-    target->lastStartTime = getProcessCurrentTime();
-    target->parentCaller = profile.lastCaller;
-    profile.lastCaller = target;
-}
-
-void profileEnd(){
-    ProfileEntry * target = profile.lastCaller;
-    ASSERT(target != NULL);
-    f64 spentTime = getProcessCurrentTime() - target->lastStartTime;
-    target->timeSpentTotal += spentTime; 
-    target->callCountTotal++; 
-    profile.lastCaller = target->parentCaller;
-    if (target->parentCaller != NULL)
-    {
-        target->parentCaller->timeSpentChildren += spentTime;
-    }
-
-}
-
-#define PROFILE_START(name) \
-{\
-    static ProfileEntry * profile = createProfileEntry(name); \
-    profileStart(profile);  \
-}
-
-#define PROFILE_END() profileEnd()
 
 struct ProfileDefer{
     ProfileEntry * entry_;
     ProfileDefer(ProfileEntry * entry){
         entry_ = entry;
-        profileStart(entry_);
+        entry->lastStartTime = getProcessCurrentTime();
+        entry->parentCaller = profile.lastCaller;
+        profile.lastCaller = entry;
     }
     ~ProfileDefer(){
-        profileEnd();
+        f64 spentTime = getProcessCurrentTime() - entry_->lastStartTime;
+        entry_->timeSpentTotal += spentTime; 
+        entry_->callCountTotal++; 
+        profile.lastCaller = entry_->parentCaller;
+        if (entry_->parentCaller != NULL)
+        {
+            entry_->parentCaller->timeSpentChildren += spentTime;
+        }
     }
 };
 
@@ -77,55 +69,41 @@ ProfileDefer CONCAT(AutoProfileDeferFromLine, __LINE__)(CONCAT(profile_, __LINE_
 
 #define PROFILE_FUNC PROFILE_SCOPE(__func__)
 
-void profileClearStats(){
-    memset(CAST(void *, profile.slots), 0, sizeof(ProfileEntry)*profile.slotsUsed);
+#else
+#define PROFILE_SCOPE(name) 
+#define PROFILE_FUNC
+#endif
+
+void profileBegin(){
+    memset(CAST(void *, profile.slots), 0, sizeof(Profile::slots));
+    profile.startTime = getProcessCurrentTime();
 }
 
-struct ProfileStats{
-    struct Entry{
-        u64 totalCount;
-        f64 totalTime;
-        f64 totalExclTime;
-        f64 avgTime;
-        f64 avgExclTime;
-        const char * name;
-    } entries[ARRAYSIZE(Profile::slots)];
-    i32 count;
-};
+void profileEnd(){
+    profile.endTime = getProcessCurrentTime();
 
-inline ProfileStats * getCurrentProfileStats(){
-    ProfileStats * r = &PUSH(ProfileStats);
-    i32 count = 0;
-    
-    for(i32 i = 0; i < profile.slotsUsed; i++){
-        ProfileEntry * entry = &profile.slots[i];
-        if(entry->callCountTotal){
-            ProfileStats::Entry * stat = &r->entries[count];
-            stat->totalCount = entry->callCountTotal;
-            stat->totalTime = entry->timeSpentTotal;
-            stat->totalExclTime = entry->timeSpentTotal - entry->timeSpentChildren;
-            stat->avgTime = entry->timeSpentTotal/entry->callCountTotal;
-            stat->avgExclTime = stat->totalExclTime/entry->callCountTotal;
-            stat->name = profile.names[i];
-            count++;
-        }
-    }
-    r->count = count;
-    return r;
 }
 
 void printCurrentProfileStats(){
-    ProfileStats * stats = getCurrentProfileStats();
-    int namewidth = 0;
-    for(i32 i = 0; i < stats->count; i++){
-        int s = CAST(int, strlen(stats->entries[i].name));
-        if (s > namewidth){
-            namewidth = s;
-        }
-    }
+    int namewidth = 4; // per title column
+#if PROFILE
+    namewidth = 30;
+#endif
     printf("Profile stats:\n");
     printf("| %*s | %20s | %20s | %20s | %20s | %5s |\n", namewidth, "name", "total time [s]", "excl time [s]", "avg time [s]", "avg excl time [s]", "calls");
-    for(i32 i = 0; i < stats->count; i++){
-        printf("| %*s | %20f | %20f | %20f | %20f | %5llu |%c", namewidth, stats->entries[i].name, stats->entries[i].totalTime, stats->entries[i].totalExclTime, stats->entries[i].avgTime, stats->entries[i].avgExclTime, stats->entries[i].totalCount, i == stats->count - 1 ? '\0' : '\n');
+    f64 totalTimeProfile = profile.endTime - profile.startTime;
+#if PROFILE
+    for(i32 i = 0; i < profile.slotsUsed; i++){
+        ProfileEntry * entry = &profile.slots[i];
+        u64 totalCount = entry->callCountTotal;
+        f64 totalTime = entry->timeSpentTotal;
+        f64 totalExclTime = entry->timeSpentTotal - entry->timeSpentChildren;
+        f64 perc = 100.0*totalExclTime / totalTimeProfile;
+        f64 avgTime = entry->timeSpentTotal/entry->callCountTotal;
+        f64 avgExclTime = totalExclTime/entry->callCountTotal;
+        const char * name = profile.names[i];
+        printf("| %*s | %20f | %10f (%6.2f%%) | %20f | %20f | %5llu |\n", namewidth, name, totalTime, totalExclTime, perc, avgTime, avgExclTime, totalCount);
     }
+#endif
+    printf("| %*s | %20s | %10f (100.00%%) | %20s | %20s | %5s |\n", namewidth, "", "", totalTimeProfile, "", "", "");
 }
