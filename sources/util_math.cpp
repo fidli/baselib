@@ -1,5 +1,8 @@
 #pragma once
 
+#define I32_MAX 0x7FFFFFFF
+#define I32_MIN 0x80000000
+
 #ifdef PRECISE_MATH
 #include <cmath>
 #include "math.h"

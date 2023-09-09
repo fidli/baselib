@@ -7,6 +7,7 @@ static LARGE_INTEGER frequency;
 static f64 frequencyF;
 
 bool initTime(){
+    initTimeDone = true;
     int result = QueryPerformanceFrequency(&frequency);
     if(result != 0){
         frequencyF = CAST(f64, frequency.QuadPart);

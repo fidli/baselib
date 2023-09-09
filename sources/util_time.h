@@ -23,6 +23,10 @@ struct LocalTime{
     u16 millisecond;
 };
 
+bool initTimeDone = false;
+
+bool initTime();
+
 static bool transitionYear(const u16 year){
     return (year % 4) == 0 || (year / 100) * 100 == year;
 }
