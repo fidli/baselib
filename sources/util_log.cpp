@@ -101,7 +101,7 @@ struct Loggers{
 static Loggers * loggers;
 
 bool initLog(){
-    loggers = ((Loggers *) allocate(&mem.persistent, sizeof(Loggers)));
+    loggers = ((Loggers *) allocate(&program_mem_.persistent, sizeof(Loggers)));
     return true;
 }
 // NOTE(fidli): stupid linux hak

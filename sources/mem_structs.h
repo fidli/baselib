@@ -24,5 +24,6 @@ struct Memory{
     PersistentStackAllocator persistent;
     StackAllocator temp;   
 };
-Memory mem;
+
+Memory program_mem_;
 

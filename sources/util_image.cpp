@@ -345,7 +345,7 @@ bool scaleCanvas(Image * target, u32 newWidth, u32 newHeight, u32 originalOffset
 }
 
 bool decodePNG(const FileContents * source, Image * target){
-    PROFILE_FUNC;
+    PROFILE_FUNC(source->size);
     ReadHead head;
     head.offset = CAST(u8*, source->contents) + source->head;
     u8 firstByte = scanByte(&head);
@@ -361,7 +361,7 @@ bool decodePNG(const FileContents * source, Image * target){
     u32 compressedOffset = 0;
     u8* uncompressed = NULL;
     {
-        PROFILE_SCOPE("PNG - pre parsing & concat");
+        PROFILE_SCOPE("PNG - pre parsing & concat", source->size);
         while(head.offset < CAST(u8*, source->contents) + source->head + source->size && running){
             u32 chunkLength = scanDword(&head, ByteOrder_BigEndian);
             char * chunkType = CAST(char*, head.offset);
@@ -412,7 +412,7 @@ bool decodePNG(const FileContents * source, Image * target){
     ReadHead compressedHead = {compressed};
     u32 decodedBytes = 0;
     {
-        PROFILE_SCOPE("PNG - decompress");
+        PROFILE_SCOPE("PNG - decompress", source->size);
         // Zlib encap then deflate
         // need to concat first
         u8 methodAndTag = scanByte(&compressedHead);
@@ -421,11 +421,11 @@ bool decodePNG(const FileContents * source, Image * target){
         u8 flags = scanByte(&compressedHead);
         ASSERT((flags & 0x20) == 0); // FDICT
         ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
-        decodedBytes = decompressDeflate(compressedHead.offset, uncompressed);
+        decodedBytes = decompressDeflate2(compressedHead.offset, uncompressed);
         ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
     }
     {
-        PROFILE_SCOPE("PNG - filter");
+        PROFILE_SCOPE("PNG - filter", decodedBytes);
         ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
         u32 bytesPerPixel = 4;
         u32 stride = bytesPerPixel * target->info.width;

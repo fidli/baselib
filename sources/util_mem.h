@@ -90,39 +90,39 @@ class ScopeAllocation
 #define TEMP_MEM_BULK_STACK_SIZE 32
 
 void initMemory(void * memoryStart){
-    mem.persistent.mem_start = memoryStart;
-	mem.persistent.effectiveSize = PERSISTENT_MEM;
+    program_mem_.persistent.mem_start = memoryStart;
+	program_mem_.persistent.effectiveSize = PERSISTENT_MEM;
 
-	mem.temp.offsets = CAST(u64 *, CAST(byte *, mem.persistent.mem_start) + mem.persistent.effectiveSize);
-    mem.temp.bulkStackOffsets = CAST(u16 *, CAST(byte *, mem.temp.offsets) + TEMP_MEM_STACK_SIZE*sizeof(*mem.temp.offsets));
+	program_mem_.temp.offsets = CAST(u64 *, CAST(byte *, program_mem_.persistent.mem_start) + program_mem_.persistent.effectiveSize);
+    program_mem_.temp.bulkStackOffsets = CAST(u16 *, CAST(byte *, program_mem_.temp.offsets) + TEMP_MEM_STACK_SIZE*sizeof(*program_mem_.temp.offsets));
 	
-	u64 tempMemMetadataSize = TEMP_MEM_BULK_STACK_SIZE * sizeof(*mem.temp.bulkStackOffsets) + TEMP_MEM_STACK_SIZE * sizeof(*mem.temp.offsets);
-	mem.temp.mem_start = CAST(void *, CAST(byte*, mem.persistent.mem_start) + tempMemMetadataSize + mem.persistent.effectiveSize);
+	u64 tempMemMetadataSize = TEMP_MEM_BULK_STACK_SIZE * sizeof(*program_mem_.temp.bulkStackOffsets) + TEMP_MEM_STACK_SIZE * sizeof(*program_mem_.temp.offsets);
+	program_mem_.temp.mem_start = CAST(void *, CAST(byte*, program_mem_.persistent.mem_start) + tempMemMetadataSize + program_mem_.persistent.effectiveSize);
     ASSERT(tempMemMetadataSize < TEMP_MEM);
-	mem.temp.effectiveSize = TEMP_MEM - tempMemMetadataSize;
-	mem.temp.bulkStackSize = TEMP_MEM_BULK_STACK_SIZE;
-	mem.temp.stackSize = TEMP_MEM_STACK_SIZE;
+	program_mem_.temp.effectiveSize = TEMP_MEM - tempMemMetadataSize;
+	program_mem_.temp.bulkStackSize = TEMP_MEM_BULK_STACK_SIZE;
+	program_mem_.temp.stackSize = TEMP_MEM_STACK_SIZE;
     
-	deallocateAll(&mem.temp);
+	deallocateAll(&program_mem_.temp);
 	
 }
 
-#define PUSH(strct) *((strct *) allocate(&mem.temp, sizeof(strct)));
+#define PUSH(strct) *((strct *) allocate(&program_mem_.temp, sizeof(strct)));
 
-#define PUSHA(strct, size) *((strct *) allocate(&mem.temp, (size) * sizeof(strct)));
+#define PUSHA(strct, size) *((strct *) allocate(&program_mem_.temp, (size) * sizeof(strct)));
 
-#define PUSHA_SCOPE(strct, size) *((strct *) allocate(&mem.temp, (size) * sizeof(strct))); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&mem.temp);
+#define PUSHA_SCOPE(strct, size) *((strct *) allocate(&program_mem_.temp, (size) * sizeof(strct))); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&program_mem_.temp);
 
-#define PUSH_SCOPE(strct) *((strct *) allocate(&mem.temp, sizeof(strct))); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&mem.temp);
+#define PUSH_SCOPE(strct) *((strct *) allocate(&program_mem_.temp, sizeof(strct))); ScopeAllocation CONCAT(AutoScopeAllocationFromLine, __LINE__)(&program_mem_.temp);
 
-#define PUSHI markAllocation(&mem.temp);
+#define PUSHI markAllocation(&program_mem_.temp);
 
-#define POPI deallocateMark(&mem.temp);
+#define POPI deallocateMark(&program_mem_.temp);
 
-#define FLUSH deallocateAll(&mem.temp);
+#define FLUSH deallocateAll(&program_mem_.temp);
 
-#define POP deallocate(&mem.temp);
+#define POP deallocate(&program_mem_.temp);
 
-#define PPUSH(strct) *((strct *) allocate(&mem.persistent, sizeof(strct)));
+#define PPUSH(strct) *((strct *) allocate(&program_mem_.persistent, sizeof(strct)));
 
-#define PPUSHA(strct, size) *((strct *) allocate(&mem.persistent, (size) * sizeof(strct)));
+#define PPUSHA(strct, size) *((strct *) allocate(&program_mem_.persistent, (size) * sizeof(strct)));

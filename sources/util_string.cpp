@@ -93,7 +93,7 @@ char * strcpy(char * target, const char * source){
 }
 
 nint strnlen(const char * source, nint limit){
-    PROFILE_FUNC;
+    PROFILE_FUNC();
     nint length = 1;
     if(source){
         while(source[length-1] != '\0' && length-1 < limit){
@@ -104,7 +104,7 @@ nint strnlen(const char * source, nint limit){
 }
 
 nint strlen(const char * source){
-    PROFILE_FUNC;
+    PROFILE_FUNC();
 #if 0
     nint length = 1;
     if(source){
