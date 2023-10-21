@@ -110,14 +110,14 @@ bool initLog(){
 #define LOGW(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Warning, STRINGIFY(resourceName), (message) VA_ARGS( __VA_ARGS__));
 #define LOG(loggerName, resourceName, message, ...) log(STRINGIFY(loggerName), LogLevel_Notice, STRINGIFY(resourceName), (message) VA_ARGS(__VA_ARGS__));
 
-char map[3] = {'E', 'W', 'N'};
+char log_map[3] = {'E', 'W', 'N'};
 
 void log(const char * loggerName, LogLevel level, const char * resourceName, const char * format, ...){
     va_list ap;    
     va_start(ap, format);
     char format2[] = "[%02hu.%02hu.%04hu %02hu:%02hu:%02hu][%s][%c] %s\r\n";
     loggers->lt = getLocalTime();
-    snprintf(loggers->formatbuffer, ARRAYSIZE(loggers->formatbuffer), format2, loggers->lt.day, loggers->lt.month, loggers->lt.year, loggers->lt.hour, loggers->lt.minute, loggers->lt.second, resourceName, map[CAST(i32, level)], format);
+    snprintf(loggers->formatbuffer, ARRAYSIZE(loggers->formatbuffer), format2, loggers->lt.day, loggers->lt.month, loggers->lt.year, loggers->lt.hour, loggers->lt.minute, loggers->lt.second, resourceName, log_map[CAST(i32, level)], format);
 #if CRT_PRESENT
     vsnprintf(loggers->messagebuffer, ARRAYSIZE(loggers->messagebuffer), loggers->formatbuffer, ap);
 #else

@@ -405,7 +405,7 @@ bool decodePNG(const FileContents * source, Image * target){
             else{
                 head.offset += chunkLength;
             }
-            u32 crc = scanDword(&head, ByteOrder_BigEndian);
+            scanDword(&head, ByteOrder_BigEndian);
             // TODO crc
         }
     }
@@ -417,7 +417,7 @@ bool decodePNG(const FileContents * source, Image * target){
         // need to concat first
         u8 methodAndTag = scanByte(&compressedHead);
         ASSERT((methodAndTag & 0x0F) == 0x08); // deflate
-        u32 windowSize = (1 << (((methodAndTag & 0xF0)>>4) + 8));
+        //u32 windowSize = (1 << (((methodAndTag & 0xF0)>>4) + 8));
         u8 flags = scanByte(&compressedHead);
         ASSERT((flags & 0x20) == 0); // FDICT
         ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
@@ -482,7 +482,8 @@ bool decodePNG(const FileContents * source, Image * target){
                 INV;
             }
             compressedHead.offset = compressed + compressedOffset - 4;
-            u32 adler = scanDword(&compressedHead, ByteOrder_BigEndian);
+            // adler
+            scanDword(&compressedHead, ByteOrder_BigEndian);
         }
     }
     POP;
