@@ -423,7 +423,9 @@ bool decodePNG(const FileContents * source, Image * target){
         ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
         decodedBytes = decompressDeflate2(compressedHead.offset, uncompressed);
         ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
+        PROFILE_BYTES(decodedBytes);
     }
+    PROFILE_BYTES(decodedBytes);
     {
         PROFILE_SCOPE("PNG - filter", decodedBytes);
         ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);

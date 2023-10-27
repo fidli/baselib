@@ -2,6 +2,7 @@
 #define UTIL_COMPRESS
 
 #include "util_sort.cpp"
+#include <emmintrin.h>
 
 enum ByteOrder{
     ByteOrder_Invalid,
@@ -467,30 +468,45 @@ u32 compressLZW(byte * source, const u32 sourceSize, byte * target){
 
 struct CodeTable{
     struct Element {
-        u32 code;
+        u16 code;
         u16 value;
         u8 bitSize;
     } elements[257+32];
+    struct Pack {
+        __m128i code;
+        __m128i mask;
+    } packs[37];
+
+    __m128i values[37];
+    __m128i bitSizes[37];
+    u8 packCount;
     u16 count;
 };
+
 
 u32 matchCode(const CodeTable * table, ReadHeadBit2 * sourceHead)
 {
     u64 currentBits = ((*CAST(u64*, sourceHead->source)) >> sourceHead->bitsRead);
-    for(u32 i = 0; i < table->count; i++)
+    __m128i currentBitsPack = _mm_set1_epi16(CAST(u16, currentBits));
+    __m128i zeroesPack = _mm_setzero_si128();
+    __m128i indices = _mm_set_epi16(8, 7, 6, 5, 4, 3, 2, 1);
+    for(u32 i = 0; i < table->packCount; i++)
     {
-        u8 currentBitSize = table->elements[i].bitSize;
-        u64 mask = (1 << currentBitSize) - 1;
 
-        if ((currentBits & mask) == table->elements[i].code)
+        __m128i test = _mm_cmpeq_epi16(_mm_and_si128(currentBitsPack, table->packs[i].mask), table->packs[i].code);
+        __m128i match = _mm_and_si128(test, indices);
+        __m128i sad = _mm_sad_epu8(match, zeroesPack);
+        int index = sad.m128i_u16[0] + sad.m128i_u16[4];
+        if (index)
         {
+            int currentBitSize = table->bitSizes[i].m128i_u16[index-1];
             sourceHead->bitsRead += currentBitSize;
             if (sourceHead->bitsRead >= 32)
             {
                 sourceHead->bitsRead -= 32;
                 sourceHead->source += 4;
             }
-            return table->elements[i].value;
+            return table->values[i].m128i_u16[index-1];
         }
     }
     INV;
@@ -571,7 +587,7 @@ inline static u32 decompressHuffman2(ReadHeadBit2 * head, const CodeTable * lite
             
         }
     }
-    PROFILE_BYTES(head->source - byteStart);
+    PROFILE_BYTES(head->source - byteStart + localOffset);
     return localOffset;
 }
 
@@ -741,6 +757,7 @@ static inline void assignCodesAndBuildTree2(CodeTable * table){
         memcpy(CAST(void*, table->elements), CAST(void*, &table->elements[zeroes]), sizeof(CodeTable::Element) * (table->count-zeroes));
     }
     table->count -= zeroes;
+    ASSERT(table->elements[table->count-1].bitSize <= 16);
     
     for(u32 i = 0; i < table->count; i++){
         u32 code = invertBits(CAST(u16, codeDispenser[table->elements[i].bitSize]), table->elements[i].bitSize);
@@ -748,6 +765,35 @@ static inline void assignCodesAndBuildTree2(CodeTable * table){
         ASSERT(code <= 65535);
         codeDispenser[table->elements[i].bitSize]++;
         table->elements[i].code = code;
+    }
+    ASSERT(table->count > 0);
+    table->packCount = ((table->count - 1)/8) + 1;
+    for(u8 pi = 0; pi < table->packCount; pi++)
+    {
+        u16 bi = pi * 8;
+        u16 codes[8] = {0};
+        u16 values[8] = {0};
+        u16 bitSizes[8] = {0};
+        u16 masks[8] = {0};
+        for(u8 i = 0; i < 8; i++)
+        {
+            if (i + bi < table->count)
+            {
+                codes[i] = table->elements[i+bi].code;
+                values[i] = table->elements[i+bi].value;
+                bitSizes[i] = table->elements[i+bi].bitSize;
+                masks[i] = (1 << bitSizes[i]) - 1;
+            }
+            else
+            {
+                // later when comparing we need something non 0
+                codes[i] = 1;
+            }
+        }
+        table->packs[pi].code = _mm_load_si128(CAST(__m128i*, codes));
+        table->packs[pi].mask = _mm_load_si128(CAST(__m128i*, masks));
+        table->values[pi] = _mm_load_si128(CAST(__m128i*, values));
+        table->bitSizes[pi] = _mm_load_si128(CAST(__m128i*, bitSizes));
     }
 }
 
@@ -1259,6 +1305,7 @@ u32 decompressDeflate2(u8 * compressedData, u8 * target){
                 PROFILE_SCOPE("Huffman dynamic");
 #if PROFILE
                 u8* byteStart = head.source;
+                u32 targetOffsetStart = targetOffset;
 #endif
                 u16 litCode = readBits2(&head, 5);
                 u16 distCode = readBits2(&head, 5);
@@ -1299,14 +1346,14 @@ u32 decompressDeflate2(u8 * compressedData, u8 * target){
                 assignCodesAndBuildTree2(&literalTable);
                 assignCodesAndBuildTree2(&distanceTable);
                 targetOffset += decompressHuffman2(&head, &literalTable, &distanceTable, (unsigned char *)target + targetOffset);
-                PROFILE_BYTES(head.source - byteStart);
+                PROFILE_BYTES(head.source - byteStart + targetOffset - targetOffsetStart);
             }
 
             POPI;
         }
     }
     
-    PROFILE_BYTES(head.source - compressedData);
+    PROFILE_BYTES(head.source - compressedData + targetOffset);
     return targetOffset;
 }
 #endif
