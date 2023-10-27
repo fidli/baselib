@@ -427,7 +427,7 @@ bool decodePNG(const FileContents * source, Image * target){
     }
     PROFILE_BYTES(decodedBytes);
     {
-        PROFILE_SCOPE("PNG - filter", decodedBytes);
+        PROFILE_SCOPE("PNG - filter", decodedBytes*2);
         ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
         u32 bytesPerPixel = 4;
         u32 stride = bytesPerPixel * target->info.width;
