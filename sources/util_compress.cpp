@@ -467,18 +467,21 @@ u32 compressLZW(byte * source, const u32 sourceSize, byte * target){
 }
 
 struct CodeTable{
+#if 0
     struct Element {
         u16 code;
         u16 value;
         u8 bitSize;
     } elements[257+32];
+#endif
+    
     struct Pack {
         __m128i code;
         __m128i mask;
+        __m128i value;
+        __m128i bitSize;
     } packs[37];
 
-    __m128i values[37];
-    __m128i bitSizes[37];
     u8 packCount;
     u16 count;
 };
@@ -499,14 +502,14 @@ u32 matchCode(const CodeTable * table, ReadHeadBit2 * sourceHead)
         int index = sad.m128i_u16[0] + sad.m128i_u16[4];
         if (index)
         {
-            int currentBitSize = table->bitSizes[i].m128i_u16[index-1];
+            int currentBitSize = table->packs[i].bitSize.m128i_u16[index-1];
             sourceHead->bitsRead += currentBitSize;
             if (sourceHead->bitsRead >= 32)
             {
                 sourceHead->bitsRead -= 32;
                 sourceHead->source += 4;
             }
-            return table->values[i].m128i_u16[index-1];
+            return table->packs[i].value.m128i_u16[index-1];
         }
     }
     INV;
@@ -721,12 +724,20 @@ static void addHuffmanNodeRec(HuffmanNode * tree, HuffmanNode * node, u16 code, 
     
 }
 
-static inline void assignCodesAndBuildTree2(CodeTable * table){
+static inline void assignCodesAndBuildTree2(u8 * bitSizes, u16 count, CodeTable * target){
     u32 amounts[19] = {};
 
-    for(u16 i = 0; i < CAST(u16, table->count); i++){
-        amounts[table->elements[i].bitSize]++;
-        table->elements[i].value = i;
+    struct Temp{
+        u8 bitSize;
+        u16 value;
+        u16 code;
+        u16 mask;
+    } temp[257+32];
+
+    for(u16 i = 0; i < count; i++){
+        temp[i].bitSize = bitSizes[i];
+        temp[i].value = i;
+        amounts[bitSizes[i]]++;
     }
     amounts[0] = 0;
 
@@ -738,7 +749,7 @@ static inline void assignCodesAndBuildTree2(CodeTable * table){
     }
     
     // sorting to remove 0 bit sizes
-    mergeSort(table->elements, table->count, [] (CodeTable::Element & A, CodeTable::Element & B) -> i32 {
+    mergeSort(temp, count, [] (Temp & A, Temp & B) -> i32 {
            if(A.bitSize > B.bitSize){
                return 1;
            }else if(A.bitSize == B.bitSize){
@@ -748,27 +759,29 @@ static inline void assignCodesAndBuildTree2(CodeTable * table){
            });
 
     u16 zeroes = 0;
-    for (; zeroes < table->count; zeroes++){
-        if (table->elements[zeroes].bitSize != 0){
+    for (; zeroes < count; zeroes++){
+        if (temp[zeroes].bitSize != 0){
             break;
         }
     }
     if (zeroes > 0){
-        memcpy(CAST(void*, table->elements), CAST(void*, &table->elements[zeroes]), sizeof(CodeTable::Element) * (table->count-zeroes));
+        memcpy(CAST(void*, temp), CAST(void*, &temp[zeroes]), sizeof(Temp) * (count-zeroes));
     }
-    table->count -= zeroes;
-    ASSERT(table->elements[table->count-1].bitSize <= 16);
+    count -= zeroes;
+    ASSERT(temp[count-1].bitSize <= 16);
     
-    for(u32 i = 0; i < table->count; i++){
-        u32 code = invertBits(CAST(u16, codeDispenser[table->elements[i].bitSize]), table->elements[i].bitSize);
-        ASSERT(((code << (32 - table->elements[i].bitSize)) >> (32 - table->elements[i].bitSize)) == code);
+    for(u32 i = 0; i < count; i++){
+        u32 code = invertBits(CAST(u16, codeDispenser[temp[i].bitSize]), temp[i].bitSize);
+        ASSERT(((code << (32 - temp[i].bitSize)) >> (32 - temp[i].bitSize)) == code);
         ASSERT(code <= 65535);
-        codeDispenser[table->elements[i].bitSize]++;
-        table->elements[i].code = code;
+        codeDispenser[temp[i].bitSize]++;
+        temp[i].code = code;
     }
-    ASSERT(table->count > 0);
-    table->packCount = ((table->count - 1)/8) + 1;
-    for(u8 pi = 0; pi < table->packCount; pi++)
+
+    target->count = count;
+    ASSERT(target->count > 0);
+    target->packCount = ((target->count - 1)/8) + 1;
+    for(u8 pi = 0; pi < target->packCount; pi++)
     {
         u16 bi = pi * 8;
         u16 codes[8] = {0};
@@ -777,11 +790,11 @@ static inline void assignCodesAndBuildTree2(CodeTable * table){
         u16 masks[8] = {0};
         for(u8 i = 0; i < 8; i++)
         {
-            if (i + bi < table->count)
+            if (i + bi < target->count)
             {
-                codes[i] = table->elements[i+bi].code;
-                values[i] = table->elements[i+bi].value;
-                bitSizes[i] = table->elements[i+bi].bitSize;
+                codes[i] = temp[i+bi].code;
+                values[i] = temp[i+bi].value;
+                bitSizes[i] = temp[i+bi].bitSize;
                 masks[i] = (1 << bitSizes[i]) - 1;
             }
             else
@@ -790,17 +803,17 @@ static inline void assignCodesAndBuildTree2(CodeTable * table){
                 codes[i] = 1;
             }
         }
-        table->packs[pi].code = _mm_load_si128(CAST(__m128i*, codes));
-        table->packs[pi].mask = _mm_load_si128(CAST(__m128i*, masks));
-        table->values[pi] = _mm_load_si128(CAST(__m128i*, values));
-        table->bitSizes[pi] = _mm_load_si128(CAST(__m128i*, bitSizes));
+        target->packs[pi].code = _mm_load_si128(CAST(__m128i*, codes));
+        target->packs[pi].mask = _mm_load_si128(CAST(__m128i*, masks));
+        target->packs[pi].value = _mm_load_si128(CAST(__m128i*, values));
+        target->packs[pi].bitSize = _mm_load_si128(CAST(__m128i*, bitSizes));
     }
 }
 
-static inline void readCodes2(ReadHeadBit2 * head, const CodeTable * bootstrapTable, CodeTable * target){
+static inline void readCodes2(ReadHeadBit2 * head, const CodeTable * bootstrapTable, u8 * target, u16 targetCount){
     
     u32 decodeWordI = 0;
-    while(decodeWordI < target->count){
+    while(decodeWordI < targetCount){
     
         u32 i = matchCode(bootstrapTable, head);
             
@@ -811,7 +824,7 @@ static inline void readCodes2(ReadHeadBit2 * head, const CodeTable * bootstrapTa
             times0 += readBits2(head, 3);
             
             for(u16 ri = 0; ri < times0; ri++){
-                target->elements[decodeWordI].bitSize = 0;
+                target[decodeWordI] = 0;
                 decodeWordI++;
             }
             
@@ -822,7 +835,7 @@ static inline void readCodes2(ReadHeadBit2 * head, const CodeTable * bootstrapTa
             times0 += readBits2(head, 7);
             
             for(u16 ri = 0; ri < times0; ri++){
-                target->elements[decodeWordI].bitSize = 0;
+                target[decodeWordI] = 0;
                 decodeWordI++;
             }
         }else if(i == 16){
@@ -831,18 +844,19 @@ static inline void readCodes2(ReadHeadBit2 * head, const CodeTable * bootstrapTa
             timesRepeat += readBits2(head, 2);
 
             ASSERT(decodeWordI-1 >= 0);
-            u8 bitSize = target->elements[decodeWordI-1].bitSize;
+
+            u8 bitSize = target[decodeWordI-1];
             for(u16 ri = 0; ri < timesRepeat; ri++){
-                target->elements[decodeWordI].bitSize = bitSize;
+                target[decodeWordI] = bitSize;
                 decodeWordI++;
             }
         }else{
             ASSERT(i <= 18 && i >= 0);
-            target->elements[decodeWordI].bitSize = CAST(u8, i);
+            target[decodeWordI]= i;
             decodeWordI++;
         }
     }
-    ASSERT(decodeWordI == target->count);
+    ASSERT(decodeWordI == targetCount);
 }
 
 static inline HuffmanNode assignCodesAndBuildTree(CodeWord * codeWords, u32 itemCount){
@@ -1315,36 +1329,28 @@ u32 decompressDeflate2(u8 * compressedData, u8 * target){
                 howMany3bitCodes += 4;
                 
                 CodeTable bootstrapTable;
-                bootstrapTable.count = ARRAYSIZE(dynamicCodes);
-                for(u8 ci = 0; ci < bootstrapTable.count; ci++){
-                    bootstrapTable.elements[ci].bitSize = 0;
-                }
-                
+                u8 bitSizes[ARRAYSIZE(dynamicCodes)] = {};
                 
                 for(u8 bci = 0; bci < howMany3bitCodes; bci++){
                     u8 codeLength = CAST(u8, readBits2(&head, 3));
-                    bootstrapTable.elements[dynamicCodes[bci]].bitSize = codeLength;
+                    bitSizes[dynamicCodes[bci]] = codeLength;
                 }
                 
                 //now we have code book for following lz77 lengths
-                // this worked
-                assignCodesAndBuildTree2(&bootstrapTable);
+                assignCodesAndBuildTree2(bitSizes, ARRAYSIZE(bitSizes), &bootstrapTable);
 
                 //now decoding literals
+                u8 bitSizesDyn[257+32];
+
+                u16 literalTableCount = 257 + litCode;
+                readCodes2(&head, &bootstrapTable, bitSizesDyn, literalTableCount);
                 CodeTable literalTable;
-                literalTable.count = 257 + litCode;
-                // this might not work, but it could
-                readCodes2(&head, &bootstrapTable, &literalTable);
+                assignCodesAndBuildTree2(bitSizesDyn, literalTableCount, &literalTable);
                 
+                u16 distanceTableCount = distCode + 1;
+                readCodes2(&head, &bootstrapTable, bitSizesDyn, distanceTableCount);
                 CodeTable distanceTable;
-                distanceTable.count = distCode + 1;
-                readCodes2(&head, &bootstrapTable, &distanceTable);
-                
-                //now decoding literals
-                //literalTree = assignCodesAndBuildTree21(&literalTable, 257 + litCode);
-                //distanceTree = assignCodesAndBuildTree21(&distanceTable, distCode + 1);
-                assignCodesAndBuildTree2(&literalTable);
-                assignCodesAndBuildTree2(&distanceTable);
+                assignCodesAndBuildTree2(bitSizesDyn, distanceTableCount, &distanceTable);
                 targetOffset += decompressHuffman2(&head, &literalTable, &distanceTable, (unsigned char *)target + targetOffset);
                 PROFILE_BYTES(head.source - byteStart + targetOffset - targetOffsetStart);
             }
