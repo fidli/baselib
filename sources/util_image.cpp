@@ -421,7 +421,7 @@ bool decodePNG(const FileContents * source, Image * target){
         u8 flags = scanByte(&compressedHead);
         ASSERT((flags & 0x20) == 0); // FDICT
         ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
-        decodedBytes = decompressDeflate2(compressedHead.offset, uncompressed);
+        decodedBytes = decompressDeflate(compressedHead.offset, uncompressed);
         ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
         PROFILE_BYTES(decodedBytes);
     }
