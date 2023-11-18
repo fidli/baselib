@@ -123,7 +123,12 @@ void printCurrentProfileStats(){
 #if PROFILE
     int namewidth = 30; // per title column
     printf("Profile stats:\n");
-    printf("| %*s | %10s | %20s | %10s | %10s | %14s | %12s | %5s |\n", namewidth, "name", "total [s]", "excl [s]", "thr [MB/s]", "avg [s]", "avg thr [MB/s]", "avg excl [s]", "calls");
+    printf("| %*s | %10s | %20s |"
+            " %10s | %20s | %10s | %14s |"
+            " %20s | %12s | %5s |\n",
+            namewidth, "name", "total [s]", "excl [s]",
+            "thr [MB/s]", "cost [cycles/byte]", "avg [s]", "avg thr [MB/s]",
+            "avg cost [cyc/byte]", "avg excl [s]", "calls");
     f64 totalTimeProfile = CAST(f64, profile.endTime - profile.startTime) * profile.period;
     for(i32 i = 0; i < profile.slotsUsed; i++){
         ProfileEntry * entry = &profile.slots[i];
@@ -131,13 +136,15 @@ void printCurrentProfileStats(){
         f64 totalTimeIncl = CAST(f64, entry->timeSpentInclusive)*profile.period;
         f64 totalExclTime = CAST(f64, entry->timeSpentExclusive)*profile.period;
         f64 perc = 100.0*totalExclTime / totalTimeProfile;
+        f64 totalCost = (entry->bytesProcessed > 0) ? CAST(f64, entry->timeSpentInclusive) / entry->bytesProcessed : 0;
         f64 avgTime = totalTimeIncl/entry->callCountTotal;
         f64 avgExclTime = totalExclTime/entry->callCountTotal;
+        f64 avgCost = totalCost/entry->callCountTotal;
         f64 thr = (CAST(f64, entry->bytesProcessed)/CAST(f64, MEGABYTE(1))) / totalTimeIncl;
         f64 avgThr = thr / totalCount;
         const char * name = profile.names[i];
-        printf("| %*s | %10f | %10f (%6.2f%%) | %10.3f | %10f | %14.3f | %12f | %5llu |\n", namewidth, name, totalTimeIncl, totalExclTime, perc, thr, avgTime, avgThr, avgExclTime, totalCount);
+        printf("| %*s | %10f | %10f (%6.2f%%) | %10.3f | %20.3f | %10f | %14.3f | %20f | %12f | %5llu |\n", namewidth, name, totalTimeIncl, totalExclTime, perc, thr, totalCost, avgTime, avgThr, avgCost, avgExclTime, totalCount);
     }
-    printf("| %*s | %10s | %10f (100.00%%) | %10s | %10s | %14s | %12s | %5s |\n", namewidth, "", "", totalTimeProfile, "", "", "", "", "");
+    printf("| %*s | %10s | %10f (100.00%%) | %10s | %20s | %10s | %14s | %20s | %12s | %5s |\n", namewidth, "", "", totalTimeProfile, "", "", "", "", "", "", "");
 #endif
 }

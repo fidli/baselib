@@ -3,6 +3,7 @@
 
 #include "util_math.cpp"
 #include "util_compress.cpp"
+#include <tmmintrin.h>
 
 enum BitmapInterpretationType{
     BitmapInterpretationType_Invalid,
@@ -344,7 +345,7 @@ bool scaleCanvas(Image * target, u32 newWidth, u32 newHeight, u32 originalOffset
     return true;
 }
 
-bool decodePNG2(const FileContents * source, Image * target){
+bool decodePNG(const FileContents * source, Image * target){
     PROFILE_FUNC(source->size);
     ReadHead head;
     head.offset = CAST(u8*, source->contents) + source->head;
@@ -426,77 +427,262 @@ bool decodePNG2(const FileContents * source, Image * target){
         u8 flags = scanByte(&compressedHead);
         ASSERT((flags & 0x20) == 0); // FDICT
         ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
+        // This is faster by cca 15% than out of place 1 array memcpy
         decodedBytes = decompressDeflatePNG(compressedHead.offset, target->data, filterTypes, target->info.width*bytesPerPixel);
         ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height);
     }
     {
         PROFILE_SCOPE("PNG - filter", decodedBytes);
         ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
+        u8* data = target->data;
         u32 stride = bytesPerPixel * target->info.width;
+        u32 simd = stride / 16;
+        u32 sisd = stride % 16;
+        u32 simdL = (stride - bytesPerPixel)/12;
+        u32 sisdL = (stride - bytesPerPixel) % 12;
+        /*
+        u32 simdLf3 = (stride - bytesPerPixel)/4;
+        u32 sisdLf3 = (stride - bytesPerPixel) % 4;
+        __m128i f3storeMask = {};
+        f3storeMask.m128i_u32[1] = 0xFFFFFFFF;
+        __m128i scatterMask = _mm_set_epi8(1, 3, 5, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+        __m128i gatherMask = _mm_set_epi8(-1, 0, -1, 1, -1, 2, -1, 3, -1, -1, -1, -1, -1, -1, -1, -1);
+        */
+        __m128i storeMaskF4 = _mm_set_epi8(-1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        u32 simdLf4 = (stride - bytesPerPixel)/4;
+        u32 sisdLf4 = (stride - bytesPerPixel) % 4;
+        
+        ASSERT(simdL > 0);
+        // BYTES per pixel must be 4 atm, because of simd
         for(u32 h = 0; h < target->info.height; h++){
-            u32 pitch = h * stride;
             u8 filterType = filterTypes[h];
             ASSERT(filterType <= 4);
             switch(filterType)
             {
-            
+                case 0:
+                {
+                    data += stride;
+                }break;
                 case 1:{
-                    u8* left = target->data + pitch;
-                    for(u32 w = bytesPerPixel; w < target->info.width*bytesPerPixel; w++){
-                        *(target->data + pitch + w) += *left;
+                    for(u32 i = 0; i < simdL; i++)
+                    {
+                        __m128i md = _mm_load_si128(CAST(__m128i*,data));
+                        md = _mm_add_epi8(md, _mm_slli_si128(md, 4));
+                        md = _mm_add_epi8(md, _mm_slli_si128(md, 8));
+                        _mm_storeu_si128(CAST(__m128i*, data), md);
+                        data += 12;
+                    }
+                    u8* left = data;
+                    // simd part, and also bytes per pixel
+                    data += 4;
+                    for(u32 w = 0; w < sisdL; w++){
+                        *data += *left;
+                        data++;
                         left++;
                     }
                 }break;
                 case 2:{
                     ASSERT(h > 0);
-                    u8* up = target->data + ((h-1) * bytesPerPixel * target->info.width);
-                    for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                        *(target->data + pitch + w) += *up;
+                    u8* up = data - stride;
+                    for(u32 i = 0; i < simd; i++)
+                    {
+                        __m128i md = _mm_load_si128(CAST(__m128i*,data));
+                        __m128i mu = _mm_load_si128(CAST(__m128i*,up));
+                        _mm_storeu_si128(CAST(__m128i*, data), _mm_add_epi8(md, mu));
+                        data += 16;
+                        up += 16;
+                    }
+                    for(u32 w = 0; w < sisd; w++){
+                        *data += *up;
+                        data++;
                         up++;
                     }
                }break;
                 case 3:{
+                    // SISD proven fastest, tried 2 pixels in tandem - slowest, 1 pixel in tandem
+                    // need some math trick instead
                     ASSERT(h > 0);
-                    u8* up = target->data + ((h-1) * bytesPerPixel * target->info.width);
-                    u8* left = target->data + pitch;
-                    for(u32 w = 0; w < bytesPerPixel; w++){
-                        *(target->data + pitch + w) -= *up / 2;
-                        up++;
+                    //if(0)
+                    {
+                        //PROFILE_SCOPE("PNG - filetr3 sisd 1pix", stride);
+                        u8* up = data - stride;
+                        u8* left = data;
+                        for(u32 w = 0; w < bytesPerPixel; w++){
+                            *data += *up >> 1;
+                            up++;
+                            data++;
+                        }
+                        for(u32 w = bytesPerPixel; w < stride; w++){
+                            *data += CAST(u8, ((CAST(u16, *left) + CAST(u16, *up)) >> 1));
+                            up++;
+                            left++;
+                            data++;
+                        }
                     }
-                    for(u32 w = bytesPerPixel; w < target->info.width*bytesPerPixel; w++){
-                        *(target->data + pitch + w) += CAST(u8, ((CAST(u16, *left) + CAST(u16, *up)) / 2));
-                        up++;
-                        left++;
+
+                    /*
+                    //if(1)
+                    {
+                        PROFILE_SCOPE("PNG - filetr3 simd 1pix", stride);
+                        u8* up = data - stride;
+                        u8* left = data;
+
+                        __m128i orig = _mm_load_si128(CAST(__m128i*,data));
+                        __m128i ud = _mm_load_si128(CAST(__m128i*,up));
+
+                        __m128i orig16 = _mm_shuffle_epi8(orig, scatterMask);
+                        __m128i up16 = _mm_shuffle_epi8(ud, scatterMask);
+
+                        __m128i res = _mm_add_epi16(_mm_srli_epi16(up16, 1), orig16);
+                        res = _mm_shuffle_epi8(res, gatherMask);
+                        _mm_maskmoveu_si128(res, storeMask, CAST(char*, data));
+                        data += 4;
+                        up += 4;
+
+                        __m128i ld;
+                        __m128i left16;
+                        for(u32 i = 0; i < simdLf3; i++)
+                        {
+                            orig = _mm_load_si128(CAST(__m128i*,data));
+                            ud = _mm_load_si128(CAST(__m128i*,up));
+                            ld = _mm_load_si128(CAST(__m128i*,left));
+
+                            orig16 = _mm_shuffle_epi8(orig, scatterMask);
+                            up16 = _mm_shuffle_epi8(ud, scatterMask);
+                            left16 = _mm_shuffle_epi8(ld, scatterMask);
+
+                            res = _mm_add_epi16(_mm_srli_epi16(_mm_add_epi16(up16, left16), 1), orig16);
+                            res = _mm_shuffle_epi8(res, gatherMask);
+                            _mm_maskmoveu_si128(res, storeMask, CAST(char*, data));
+                            data += 4;
+                            up += 4;
+                            left += 4;
+                        }
+                        // simd part, and also bytes per pixel
+                        for(u32 w = 0; w < sisdLf3; w++){
+                            *data += CAST(u8, ((CAST(u16, *left) + CAST(u16, *up)) >> 1));
+                            data++;
+                            left++;
+                            up++;
+                        }
                     }
+                    */
+
+                    /*
+                    if(0){
+                        PROFILE_SCOPE("PNG - filetr3 simd 2pix", stride);
+                        u8* up = data - stride;
+                        for(u32 w = 0; w < bytesPerPixel; w++)
+                        {
+                            data[w] += up[w]/2;
+                        }
+                        for(u32 i = 0; i < simdLf3; i++)
+                        {
+                            __m128i orig = _mm_load_si128(CAST(__m128i*,data));
+
+                            // Carry save to have 9 bits for camputation while having 8
+                            // https://fgiesen.wordpress.com/2010/08/23/carry-save-adders-and-averaging-bit-packed-values/
+                            __m128i md = _mm_slli_si128(orig, 4);
+                            __m128i ud = _mm_load_si128(CAST(__m128i*,up));
+
+
+                            __m128i xored = _mm_xor_si128(md, ud);
+                            // divide using epi16, cant shift epi8
+                            xored = _mm_srli_epi16(xored, 1);
+                            xored = _mm_and_si128(xored, _mm_set1_epi8(0x7f));
+
+                            __m128i res = _mm_add_epi8(_mm_add_epi8(xored, _mm_and_si128(md, ud)), orig);
+                            _mm_maskmoveu_si128(res, f3storeMask, CAST(char*, data));
+                            data += 4;
+                            up += 4;
+                        }
+                        u8* left = data;
+                        // simd part, and also bytes per pixel
+                        data += 4;
+                        up += 4;
+                        for(u32 w = 0; w < sisdLf3; w++){
+                            *data += CAST(u8, ((CAST(u16, *left) + CAST(u16, *up)) >> 1));
+                            data++;
+                            left++;
+                            up++;
+                        }
+                    }
+                    */
+                    
                 }break;
                 case 4:{
                     ASSERT(h > 0);
-                    u8* up = target->data + ((h-1) * bytesPerPixel * target->info.width);
-                    u8* left = target->data + pitch;
+                    u8* up = data - stride;
+                    u8* left = data;
                     u8* leftUp = up;
-                    for(u32 w = 0; w < bytesPerPixel; w++){
-                        *(target->data + pitch + w) += *up;
-                        up++;
-                    }
-                    for(u32 w = bytesPerPixel; w < target->info.width*bytesPerPixel; w++){
-                        i32 p = CAST(i32, *left) + CAST(i32, *up) - CAST(i32, *leftUp);
-                        i32 distLeft = ABS(CAST(i32, *left)-p);
-                        i32 distUp = ABS(CAST(i32, *up)-p);
-                        i32 distLeftUp = ABS(CAST(i32, *leftUp)-p);
-                        u8 least = 0;
-                        if (distLeft <= distUp && distLeft <= distLeftUp){
-                            least = *left; 
-                        }
-                        else if (distUp <= distLeftUp){
-                            least = *up;
-                        }
-                        else{
-                            least = *leftUp;
-                        }
-                        *(target->data + pitch + w) += least;
+
+                    /*
+                    __m128i md = _mm_load_si128(CAST(__m128i*,data));
+                    __m128i mu = _mm_load_si128(CAST(__m128i*,up));
+                    __m128i res = _mm_add_epi8(md, mu);
+                    _mm_maskmoveu_si128(res, storeMaskF4, CAST(char*, data));
+                    up += 4;
+                    data += 4;
+
+                    __m128i md2;
+                    u8 aT = 0;
+                    u8 bT = 0;
+                    u8 cT = 0;
+                    for(u32 w = bytesPerPixel; w < stride; w++)
+                    {
+                        
+                        // d left
+                        md.m128i_i16[0] = CAST(i16, *leftUp)-CAST(i16, *up);
+                        // d up
+                        md.m128i_i16[1] = CAST(i16, *leftUp)-CAST(i16, *left);
+                        // d left up
+                        md.m128i_i16[2] = (CAST(i16, *leftUp)<<1)-CAST(i16, *left)-CAST(i16, *up);
+                        md = _mm_abs_epi16(md);
+
+                        md.m128i_i16[4] = md.m128i_i16[0];
+                        md.m128i_i16[5] = md.m128i_i16[0];
+                        md.m128i_i16[6] = md.m128i_i16[1];
+                        md2.m128i_i16[4] = md.m128i_i16[1];
+                        md2.m128i_i16[5] = md.m128i_i16[2];
+                        md2.m128i_i16[6] = md.m128i_i16[2];
+                        md2 = _mm_cmpgt_epi16(md, md2);
+
+                        
+                        aT = ~(md2.m128i_i16[4] | md2.m128i_i16[5]);
+                        bT = ~(aT | md2.m128i_i16[6]);
+                        cT = ~(aT | bT);
+                        
+                        *data += (aT & *left) + (bT & *up) + (cT & *leftUp);
+
                         left++;
                         leftUp++;
                         up++;
+                        data++;
+                    }
+                    */
+                    for(u32 w = 0; w < bytesPerPixel; w++){
+                        *data += *up;
+                        up++;
+                        data++;
+                    }
+                    for(u32 w = bytesPerPixel; w < stride; w++){
+                        u8 distLeft = ABS(CAST(i16, *leftUp)-CAST(i16, *up));
+                        u8 distUp = ABS(CAST(i16, *leftUp)-CAST(i16, *left));
+                        u16 distLeftUp = ABS((CAST(i16, *leftUp)<<1)-CAST(i16, *left)-CAST(i16, *up));
+
+                        if (distLeft <= distUp && distLeft <= distLeftUp){
+                            *data += *left;
+                        }
+                        else if (distUp <= distLeftUp){
+                            *data += *up;
+                        }
+                        else{
+                            *data += *leftUp;
+                        }
+                        left++;
+                        leftUp++;
+                        up++;
+                        data++;
                     }
                 
             }break;
@@ -508,154 +694,6 @@ bool decodePNG2(const FileContents * source, Image * target){
     scanDword(&compressedHead, ByteOrder_BigEndian);
     POP;
     return checks == 2 && (decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height);
-}
-
-bool decodePNG(const FileContents * source, Image * target){
-    PROFILE_FUNC(source->size);
-    ReadHead head;
-    head.offset = CAST(u8*, source->contents) + source->head;
-    u8 firstByte = scanByte(&head);
-    ASSERT(firstByte == 0x89);
-    ASSERT(strncmp(CAST(char*, head.offset), "PNG", 3) == 0);
-    head.offset += 3;
-    u32 headDword = scanDword(&head, ByteOrder_BigEndian);
-    ASSERT(headDword == 0x0D0A1A0A);
-    
-    bool running = true;
-    i32 checks = 0;
-    u8* compressed = &PUSHA(u8, source->size);
-    u32 compressedOffset = 0;
-    u8* uncompressed = NULL;
-    {
-        PROFILE_SCOPE("PNG - pre parsing & concat", source->size);
-        while(head.offset < CAST(u8*, source->contents) + source->head + source->size && running){
-            u32 chunkLength = scanDword(&head, ByteOrder_BigEndian);
-            char * chunkType = CAST(char*, head.offset);
-            head.offset += 4;
-            if (strncmp(chunkType, "IHDR", 4) == 0){
-                checks++;
-                ASSERT(chunkLength == 13);
-                target->info.width = scanDword(&head, ByteOrder_BigEndian);
-                target->info.height = scanDword(&head, ByteOrder_BigEndian);
-                u8 bitsPerChannel = scanByte(&head);
-                u8 colorType = scanByte(&head);
-                u8 compressionMethod = scanByte(&head);
-                ASSERT(compressionMethod == 0);
-                if (colorType == 6){
-                    target->info.interpretation = BitmapInterpretationType_RGBA;
-                    target->info.bitsPerSample = bitsPerChannel*4;
-                }
-                u8 filterMethod = scanByte(&head);
-                ASSERT(filterMethod == 0);
-                u8 interlaceMethod = scanByte(&head);
-                ASSERT(interlaceMethod == 0);
-
-                target->info.samplesPerPixel = 1;
-                target->info.origin = BitmapOriginType_TopLeft;
-                u64 bits = (target->info.samplesPerPixel * target->info.bitsPerSample * target->info.width * target->info.height);
-                target->info.totalSize = bits/8 + (bits % 8 ? 1 : 0);
-                target->data = &PPUSHA(byte, target->info.totalSize);
-                // first byte of each row is filter type
-                uncompressed = &PUSHA(u8, target->info.samplesPerPixel * (target->info.bitsPerSample/8) * (target->info.width+1) * target->info.height);
-            }
-            else if(strncmp(chunkType, "IDAT", 4) == 0){
-                ASSERT(compressedOffset + chunkLength <= source->size);
-                memcpy(compressed + compressedOffset, head.offset, chunkLength);
-                head.offset += chunkLength;
-                compressedOffset += chunkLength;
-            }
-            else if(strncmp(chunkType, "IEND", 4) == 0){
-                running = false;
-                checks++;
-            }
-            else{
-                head.offset += chunkLength;
-            }
-            scanDword(&head, ByteOrder_BigEndian);
-            // TODO crc
-        }
-    }
-    ReadHead compressedHead = {compressed};
-    u32 decodedBytes = 0;
-    {
-        PROFILE_SCOPE("PNG - decompress", source->size);
-        // Zlib encap then deflate
-        // need to concat first
-        u8 methodAndTag = scanByte(&compressedHead);
-        ASSERT((methodAndTag & 0x0F) == 0x08); // deflate
-        //u32 windowSize = (1 << (((methodAndTag & 0xF0)>>4) + 8));
-        u8 flags = scanByte(&compressedHead);
-        ASSERT((flags & 0x20) == 0); // FDICT
-        ASSERT(((CAST(u16, methodAndTag) << 8) | flags) % 31 == 0);
-        decodedBytes = decompressDeflate(compressedHead.offset, uncompressed);
-        ASSERT(decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
-        PROFILE_BYTES(decodedBytes);
-    }
-    PROFILE_BYTES(decodedBytes);
-    {
-        PROFILE_SCOPE("PNG - filter", decodedBytes*2);
-        ASSERT(target->info.interpretation == BitmapInterpretationType_RGBA);
-        u32 bytesPerPixel = 4;
-        u32 stride = bytesPerPixel * target->info.width;
-        for(u32 h = 0; h < target->info.height; h++){
-            u32 pitch = h * stride;
-            u8 filterType = *(uncompressed + pitch + h);
-            if (filterType == 0)
-            {
-                memcpy(target->data + pitch, uncompressed + pitch + (h+1), target->info.width * bytesPerPixel);
-            }
-            else if (filterType == 1){
-                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                    u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
-                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + left;
-                }
-            }
-            else if (filterType == 2){
-                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                    u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
-                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + up;
-                }
-            } 
-            else if (filterType == 3){
-                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                    u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
-                    u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
-                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + CAST(u8, ((CAST(u16, left) + CAST(u16, up)) / 2));
-                }
-            } 
-            else if (filterType == 4){
-                for(u32 w = 0; w < target->info.width*bytesPerPixel; w++){
-                    u8 left = w >= bytesPerPixel ? *(target->data + pitch + w - bytesPerPixel) : 0;
-                    u8 up = h > 0 ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w) : 0;
-                    u8 leftUp = (h > 0 && w >= bytesPerPixel) ? *(target->data + ((h-1) * bytesPerPixel * target->info.width) + w  - bytesPerPixel) : 0;
-                    i32 p = CAST(i32, left) + CAST(i32, up) - CAST(i32, leftUp);
-                    i32 distLeft = ABS(CAST(i32, left)-p);
-                    i32 distUp = ABS(CAST(i32, up)-p);
-                    i32 distLeftUp = ABS(CAST(i32, leftUp)-p);
-                    u8 least = 0;
-                    if (distLeft <= distUp && distLeft <= distLeftUp){
-                        least = left; 
-                    }
-                    else if (distUp <= distLeftUp){
-                        least = up;
-                    }
-                    else{
-                        least = leftUp;
-                    }
-                    *(target->data + pitch + w) = *(uncompressed + pitch + (h+1) + w) + least;
-                }
-                
-            }
-            else{
-                INV;
-            }
-            compressedHead.offset = compressed + compressedOffset - 4;
-            // adler
-            scanDword(&compressedHead, ByteOrder_BigEndian);
-        }
-    }
-    POP;
-    return checks == 2 && (decodedBytes == target->info.samplesPerPixel * (target->info.bitsPerSample/8) * target->info.width * target->info.height + target->info.height);
 }
 
 struct Bitmapinfoheader{

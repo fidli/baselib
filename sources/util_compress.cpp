@@ -602,20 +602,7 @@ inline static u32 decompressHuffmanPNG(ReadHeadBit2 * head, const CodeTable * li
     u32 i = 0;
     while(i != 256){
         i = matchCode(literalTable, head);
-        if(i < 256){
-            if ((context->globalByteCount % context->filterPosititon))
-            {
-                *target = CAST(u8, i);
-                target++;
-            }
-            else
-            {
-                filterTypes[context->filterCount] = CAST(u8, i);
-                context->filterCount++;
-            }
-            context->globalByteCount++;
-        }
-        else if(i > 256){
+        if(i > 256){
             //repetition, defined in specification
             i32 count;
 
@@ -697,8 +684,21 @@ inline static u32 decompressHuffmanPNG(ReadHeadBit2 * head, const CodeTable * li
             }
             }
         }
+        else if(i < 256){
+            if ((context->globalByteCount % context->filterPosititon))
+            {
+                *target = CAST(u8, i);
+                target++;
+            }
+            else
+            {
+                filterTypes[context->filterCount] = CAST(u8, i);
+                context->filterCount++;
+            }
+            context->globalByteCount++;
+        }
     }
-    PROFILE_BYTES(head->source - byteStart + target - byteStartTarget);
+    PROFILE_BYTES(head->source - byteStart);
     return CAST(u32, target - byteStartTarget);
 }
 
@@ -1068,7 +1068,7 @@ u32 decompressDeflatePNG(u8 * compressedData, u8 * target, u8* filterTypes, u32 
             CodeTable distanceTable;
             buildCodeTable(bitSizesDyn, distanceTableCount, &distanceTable);
             targetOffset += decompressHuffmanPNG(&head, &literalTable, &distanceTable, target+targetOffset, filterTypes, &context);
-            PROFILE_BYTES(head.source - byteStart + target - targetStart);
+            PROFILE_BYTES(head.source - byteStart);
         }
         else if(header == 1){
             PROFILE_SCOPE("Huffman static");
@@ -1172,7 +1172,7 @@ u32 decompressDeflatePNG(u8 * compressedData, u8 * target, u8* filterTypes, u32 
         }
     }
     
-    PROFILE_BYTES(head.source - compressedData + targetOffset);
+    PROFILE_BYTES(head.source - compressedData);
     return targetOffset;
 }
 #endif
