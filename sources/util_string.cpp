@@ -415,6 +415,35 @@ static u8 scanUnumber64(const char * source, u64 * target, nint maxDigits = 20){
     return i;
 }
 
+static u8 printDigits16(char * target, i64 number){
+    u8 firstNon0Byte = 8;
+    i64 mask = CAST(i64, 0xFF00000000000000);
+    while(firstNon0Byte > 1 && ((number & mask) == 0))
+    {
+        mask = mask >> 8;
+        firstNon0Byte--;
+    }
+
+    u8 i = 0;
+    for(i32 b = firstNon0Byte-1; b >= 0; b--)
+    {
+        byte data = CAST(byte, (number & mask) >> (b*8));
+        for(i32 n = 1; n >= 0; n--)
+        {
+            u8 nibble = (data >> (n*4)) & 0xF;
+            if (nibble < 10)
+            {
+                target[i++] = CAST(char, nibble) + 48;
+            }
+            else{
+                target[i++] = CAST(char, nibble) + 55;
+            }
+
+        }
+    }
+
+    return i;
+}
 
 static u8 printDigits(char * target, i64 number){
     char digitsStack[20];
@@ -450,6 +479,7 @@ enum FormatType{
     FormatType_Invalid,
     FormatType_d,
     FormatType_u,
+    FormatType_x,
     FormatType_c,
     FormatType_charlist,
     FormatType_s,
@@ -566,6 +596,9 @@ static FormatInfo parseFormat(const char * format){
         //type
         if(format[formatIndex] == 'd'){
             info.type = FormatType_d;
+            formatIndex++;
+        }else if(format[formatIndex] == 'x'){
+            info.type = FormatType_x;
             formatIndex++;
         }else if(format[formatIndex] == 'u'){
             info.type = FormatType_u;
@@ -728,10 +761,11 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
                 successfullyPrinted++;
             }break;
             case FormatType_d:
+            case FormatType_x:
             case FormatType_u:{
                 u64 absValue = 0;
                 bool negative = false;
-                if(info.type == FormatType_u){
+                if(info.type == FormatType_u || info.type == FormatType_x){
                     if(info.typeLength == FormatTypeSize_Default){
                         u32 source = va_arg(ap, u32);
                         absValue = source;
@@ -784,9 +818,17 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
                 
                 if(!info.leftJustify || info.padding0){
                     nint prependLen = 0;
-                    if (info.width > numlen(absValue))
+                    u8 len = 0;
+                    if(info.type == FormatType_x){
+                        numlen16(absValue);
+                    }
+                    else{
+                        len = numlen(absValue);
+                    }
+
+                    if (info.width > len)
                     {
-                        prependLen = info.width - numlen(absValue);
+                        prependLen = info.width - len;
                     }
                     if((info.forceSign || negative) && prependLen > 0){
                         prependLen--;
@@ -802,7 +844,12 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
                 }else if(negative){
                     target[targetIndex++] = '-';
                 }
-                targetIndex += printDigits(target + targetIndex, absValue);
+                if(info.type == FormatType_x){
+                    targetIndex += printDigits16(target + targetIndex, absValue);
+                }
+                else{
+                    targetIndex += printDigits(target + targetIndex, absValue);
+                }
                 successfullyPrinted++;
             }break;
             case FormatType_charlist:{

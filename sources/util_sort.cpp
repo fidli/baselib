@@ -13,6 +13,28 @@ void static inline swap(byte * source, byte * destination, const u16 elemsize){
     }
 }
 
+// cmp true/false if match
+template<typename elemType, typename elemType2, typename func>
+u32 sortByOtherArray(elemType * target, u32 arraySize, elemType2 * stencilArray, u32 stencilArraySize, func cmp){
+    u32 missed = 0;
+    for (u32 si = 0; si < stencilArraySize; si++) {
+        bool found = false;
+        for(u32 ti = si - missed; ti < arraySize && !found; ti++)
+        {
+            if (cmp(&target[ti], &stencilArray[si]))
+            {
+                SWAP(target[si], target[ti]);
+                found = true;
+            }
+        }
+        if (!found)
+        {
+            missed++;
+        }
+    }
+    return missed;
+}
+
 //positive if a > b
 //0 if a == b
 //negative if a < b

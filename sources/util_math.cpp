@@ -353,6 +353,18 @@ f64 sin64(f64 radAngle){
 
 #endif
 
+u8 numlen16(i64 number){
+    u8 result = 8;
+    i64 mask = CAST(i64, 0xFF00000000000000);
+    while(result > 1 && ((number & mask) == 0))
+    {
+        mask = mask >> 8;
+        result--;
+    }
+    ASSERT(result >= 1);
+    return result*2;
+}
+
 u8 numlen(i64 number){
     u8 result = 1;
     if(number < 0){
@@ -1194,6 +1206,7 @@ v2 rotate(const dv2 & point, const f32 radAngle){
     return result;
 }
 
+// rotates counter clockwise
 v2 rotate(const v2 & point, const f32 radAngle){
     v2 result;
     f32 cosA = cos(radAngle);

@@ -27,10 +27,28 @@ struct ControllerHandle{
 };
 
 struct ControllerState{
-    struct {
+    struct
+    {
         f32 x;
         f32 y;
-    } position; 
+        f32 z;
+    } position;
+    struct DPadState
+    {
+        f32 x;
+        f32 y;
+    } dpad;
+    struct
+    {
+        f32 x;
+        f32 y;
+        f32 z;
+    } rotation;
+    struct ButtonState 
+    {
+        bool down;
+        bool changed;
+    } buttons[10];
 };
 
 struct Controller{
@@ -40,10 +58,10 @@ struct Controller{
     bool present;
 
     LPDIRECTINPUTDEVICE8A dev;
-    DIDEVICEOBJECTDATA data[50];
+    byte data[200];
     char name[50];
 
-    struct {
+    struct ControllerButton{
         DWORD dwOffset;
         GUID guid;
         DWORD dwType;
@@ -63,12 +81,14 @@ struct Controller{
                 i32 deviation;
             } axis;
         };
+        byte* stateTarget;
 
     } buttons[50];
 
     i32 buttonsCount;
 
     ControllerState state;
+    u32 dataSize;
     
 
 } controllers[20];
@@ -114,28 +134,36 @@ static BOOL DIEnumDeviceObjectsCallback(LPCDIDEVICEOBJECTINSTANCE lpddoi, LPVOID
 {
     Controller * controller = CAST(Controller*, pvRef);
     ControllerObject type = ControllerObject_Invalid;
+    byte* stateTarget = NULL;
     if (lpddoi->dwType & DIDFT_PSHBUTTON && lpddoi->guidType == GUID_Button){
         type = ControllerObject_Button;
     }else if (lpddoi->guidType == GUID_POV){
         type = ControllerObject_Dpad;
+        stateTarget = CAST(byte*, &controller->state.dpad);
     } else if (lpddoi->dwType & DIDFT_ABSAXIS){
         if (lpddoi->guidType == GUID_XAxis){
             type = ControllerObject_XAxis;
+            stateTarget = CAST(byte*, &controller->state.position.x);
         }
         if (lpddoi->guidType == GUID_YAxis){
             type = ControllerObject_YAxis;
+            stateTarget = CAST(byte*, &controller->state.position.y);
         }
         if (lpddoi->guidType == GUID_ZAxis){
             type = ControllerObject_ZAxis;
+            stateTarget = CAST(byte*, &controller->state.position.z);
         }
         if (lpddoi->guidType == GUID_RxAxis){
             type = ControllerObject_RxAxis;
+            stateTarget = CAST(byte*, &controller->state.rotation.x);
         }
         if (lpddoi->guidType == GUID_RyAxis){
             type = ControllerObject_RyAxis;
+            stateTarget = CAST(byte*, &controller->state.rotation.y);
         }
         if (lpddoi->guidType == GUID_RzAxis){
             type = ControllerObject_RzAxis;
+            stateTarget = CAST(byte*, &controller->state.rotation.z);
         }
         DIPROPRANGE range = {};
         range.diph.dwSize = sizeof(DIPROPRANGE);
@@ -155,6 +183,7 @@ static BOOL DIEnumDeviceObjectsCallback(LPCDIDEVICEOBJECTINSTANCE lpddoi, LPVOID
     } else if (lpddoi->dwType & DIDFT_NODATA){
         return DIENUM_CONTINUE;
     }
+    controller->buttons[controller->buttonsCount].stateTarget = stateTarget;
     strncpy(controller->buttons[controller->buttonsCount].name, lpddoi->tszName, ARRAYSIZE(controller->buttons[controller->buttonsCount].name));
     controller->buttons[controller->buttonsCount].type = type;
     if (type == ControllerObject_Button)
@@ -199,6 +228,16 @@ static BOOL syncControllers(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
         hr = controller->dev->EnumObjects(DIEnumDeviceObjectsCallback, controller, DIDFT_ALL);
         if (hr == DI_OK)
         {
+            ControllerObject stencilArray[] = {ControllerObject_XAxis, ControllerObject_YAxis, ControllerObject_ZAxis,
+                                            ControllerObject_Dpad, ControllerObject_RxAxis, ControllerObject_RyAxis, ControllerObject_RzAxis};
+            u32 missed = sortByOtherArray(controller->buttons, controller->buttonsCount, stencilArray, ARRAYSIZE(stencilArray), [] (Controller::ControllerButton * button, ControllerObject * wantedObject) -> bool {return button->type == *wantedObject;});
+            insertSort(controller->buttons + ARRAYSIZE(stencilArray) - missed, controller->buttonsCount + missed - ARRAYSIZE(stencilArray), [] (Controller::ControllerButton & A, Controller::ControllerButton &B) -> i8 {ASSERT(A.type == B.type); ASSERT(A.type == ControllerObject_Button); return A.button.rank - B.button.rank;});
+            byte* stateTarget = CAST(byte*, &controller->state.buttons);
+            for (i32 i = ARRAYSIZE(stencilArray) - missed; i < controller->buttonsCount; i++)
+            {
+                controller->buttons[i].stateTarget = CAST(byte*, stateTarget);
+                stateTarget += sizeof(ControllerState::ButtonState);
+            }
             controller->sequence++;
             LOG(default, controller, "New controller: %s", controller->name);
             LOG(default, controller, "Inputs:");
@@ -261,7 +300,6 @@ bool setUpAndUseController(ControllerHandle * handle)
     if (handle->sequence != controller->sequence){
         return false;
     }
-    // TODO whole layout
     DIPROPDWORD val = {};
     val.diph.dwSize = sizeof(DIPROPDWORD);
     val.diph.dwHeaderSize = sizeof(DIPROPHEADER);
@@ -304,16 +342,24 @@ bool setUpAndUseController(ControllerHandle * handle)
     for (i32 i = 0; i < controller->buttonsCount; i++)
     {
         objs[i].pguid = &controller->buttons[i].guid; 
-        objs[i].dwOfs = runningOffset; 
+        controller->buttons[i].dwOffset = objs[i].dwOfs = runningOffset; 
         objs[i].dwType = controller->buttons[i].dwType;
-        runningOffset += 4;
+        if (controller->buttons[i].type != ControllerObject_Button)
+        {
+            runningOffset += 4;
+        }
+        else
+        {
+            runningOffset += 1;
+        }
     }
 
     DIDATAFORMAT objects = {};
     objects.dwSize = sizeof(DIDATAFORMAT);
     objects.dwObjSize = sizeof(DIOBJECTDATAFORMAT);
     objects.dwFlags = DIDF_ABSAXIS;
-    objects.dwDataSize = runningOffset;
+    controller->dataSize = objects.dwDataSize = (((runningOffset - 1) / 4) + 1)*4;
+
     objects.dwNumObjs = controller->buttonsCount;
     objects.rgodf = objs;
     hr = controller->dev->SetDataFormat(&objects);
@@ -355,25 +401,33 @@ bool pollInput(ControllerHandle * handle)
     if (handle->sequence != controller->sequence){
         return false;
     }
-    DWORD datasize = controller->buttonsCount;
-    HRESULT hr = controller->dev->GetDeviceData(sizeof(DIDEVICEOBJECTDATA), controller->data, &datasize, 0);
+    HRESULT hr = controller->dev->GetDeviceState(controller->dataSize, controller->data);
     ASSERT(hr == DI_OK);
-    for (DWORD i = 0; i < datasize; i++){
-        i32 b = -1;
+    byte * data = controller->data;
+    for (i32 b = 0; b < controller->buttonsCount; b++){
 
-        for(i32 cb = 0; cb < controller->buttonsCount; cb++){
-            if (controller->buttons[cb].dwOffset == controller->data[i].dwOfs)
-            {
-                b = cb;
-                break;
-            }
-        }
-        ASSERT(b != -1);
-
-        if (controller->buttons[b].type == ControllerObject_XAxis ||
-            controller->buttons[b].type == ControllerObject_YAxis)
+        if (controller->buttons[b].type == ControllerObject_Button)
         {
-            i32 value = controller->data[i].dwData - controller->buttons[b].axis.center;
+            ControllerState::ButtonState* target = CAST(ControllerState::ButtonState*, controller->buttons[b].stateTarget);
+            target->changed = target->down != CAST(bool, *data);
+            target->down = CAST(bool, *data);
+            data++;
+        }else if (controller->buttons[b].type == ControllerObject_Dpad)
+        {
+            ControllerState::DPadState* target = CAST(ControllerState::DPadState*, controller->buttons[b].stateTarget);
+            target->x = 0;
+            target->y = 0;
+            if (*CAST(DWORD*,data) != 0xFFFFFFFF)
+            {
+                f32 angleDeg = CAST(f32, *CAST(DWORD*, data)) / 100;
+                v2 axis = rotate(V2(0, 1), -degToRad(angleDeg));
+                target->x = axis.x;
+                target->y = axis.y;
+            }
+            data += 4;
+        }else
+        {
+            i32 value = *CAST(i32*, data) - controller->buttons[b].axis.center;
             i32 deadzone = CAST(i32, 0.15f * controller->buttons[b].axis.deviation);
             i32 saturation = CAST(i32, 0.85f * controller->buttons[b].axis.deviation);
             if (value >= -deadzone && value <= deadzone)
@@ -390,15 +444,15 @@ bool pollInput(ControllerHandle * handle)
             }
 
             f32 val = CAST(f32, value) / CAST(f32, controller->buttons[b].axis.deviation);
-            //f32 val = CAST(f32,data[i].dwData);
             if (controller->buttons[b].type == ControllerObject_YAxis)
             {
                 // We want Y up
-                controller->state.position.y = -val;
-            }else if (controller->buttons[b].type == ControllerObject_XAxis)
+                *CAST(f32*, controller->buttons[b].stateTarget) = -val;
+            }else
             {
-                controller->state.position.x = val;
+                *CAST(f32*, controller->buttons[b].stateTarget) = val;
             }
+            data += 4;
         }
     }
     return true;
