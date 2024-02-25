@@ -294,7 +294,7 @@ bool refreshAvailableControllers()
     return result;
 }
 
-bool setUpAndUseController(ControllerHandle * handle)
+bool setUpController(ControllerHandle * handle)
 {
     Controller * controller = &controllers[handle->slotIndex];
     if (handle->sequence != controller->sequence){
@@ -330,7 +330,7 @@ bool setUpAndUseController(ControllerHandle * handle)
         return false;
     }
 
-    hr = controller->dev->SetCooperativeLevel(window, DISCL_EXCLUSIVE | DISCL_BACKGROUND);
+    hr = controller->dev->SetCooperativeLevel(window, DISCL_EXCLUSIVE | DISCL_FOREGROUND);
     if (hr != DI_OK)
     {
         return false;
@@ -368,14 +368,20 @@ bool setUpAndUseController(ControllerHandle * handle)
         return false;
     }
 
-    hr = controller->dev->Acquire();
-    if (hr != DI_OK)
-    {
-        return false;
-    }
-
     return true;
 }
+
+bool useController(ControllerHandle * handle)
+{
+    Controller * controller = &controllers[handle->slotIndex];
+    if (handle->sequence == controller->sequence){
+        HRESULT hr = controller->dev->Acquire();
+        // False for already acquired
+        return hr == DI_OK || hr == S_FALSE;
+    }
+    return false;
+}
+
 
 bool unuseController(ControllerHandle * handle)
 {
