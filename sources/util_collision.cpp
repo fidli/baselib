@@ -3,10 +3,17 @@
 
 #include "util_math.cpp"
 
+struct CollisionCircle{
+    v2 pos;
+    f32 radius;
+};
+
 struct CollisionRectAxisAligned{
     v2 size;
     v2 pos;
 };
+
+static v2 halo = {0.0001f, 0.0001f};
 
 bool collide(CollisionRectAxisAligned A, CollisionRectAxisAligned B)
 {
@@ -23,14 +30,13 @@ bool collide(CollisionRectAxisAligned A, CollisionRectAxisAligned B)
 v2 collidePop(CollisionRectAxisAligned A, CollisionRectAxisAligned B, v2 direction)
 {
     ASSERT(collide(A, B));
-    ASSERT(length(direction) > 0.00005f);
+    ASSERT(!isTiny(direction));
     CollisionRectAxisAligned diff = {};
-    diff.size = A.size + B.size;
+    diff.size = A.size + B.size + halo;
     diff.pos = B.pos - A.pos;
     // epsilons to pop just above the border
-    v2 halo = V2(0.001f, 0.001f);
-    v2 lowerLeftCorner = diff.pos - diff.size/2.0f - halo;
-    v2 upperRightCorner = lowerLeftCorner + diff.size + halo;
+    v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
+    v2 upperRightCorner = lowerLeftCorner + diff.size;
     ASSERT(lowerLeftCorner.x < 0 && upperRightCorner.x > 0 && lowerLeftCorner.y < 0 && upperRightCorner.y > 0);
     f32 scale = 0;
     // TODO corner hit?
@@ -51,26 +57,28 @@ v2 collidePop(CollisionRectAxisAligned A, CollisionRectAxisAligned B, v2 directi
         }
     }
     ASSERT(scale > 0);
+#ifndef RELEASE
     A.pos += (direction*scale);
     ASSERT(!collide(A, B));
+#endif
     return direction * scale;
 }
 
 v2 collideSlide(CollisionRectAxisAligned A, CollisionRectAxisAligned B, v2 direction)
 {
-    ASSERT(length(direction) > 0.005f);
+    ASSERT(!isTiny(direction));
     CollisionRectAxisAligned diff = {};
-    diff.size = A.size + B.size;
+    diff.size = A.size + B.size + halo;
     diff.pos = B.pos - A.pos;
     v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
     v2 upperRightCorner = lowerLeftCorner + diff.size;
-    ASSERT(ABS(lowerLeftCorner.x) < 0.005f|| ABS(upperRightCorner.x) < 0.005f || ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f);
+    ASSERT(isTiny(lowerLeftCorner.x) || isTiny(upperRightCorner.x) || isTiny(lowerLeftCorner.y) || isTiny(upperRightCorner.y));
 
     // TODO corner hit dont slide?
-    if(ABS(lowerLeftCorner.x) < 0.005f || ABS(upperRightCorner.x) < 0.005f){
+    if(isTiny(lowerLeftCorner.x) || isTiny(upperRightCorner.x)){
         return dot(direction, V2(0.0f, 1.0f)) * V2(0.0f, 1.0f);
     }
-    if(ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f){
+    if(isTiny(lowerLeftCorner.y) || isTiny(upperRightCorner.y)){
         return dot(direction, V2(1.0f, 0.0f)) * V2(1.0f, 0.0f);
     }
     return direction;
@@ -79,17 +87,17 @@ v2 collideSlide(CollisionRectAxisAligned A, CollisionRectAxisAligned B, v2 direc
 v2 collideReflect(CollisionRectAxisAligned A, CollisionRectAxisAligned B, v2 direction)
 {
     // TODO corner hit
-    ASSERT(length(direction) > 0.005f);
+    ASSERT(!isTiny(direction));
     CollisionRectAxisAligned diff = {};
-    diff.size = A.size + B.size;
+    diff.size = A.size + B.size + halo;
     diff.pos = B.pos - A.pos;
     v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
     v2 upperRightCorner = lowerLeftCorner + diff.size;
-    ASSERT(ABS(lowerLeftCorner.x) < 0.005f|| ABS(upperRightCorner.x) < 0.005f || ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f);
-    if(ABS(lowerLeftCorner.x) < 0.005f || ABS(upperRightCorner.x) < 0.005f){
+    ASSERT(isTiny(lowerLeftCorner.x) || isTiny(upperRightCorner.x) || isTiny(lowerLeftCorner.y) || isTiny(upperRightCorner.y));
+    if(isTiny(lowerLeftCorner.x) || isTiny(upperRightCorner.x)){
         direction.x *= -1.0f;
     }
-    if(ABS(lowerLeftCorner.y) < 0.005f || ABS(upperRightCorner.y) < 0.005f){
+    if(isTiny(lowerLeftCorner.y) || isTiny(upperRightCorner.y)){
         direction.y *= -1.0f;
     }
     return direction;

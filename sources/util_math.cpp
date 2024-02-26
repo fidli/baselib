@@ -1080,6 +1080,16 @@ f32 length(dv2 a){
     return sqrt(dot(a,a));
 }
 
+bool isTiny(f32 a)
+{
+    return ABS(a) <= 0.0005f;
+}
+
+bool isTiny(v2 a)
+{
+    return isTiny(length(a));
+}
+
 f32 radAngleFull(v2 a, v2 b){
     f32 result = atan2(det(a,b), dot(a,b));
     return result;
