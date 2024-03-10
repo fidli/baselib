@@ -79,11 +79,11 @@ bool collide(CollisionCircle A, CollisionRectAxisAligned B)
 
     CollisionRectAxisAligned boxA;
     boxA.pos = diff.pos;
-    boxA.size = diff.size + V2(A.radius, 0);
+    boxA.size = diff.size + V2(2*A.radius, 0);
 
     CollisionRectAxisAligned boxB;
     boxB.pos = diff.pos;
-    boxB.size = diff.size + V2(0, A.radius);
+    boxB.size = diff.size + V2(0, 2*A.radius);
 
     CollisionCircle tr, br, bl, tl;
     tr.radius = br.radius = bl.radius = tl.radius = A.radius;
@@ -98,20 +98,31 @@ bool collide(CollisionCircle A, CollisionRectAxisAligned B)
 
 static v2 collidePop(CollisionCircle A, v2 direction)
 {
-    f32 b = 2*(A.pos.x*direction.x + A.pos.y*direction.y);
-    f32 a = (direction.x*direction.x + direction.y*direction.y);
-    f32 c = A.pos.x*A.pos.x + A.pos.y+A.pos.y - A.radius*A.radius;
-    f32 D = b*b -4*a*c;
+    ASSERT(is0Inside(A));
+    f32 a = ((direction.x*direction.x) + (direction.y*direction.y));
+    f32 b = -2*((A.pos.x*direction.x) + (A.pos.y*direction.y));
+    f32 c = (A.pos.x*A.pos.x) + (A.pos.y*A.pos.y) - (A.radius*A.radius);
+    f32 D = (b*b) - (4*a*c);
     ASSERT(D >= 0);
-    f32 scale1 = (-b - sqrt(D)) / 2*a;
-    f32 scale2 = (-b + sqrt(D)) / 2*a;
+    f32 scale1 = ((-b) - sqrt(D)) / (2.0f*a);
+    f32 scale2 = ((-b) + sqrt(D)) / (2.0f*a);
     ASSERT(scale1 > 0 || scale2 > 0);
+    ASSERT(scale1 * scale2 < 0);
+    v2 res = {};
     if (scale1 > scale2)
     {
-        return scale1 * direction;
+        res = scale1 * direction;
     }
-    return scale2 * direction;
-    
+    else
+    {
+        res =  scale2 * direction;
+    }
+
+    ASSERT(length(res-A.pos) > A.radius);
+    // Sometimes numbers are small, 0.05 seems like ok cutoff, visually looks ok
+    ASSERT(aseq(length(res-A.pos), A.radius, 0.05f));
+
+    return res;
 }
 
 static v2 collidePop(CollisionRectAxisAligned A, v2 direction)
@@ -184,7 +195,7 @@ v2 collidePop(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
 
     CollisionRectAxisAligned boxA;
     boxA.pos = diff.pos;
-    boxA.size = diff.size + V2(A.radius, 0);
+    boxA.size = diff.size + V2(2*A.radius, 0);
     if (is0Inside(boxA))
     {
         v2 shift = collidePop(boxA, direction);
@@ -194,7 +205,7 @@ v2 collidePop(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
 
     CollisionRectAxisAligned boxB;
     boxB.pos = diff.pos;
-    boxB.size = diff.size + V2(0, A.radius);
+    boxB.size = diff.size + V2(0, 2*A.radius);
     if (is0Inside(boxB))
     {
         v2 shift = collidePop(boxB, direction);
@@ -202,9 +213,10 @@ v2 collidePop(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
         diff.pos -= shift;
     }
 
+    diff.size -= halo/2.0f;
     CollisionCircle circ;
-    circ.radius = diff.radius + halo.x;
-    circ.pos = -(diff.pos + B.size/2.0f);
+    circ.radius = diff.radius + halo.x/2.0f;
+    circ.pos = (diff.pos + diff.size/2.0f);
     if (is0Inside(circ))
     {
         v2 shift = collidePop(circ, direction);
@@ -212,7 +224,7 @@ v2 collidePop(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
         diff.pos -= shift;
     }
 
-    circ.pos = -(diff.pos + V2(B.size.x, -B.size.y)/2.0f);
+    circ.pos = (diff.pos + V2(diff.size.x, -diff.size.y)/2.0f);
     if (is0Inside(circ))
     {
         v2 shift = collidePop(circ, direction);
@@ -220,7 +232,7 @@ v2 collidePop(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
         diff.pos -= shift;
     }
 
-    circ.pos = -(diff.pos + V2(-B.size.x, -B.size.y)/2.0f);
+    circ.pos = (diff.pos + V2(-diff.size.x, -diff.size.y)/2.0f);
     if (is0Inside(circ))
     {
         v2 shift = collidePop(circ, direction);
@@ -228,7 +240,7 @@ v2 collidePop(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
         diff.pos -= shift;
     }
 
-    circ.pos = -(diff.pos + V2(-B.size.x, B.size.y)/2.0f);
+    circ.pos = (diff.pos + V2(-diff.size.x, diff.size.y)/2.0f);
     if (is0Inside(circ))
     {
         v2 shift = collidePop(circ, direction);
@@ -343,56 +355,54 @@ v2 collideReflect(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
 v2 collideSlide(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
 {
     ASSERT(!isTiny(direction));
-    CollisionRoundedRectAxisAligned diff = minkowskiDiff(A, B);
-    diff.size += halo;
 
-    v2 lowerLeftCorner = diff.pos - diff.size/2.0f;
-    v2 upperRightCorner = lowerLeftCorner + diff.size;
+    v2 lowerLeftCorner = B.pos - B.size/2.0f;
+    v2 upperRightCorner = lowerLeftCorner + B.size;
     v2 lowerRightCorner = V2(upperRightCorner.x, lowerLeftCorner.y);
     v2 upperLeftCorner = V2(lowerLeftCorner.x, upperRightCorner.y);
 
     v2 norm = {};
-    if (0 < upperLeftCorner.x)
+    if (A.pos.x < upperLeftCorner.x)
     {
-        if (0 < upperLeftCorner.y){
-           norm = normalize(-upperLeftCorner); 
+        if (A.pos.y > upperLeftCorner.y){
+           norm = normalize(A.pos-upperLeftCorner); 
         }
-        else if(0 < lowerLeftCorner.y)
+        else if(A.pos.y > lowerLeftCorner.y)
         {
             norm = V2(-1, 0);
         }
         else
         {
-            ASSERT(0 >= lowerLeftCorner.y);
-            norm = normalize(-lowerLeftCorner);
+            ASSERT(A.pos.y <= lowerLeftCorner.y);
+            norm = normalize(A.pos-lowerLeftCorner);
         }
     }
-    else if( 0 < upperRightCorner.x)
+    else if( A.pos.x < upperRightCorner.x)
     {
-        if (0 < upperRightCorner.y)
+        if (A.pos.y > upperRightCorner.y)
         {
             norm = V2(0, 1);
         }
         else
         {
-            ASSERT(0 >= lowerRightCorner.y);
+            ASSERT(A.pos.y <= lowerRightCorner.y);
             norm = V2(0, -1);
         }
     }
     else
     {
-        ASSERT(0 >= upperRightCorner.x);
-        if (0 < upperRightCorner.y){
-           norm = normalize(-upperRightCorner); 
+        ASSERT(A.pos.x >= upperRightCorner.x);
+        if (A.pos.y > upperRightCorner.y){
+           norm = normalize(A.pos-upperRightCorner); 
         }
-        else if(0 < lowerRightCorner.y)
+        else if(A.pos.y > lowerRightCorner.y)
         {
             norm = V2(1, 0);
         }
         else
         {
-            ASSERT(0 >= lowerRightCorner.y);
-            norm = normalize(-lowerRightCorner);
+            ASSERT(A.pos.y <= lowerRightCorner.y);
+            norm = normalize(A.pos-lowerRightCorner);
         }
     }
 
@@ -400,6 +410,7 @@ v2 collideSlide(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
     v2 normRotated = V2(-norm.y, norm.x);
     
     v2 res = dot(normRotated, direction)*normRotated;
+    ASSERT(length(res) <= length(direction));
     if (dot(res, direction) < 0)
     {
         return -res;
