@@ -87,10 +87,10 @@ bool collide(CollisionCircle A, CollisionRectAxisAligned B)
 
     CollisionCircle tr, br, bl, tl;
     tr.radius = br.radius = bl.radius = tl.radius = A.radius;
-    tr.pos = -(diff.pos + B.size/2.0f);
-    br.pos = -(diff.pos + V2(B.size.x, -B.size.y)/2.0f);
-    bl.pos = -(diff.pos + V2(-B.size.x, -B.size.y)/2.0f);
-    tl.pos = -(diff.pos + V2(-B.size.x, B.size.y)/2.0f);
+    tr.pos = diff.pos + diff.size/2.0f;
+    br.pos = diff.pos + V2(diff.size.x, -diff.size.y)/2.0f;
+    bl.pos = diff.pos - diff.size/2.0f;
+    tl.pos = diff.pos + V2(-diff.size.x, diff.size.y)/2.0f;
 
     return is0Inside(boxA) || is0Inside(boxB) || is0Inside(tr) || is0Inside(br) || is0Inside(bl) || is0Inside(tl);
 
@@ -158,7 +158,7 @@ v2 collidePop(CollisionCircle A, CollisionCircle B, v2 direction)
     ASSERT(!isTiny(direction));
     CollisionCircle diff = minkowskiDiff(A, B);
     // epsilons to pop just above the border
-    diff.radius += halo.x;
+    diff.radius += 2*halo.x;
     v2 res = collidePop(diff, direction);
 #ifndef RELEASE
     A.pos += res;
@@ -174,7 +174,7 @@ v2 collidePop(CollisionRectAxisAligned A, CollisionRectAxisAligned B, v2 directi
     ASSERT(!isTiny(direction));
     CollisionRectAxisAligned diff = minkowskiDiff(A, B);
     // epsilons to pop just above the border
-    diff.size += halo;
+    diff.size += 2*halo;
     v2 res = collidePop(diff, direction);
 #ifndef RELEASE
     A.pos += res;
@@ -191,65 +191,59 @@ v2 collidePop(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
     v2 totalShift = V2(0, 0);
 
     CollisionRoundedRectAxisAligned diff = minkowskiDiff(A, B);
-    diff.size += halo;
+    diff.size += 2*halo;
 
-    CollisionRectAxisAligned boxA;
-    boxA.pos = diff.pos;
-    boxA.size = diff.size + V2(2*A.radius, 0);
-    if (is0Inside(boxA))
-    {
-        v2 shift = collidePop(boxA, direction);
-        totalShift += shift;
-        diff.pos -= shift;
-    }
+    CollisionRectAxisAligned box[2];
+    box[0].size = diff.size + V2(2*A.radius, 0);
+    box[0].pos = diff.pos;
+    box[1].size = diff.size + V2(0, 2*A.radius);
+    box[1].pos = diff.pos;
 
-    CollisionRectAxisAligned boxB;
-    boxB.pos = diff.pos;
-    boxB.size = diff.size + V2(0, 2*A.radius);
-    if (is0Inside(boxB))
-    {
-        v2 shift = collidePop(boxB, direction);
-        totalShift += shift;
-        diff.pos -= shift;
-    }
+    CollisionCircle circ[4];
+    circ[0].radius = diff.radius + halo.x;
+    circ[0].pos = (diff.pos + (diff.size-halo)/2.0f);
+    circ[1].radius = diff.radius + halo.x;
+    circ[1].pos = (diff.pos + V2(-diff.size.x-halo.x, diff.size.y-halo.y)/2.0f);
+    circ[2].radius = diff.radius + halo.x;
+    circ[0].pos = (diff.pos + V2(diff.size.x-halo.x, -diff.size.y-halo.y)/2.0f);
+    circ[3].radius = diff.radius + halo.x;
+    circ[3].pos = (diff.pos + V2(-diff.size.x-halo.x, -diff.size.y-halo.y)/2.0f);
 
-    diff.size -= halo/2.0f;
-    CollisionCircle circ;
-    circ.radius = diff.radius + halo.x/2.0f;
-    circ.pos = (diff.pos + diff.size/2.0f);
-    if (is0Inside(circ))
+    u8 checks = 7;
+    bool retest = true;
+    while(checks > 0 && retest)
     {
-        v2 shift = collidePop(circ, direction);
-        totalShift += shift;
-        diff.pos -= shift;
+        retest = false;
+        for(i32 i = 0; i < ARRAYSIZE(box) && !retest; i++)
+        {
+            CollisionRectAxisAligned testbox = box[i];
+            testbox.pos -= totalShift;
+            if (is0Inside(testbox))
+            {
+                v2 shift = collidePop(testbox, direction);
+                totalShift += shift;
+                retest = true;
+            }
+        }
+        for(i32 i = 0; i < ARRAYSIZE(circ) && !retest; i++)
+        {
+            CollisionCircle testcircle = circ[i];
+            testcircle.pos -= totalShift;
+            if (is0Inside(testcircle))
+            {
+                v2 shift = collidePop(testcircle, direction);
+                totalShift += shift;
+                retest = true;
+            }
+        }
     }
-
-    circ.pos = (diff.pos + V2(diff.size.x, -diff.size.y)/2.0f);
-    if (is0Inside(circ))
-    {
-        v2 shift = collidePop(circ, direction);
-        totalShift += shift;
-        diff.pos -= shift;
-    }
-
-    circ.pos = (diff.pos + V2(-diff.size.x, -diff.size.y)/2.0f);
-    if (is0Inside(circ))
-    {
-        v2 shift = collidePop(circ, direction);
-        totalShift += shift;
-        diff.pos -= shift;
-    }
-
-    circ.pos = (diff.pos + V2(-diff.size.x, diff.size.y)/2.0f);
-    if (is0Inside(circ))
-    {
-        v2 shift = collidePop(circ, direction);
-        totalShift += shift;
-    }
+    // this should not happen, maximum is 6 checks not 7 for this shape
+    ASSERT(checks != 0);
 
 #ifndef RELEASE
-    A.pos += totalShift;
-    ASSERT(!collide(A, B));
+    CollisionCircle C = A;
+    C.pos += totalShift;
+    ASSERT(!collide(C, B));
 #endif
     return totalShift;
 }
@@ -356,6 +350,7 @@ v2 collideSlide(CollisionCircle A, CollisionRectAxisAligned B, v2 direction)
 {
     ASSERT(!isTiny(direction));
 
+    B.size += halo/2.0f;
     v2 lowerLeftCorner = B.pos - B.size/2.0f;
     v2 upperRightCorner = lowerLeftCorner + B.size;
     v2 lowerRightCorner = V2(upperRightCorner.x, lowerLeftCorner.y);
