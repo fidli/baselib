@@ -118,7 +118,8 @@ static v2 collidePop(CollisionCircle A, v2 direction)
         res =  scale2 * direction;
     }
 
-    ASSERT(length(res-A.pos) > A.radius);
+    // Definitely must be over hard edge
+    ASSERT(length(res-A.pos) >= A.radius - halo.x);
     // Sometimes numbers are small, 0.05 seems like ok cutoff, visually looks ok
     ASSERT(aseq(length(res-A.pos), A.radius, 0.05f));
 
