@@ -8,7 +8,11 @@
 
 bool initProfileDone = false;
 
+#ifndef CRT_PRESENT
 int printf(const char * format, ...);
+#else
+#include <stdio.h>
+#endif
 #if PROFILE
 
 struct ProfileEntry{

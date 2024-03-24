@@ -3,6 +3,7 @@
 #define I32_MAX 0x7FFFFFFF
 #define I32_MIN 0x80000000
 
+
 #ifdef PRECISE_MATH
 #include <cmath>
 #include "math.h"
@@ -170,10 +171,6 @@ f32 sqrt(f32 value){
 */
 
 
-f32 atan2(f32, f32){
-    ASSERT(!"implement me");
-    return 0;
-}
 
 f32 sin(f32 xRad){
     f32 result = CAST(f32, xRad - powd(xRad,3)/6.0 + powd(xRad,5)/120.0 - powd(xRad,7)/5040.0 +  powd(xRad,9)/362880.0 - powd(xRad,11)/39916800.0 + powd(xRad,13)/6227020800.0 - powd(xRad,15)/1307674368000.0 +  powd(xRad,17)/355687428096000.0 - powd(xRad,19)/1.216451e+17 + powd(xRad,21)/5.1090942e+19);
@@ -209,7 +206,8 @@ f32 acos(f32 cos){
     f32 b =  0.9217841528914573f;
     f32 c = -1.2845906244690837f;
     f32 d =  0.295624144969963174f;
-    return PI/2 + (a*cos + b * powd(cos,3)) / (1 + c*powd(cos,2) + d*powd(cos, 4));
+    f32 result = PI/2 + (a*cos + b * powd(cos,3)) / (1 + c*powd(cos,2) + d*powd(cos, 4));
+    return result;
     
 }
 
@@ -222,7 +220,6 @@ f64 acos64(f64 cos){
     return PI_64/2 + (a*cos + b * powd64(cos,3)) / (1 + c*powd64(cos,2) + d*powd64(cos, 4));
     
 }
-
 
 
 
@@ -264,29 +261,6 @@ f32 log(f32 number, f32 base = 10){
 }
 
 
-f32 clamp(f32 originalValue, f32 min, f32 max){
-    if(originalValue < min){
-        return min;
-    }else if(originalValue > max){
-        return max;
-    }
-    return originalValue;
-}
-
-
-i32 clamp(i32 originalValue, i32 min, i32 max){
-    if(originalValue < min){
-        return min;
-    }else if(originalValue > max){
-        return max;
-    }
-    return originalValue;
-}
-
-
-f32 normalize(f32 value, f32 min, f32 max){
-    return (value - min) / (max - min);
-}
 
 f32 fmodd(f32 value, u32 modulus){
     i32 wholePart = (i32) value;
@@ -311,47 +285,110 @@ f64 fmod64(f64 value, f64 modulus){
     f64 remain = divided - ((f64)(i64)divided);
     return modulus*remain;
 }
+
+// https://www.researchgate.net/publication/258792323_Full_Quadrant_Approximations_for_the_Arctangent_Function_Tips_and_Tricks
+f32 atan(f32 x)
+{
+    f32 absX = ABS(x);
+    f32 x2 = powd(x,2);
+    f32 a = 0.596227f;
+    f32 result = (SGN(x)*PI)/2.0f * ((x2 + absX*a)/(1+ 2*a*absX + x2));
+    return result;
+}
+
+//https://en.wikipedia.org/wiki/Atan2
+f32 atan2(f32 y, f32 x){
+    if (x > 0)
+    {
+        return atan(y/x);
+    }
+    if(x < 0 && y >= 0)
+    {
+        return atan(y/x) + PI;
+    }
+    if(x < 0 && y < 0)
+    {
+        return atan(y/x) - PI;
+    }
+    if(x == 0 && y > 0)
+    {
+        return PI/2.0f;
+    }
+    if(x == 0 && y <= 0)
+    {
+        return -PI/2.0f;
+    }
+    INV;
+    return 0.0f;
+}
+
 #else
 
 
 //this is just interface
 
 f32 powd(f32 base, i16 power = 2){
-    return (f32)pow((double) base, (double) power);
+    return (f32)pow(CAST(f32, base), CAST(f32, power));
 }
 
 f64 powd64(f64 base, i16 power = 2){
-    return (f64)pow(base, (double) power);
+    return pow(CAST(f64,base), CAST(f64, power));
 }
 
 f64 sqrt64(f64 value){
-    return (f64)sqrt((double) value);
+    return sqrt(CAST(f64, value));
 }
 
 f32 fmodd(f32 value, u32 modulus){
-    f32 result = (f32) fmod((double) value, (double) modulus);
+    f32 result = CAST(f32, fmod(CAST(f64, value), CAST(f64, modulus)));
     return result;
 }
 
 f64 fmodd64(f64 value, u64 modulus){
-    return result;
+    return fmod(value, CAST(f64, modulus));
+}
+
+f64 fmod64(f64 value, f64 modulus){
+    return fmod(value, modulus);
 }
 
 f64 acos64(f64 cos64){
-    return (f64)acos((double)cos64);
+    return acos(cos64);
 }
 
 f64 cos64(f64 radAngle){
-    return (f64)cos((double)radAngle);
+    return cos(radAngle);
 }
 
 f64 sin64(f64 radAngle){
-    return (f64)sin((double)radAngle);
+    return sin(radAngle);
+}
+
+#endif
+
+f32 clamp(f32 originalValue, f32 min, f32 max){
+    if(originalValue < min){
+        return min;
+    }else if(originalValue > max){
+        return max;
+    }
+    return originalValue;
 }
 
 
+i32 clamp(i32 originalValue, i32 min, i32 max){
+    if(originalValue < min){
+        return min;
+    }else if(originalValue > max){
+        return max;
+    }
+    return originalValue;
+}
 
-#endif
+
+f32 normalize(f32 value, f32 min, f32 max){
+    return (value - min) / (max - min);
+}
 
 u8 numlen16(i64 number){
     u8 result = 8;
@@ -1090,20 +1127,17 @@ bool isTiny(v2 a)
     return isTiny(length(a));
 }
 
-f32 radAngleFull(v2 a, v2 b){
-    f32 result = atan2(det(a,b), dot(a,b));
+f32 polarAngleRad(v2 test, v2 axis){
+    f32 polarAngleAxis = atan2(axis.y, axis.x) + PI;
+    f32 polarAngleTest = atan2(test.y, test.x) + PI;
+    ASSERT(polarAngleAxis >= 0);
+    ASSERT(polarAngleTest >= 0);
+    ASSERT(polarAngleAxis <= 2*PI);
+    ASSERT(polarAngleTest <= 2*PI);
+    f32 result = fmod(polarAngleTest - polarAngleAxis + 2*PI, 2*PI);
     return result;
 }
 
-f32 radAngle(v2 a, v2 b){
-    f32 cos = dot(a,b) / (length(a) * length(b));
-    return acos(cos);
-}
-
-f64 radAngle64(v2_64 a, v2_64 b){
-    f64 cos = dot64(a,b) / (length64(a) * length64(b));
-    return acos64(cos);
-}
 
 v4 normalize(v4 source){
     v4 result = {};

@@ -10,11 +10,11 @@ i32 logErrorCount;
 #include "mem_structs.h"
 #ifndef CRT_PRESENT
 u32 snprintf(char * target, nint limit, const char * format, ...);
+int printf(const char * format, ...);
 #endif
 inline void * allocate(PersistentStackAllocator * allocator, u64 bytes);
 nint strnlen(const char * target, nint limit);
 nint printFormatted(nint maxprint, char * target, const char * format, va_list ap);
-int printf(const char * format, ...);
 
 u8 numlen(i64 number);
 f64 powd64(f64 base, i16 power);
@@ -118,7 +118,7 @@ void log(const char * loggerName, LogLevel level, const char * resourceName, con
     char format2[] = "[%02hu.%02hu.%04hu %02hu:%02hu:%02hu][%s][%c] %s\r\n";
     loggers->lt = getLocalTime();
     snprintf(loggers->formatbuffer, ARRAYSIZE(loggers->formatbuffer), format2, loggers->lt.day, loggers->lt.month, loggers->lt.year, loggers->lt.hour, loggers->lt.minute, loggers->lt.second, resourceName, log_map[CAST(i32, level)], format);
-#if CRT_PRESENT
+#ifdef CRT_PRESENT
     vsnprintf(loggers->messagebuffer, ARRAYSIZE(loggers->messagebuffer), loggers->formatbuffer, ap);
 #else
     printFormatted(ARRAYSIZE(loggers->messagebuffer), loggers->messagebuffer, loggers->formatbuffer, ap);

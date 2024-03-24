@@ -3,6 +3,169 @@
 
 #include "util_math.cpp"
 
+static v2 halo = {0.0001f, 0.0001f};
+
+struct ConvexHull{
+    v2* points;
+    u32 count;
+};
+
+void makeRectConvexHull(ConvexHull* target, v2 pos, v2 size)
+{
+    ASSERT(target->points != NULL);
+    target->points[0] = pos - size/2;
+    target->points[1] = pos + V2(size.x/2, -size.y/2);
+    target->points[2] = pos + size/2;
+    target->points[3] = pos + V2(-size.x/2, +size.y/2);
+    target->count = 4;
+}
+
+void makeCircleConvexHull(ConvexHull* target, v2 pos, f32 radius)
+{
+    ASSERT(target->points != NULL);
+    static const int circlePoints = 41;
+    v2 pointOnCircle = pos + V2(0.0f, radius);
+    f32 radIncr = (2*PI) / CAST(f32, circlePoints);
+
+    for(i32 i = 0; i < circlePoints; i++)
+    {
+        target->points[i] = pointOnCircle;
+        pointOnCircle = rotate(pointOnCircle, radIncr);
+    }
+    target->count = circlePoints;
+}
+
+bool is0Inside(ConvexHull* A)
+{
+    v2 zero = {};
+    for(u32 i = 0; i < A->count; i++)
+    {
+        if (det(A->points[i] - A->points[(i-1+A->count)%A->count], zero - A->points[(i-1+A->count)%A->count]) <= 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+ConvexHull minkowskiDiffAndHull(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
+{
+    ASSERT(A->points != NULL);
+    ASSERT(B->points != NULL);
+    ASSERT(A->count > 0 && B->count > 0);
+    ConvexHull cluster;
+    cluster.count = A->count*B->count;
+    cluster.points = &PUSHA(v2, cluster.count);
+    ConvexHull hull;
+    hull.count = 0;
+    hull.points = &PUSHA(v2, cluster.count);
+
+    v2* target = cluster.points;
+    // minkowski diff
+    for (u32 i = 0; i < A->count; i++){
+        for(u32 j = 0; j < B->count; j++)
+        {
+            *target = A->points[i] + posA - B->points[j] - posB;
+            target++;
+        }
+    }
+
+    // construct convex hull
+    // this is called graham scan
+    u32 bottomLeft = 0;
+    for(u32 i = 1; i < cluster.count; i++)
+    {
+        if (cluster.points[i].y < cluster.points[bottomLeft].y)
+        {
+            bottomLeft = i;
+        }else if (cluster.points[i].y == cluster.points[bottomLeft].y && cluster.points[i].x < cluster.points[bottomLeft].x)
+        {
+            bottomLeft = i;
+        }
+
+    }
+
+
+    SWAP(cluster.points[bottomLeft], cluster.points[0]);
+    mergeSort(cluster.points + 1, cluster.count-1, [&] (v2 a, v2 b) -> i8 
+            {
+                f32 angleA = polarAngleRad(a, cluster.points[0]);
+                f32 angleB = polarAngleRad(b, cluster.points[0]);
+                if (aseq(angleA, angleB))
+                {
+                    if (length(a) > length(b))
+                            {
+                            return -1;
+                            }
+                    return 1;
+                }
+                if (angleA < angleB)
+                {
+                    return -1;
+                }
+                    return 1;
+            });
+
+
+    f32 lastAngle = polarAngleRad(cluster.points[1], cluster.points[0]);
+    for (u32 i = 2; i < cluster.count; i++)
+    {
+        f32 angle = polarAngleRad(cluster.points[i], cluster.points[0]);
+        if (aseq(lastAngle, angle))
+        {
+            if (i+1 < cluster.count)
+            {
+                memcpy(&cluster.points[i], &cluster.points[i+1], sizeof(v2)*(cluster.count-i-1));
+            }
+            i--;
+            cluster.count--;
+        }
+        lastAngle = angle;
+    }
+    for (u32 i = 0; i < cluster.count; i++)
+    {
+        v2 p3 = cluster.points[i];
+        while (hull.count > 1)
+        {
+            
+            v2 p1 = hull.points[hull.count-2];
+            v2 p2 = hull.points[hull.count-1];
+            f32 val = det(p2-p1, p3-p1);
+            if (val > 0.0f)
+            {
+                break;
+            }
+            hull.count--;
+        }
+        hull.points[hull.count++] = cluster.points[i];
+    }
+    POP;
+    return hull;
+}
+
+bool collide(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
+{
+
+    ConvexHull hull = minkowskiDiffAndHull(posA, A, posB, B);
+    bool result = is0Inside(&hull);
+    POP;
+    return result;
+}
+
+/*
+v2 collidePop(ConvexHull* who, ConvexHull* from, v2 direction)
+{
+    ASSERT(!isTiny(direction));
+    ASSERT(collide(who, from));
+    ConvexHull hull = minkowskiDiffAndHull(who, from);
+    
+
+
+}
+*/
+
+#if 0
+
 struct CollisionCircle{
     v2 pos;
     f32 radius;
@@ -20,7 +183,6 @@ struct CollisionRoundedRectAxisAligned{
 };
 
 
-static v2 halo = {0.0001f, 0.0001f};
 
 static CollisionRectAxisAligned minkowskiDiff(CollisionRectAxisAligned A, CollisionRectAxisAligned B)
 {
@@ -421,3 +583,5 @@ v2 collideReflect(CollisionCircle A, CollisionCircle B, v2 direction)
     v2 norm = normalize(A.pos - B.pos);
     return direction - 2*dot(direction,norm)*norm;
 }
+
+#endif
