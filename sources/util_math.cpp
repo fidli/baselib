@@ -1158,6 +1158,7 @@ v4_64 normalize64(v4_64 source){
 }
 
 v2 normalize(v2 source){
+    ASSERT(!isTiny(source));
     v2 result = {};
     f32 len = length(source);
     for(int i = 0; i < ARRAYSIZE(source.v); i++){

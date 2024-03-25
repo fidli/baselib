@@ -38,7 +38,7 @@ void makeCircleConvexHull(ConvexHull* target, v2 pos, f32 radius)
 bool is0Inside(ConvexHull* A)
 {
     v2 zero = {};
-    for(u32 i = 0; i < A->count; i++)
+    for(i32 i = 0; i < CAST(i32, A->count); i++)
     {
         if (det(A->points[i] - A->points[(i-1+A->count)%A->count], zero - A->points[(i-1+A->count)%A->count]) <= 0)
         {
@@ -48,7 +48,7 @@ bool is0Inside(ConvexHull* A)
     return true;
 }
 
-ConvexHull minkowskiDiffAndHull(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
+ConvexHull minkowskiDiff(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
 {
     ASSERT(A->points != NULL);
     ASSERT(B->points != NULL);
@@ -56,9 +56,6 @@ ConvexHull minkowskiDiffAndHull(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
     ConvexHull cluster;
     cluster.count = A->count*B->count;
     cluster.points = &PUSHA(v2, cluster.count);
-    ConvexHull hull;
-    hull.count = 0;
-    hull.points = &PUSHA(v2, cluster.count);
 
     v2* target = cluster.points;
     // minkowski diff
@@ -69,16 +66,25 @@ ConvexHull minkowskiDiffAndHull(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
             target++;
         }
     }
+    return cluster;
+}
+
+ConvexHull makeHull(ConvexHull* cluster)
+{
+
+    ConvexHull hull;
+    hull.count = 0;
+    hull.points = &PUSHA(v2, cluster->count);
 
     // construct convex hull
     // this is called graham scan
     u32 bottomLeft = 0;
-    for(u32 i = 1; i < cluster.count; i++)
+    for(u32 i = 1; i < cluster->count; i++)
     {
-        if (cluster.points[i].y < cluster.points[bottomLeft].y)
+        if (cluster->points[i].y < cluster->points[bottomLeft].y)
         {
             bottomLeft = i;
-        }else if (cluster.points[i].y == cluster.points[bottomLeft].y && cluster.points[i].x < cluster.points[bottomLeft].x)
+        }else if (cluster->points[i].y == cluster->points[bottomLeft].y && cluster->points[i].x < cluster->points[bottomLeft].x)
         {
             bottomLeft = i;
         }
@@ -86,11 +92,11 @@ ConvexHull minkowskiDiffAndHull(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
     }
 
 
-    SWAP(cluster.points[bottomLeft], cluster.points[0]);
-    mergeSort(cluster.points + 1, cluster.count-1, [&] (v2 a, v2 b) -> i8 
+    SWAP(cluster->points[bottomLeft], cluster->points[0]);
+    mergeSort(cluster->points + 1, cluster->count-1, [&] (v2 a, v2 b) -> i8 
             {
-                f32 angleA = polarAngleRad(a, cluster.points[0]);
-                f32 angleB = polarAngleRad(b, cluster.points[0]);
+                f32 angleA = polarAngleRad(a, cluster->points[0]);
+                f32 angleB = polarAngleRad(b, cluster->points[0]);
                 if (aseq(angleA, angleB))
                 {
                     if (length(a) > length(b))
@@ -107,24 +113,24 @@ ConvexHull minkowskiDiffAndHull(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
             });
 
 
-    f32 lastAngle = polarAngleRad(cluster.points[1], cluster.points[0]);
-    for (u32 i = 2; i < cluster.count; i++)
+    f32 lastAngle = polarAngleRad(cluster->points[1], cluster->points[0]);
+    for (u32 i = 2; i < cluster->count; i++)
     {
-        f32 angle = polarAngleRad(cluster.points[i], cluster.points[0]);
+        f32 angle = polarAngleRad(cluster->points[i], cluster->points[0]);
         if (aseq(lastAngle, angle))
         {
-            if (i+1 < cluster.count)
+            if (i+1 < cluster->count)
             {
-                memcpy(&cluster.points[i], &cluster.points[i+1], sizeof(v2)*(cluster.count-i-1));
+                memcpy(&cluster->points[i], &cluster->points[i+1], sizeof(v2)*(cluster->count-i-1));
             }
             i--;
-            cluster.count--;
+            cluster->count--;
         }
         lastAngle = angle;
     }
-    for (u32 i = 0; i < cluster.count; i++)
+    for (u32 i = 0; i < cluster->count; i++)
     {
-        v2 p3 = cluster.points[i];
+        v2 p3 = cluster->points[i];
         while (hull.count > 1)
         {
             
@@ -137,19 +143,99 @@ ConvexHull minkowskiDiffAndHull(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
             }
             hull.count--;
         }
-        hull.points[hull.count++] = cluster.points[i];
+        hull.points[hull.count++] = cluster->points[i];
     }
-    POP;
     return hull;
 }
 
 bool collide(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B)
 {
 
-    ConvexHull hull = minkowskiDiffAndHull(posA, A, posB, B);
+    ConvexHull cluster = minkowskiDiff(posB, B, posA, A);
+    ConvexHull hull = makeHull(&cluster);
     bool result = is0Inside(&hull);
     POP;
+    POP;
     return result;
+}
+
+v2 collidePop(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B, v2 direction, v2* normal)
+{
+    ASSERT(!isTiny(direction));
+
+    ConvexHull cluster = minkowskiDiff(posB, B, posA, A);
+    ConvexHull hull = makeHull(&cluster);
+    ASSERT(is0Inside(&hull));
+    v2 center = posA - posB;
+    for(u32 i = 0; i < hull.count; i++)
+    {
+        hull.points[i] += normalize(hull.points[i])*0.01f;
+    }
+    //find exit
+    v2 result = V2(0, 0);
+
+    bool found = false;
+    for(i32 i = 0; i < CAST(i32, hull.count); i++)
+    {
+        v2 ptA = hull.points[(i-1+hull.count)%hull.count];
+        v2 ptB = hull.points[i];
+        f32 segMultiplier;
+        if (aseq(direction.y, 0))
+        {
+            segMultiplier = -ptA.y/(ptB.y-ptA.y);
+        }
+        else if(aseq(direction.x, 0))
+        {
+            segMultiplier = -ptA.x/(ptB.x-ptA.x);
+        }
+        else
+        {
+            segMultiplier = (((ptA.x*direction.y)/direction.x) - ptA.y) / ((ptB.y-ptA.y) - (((ptB.x-ptA.x)*direction.y)/direction.x));
+        }
+        if (segMultiplier >= 0.0f && segMultiplier <= 1.0f)
+        {
+            v2 possibly = ptA + (ptB-ptA)*segMultiplier;
+            if(dot(possibly, direction) > 0.0f)
+            {
+                // transform back to tormal space
+                result = possibly;
+                // Sometimes numbers are small, 0.5 seems like ok cutoff, visually looks ok
+                ASSERT(length(result) <= length(direction) + 0.5f);
+                ASSERT(result.x != 0.0f || result.y != 0.0f);
+                found = true;
+                v2 norm = normalize(ptB - ptA);
+                ASSERT(!isTiny(norm));
+                SWAP(norm.x, norm.y);
+                norm.x *= -1.0f;
+                if (dot(norm, ptA - center) > 0)
+                {
+                    *normal = norm;
+                }else
+                {
+                    *normal = -norm;
+                }
+                break;
+            }
+        }
+    }
+    POP;
+    POP;
+    ASSERT(found);
+    ASSERT(!collide(posA + result, A, posB, B)); 
+    ASSERT(normal->x != 0.0f || normal->y != 0.0f);
+    return result;
+}
+
+v2 slide(v2 direction, v2 norm)
+{
+    ASSERT(!isTiny(direction));
+    ASSERT(!isTiny(norm));
+    v2 tang = V2(-norm.y, norm.x);
+    f32 slideAmount = dot(direction, tang);
+
+    v2 res = tang*slideAmount;
+    ASSERT(length(res) <= length(direction));
+    return res;
 }
 
 /*
