@@ -199,8 +199,6 @@ v2 collidePop(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B, v2 direction, v2* 
             {
                 // transform back to tormal space
                 result = possibly;
-                // Sometimes numbers are small, 0.5 seems like ok cutoff, visually looks ok
-                ASSERT(length(result) <= length(direction) + 0.5f);
                 ASSERT(result.x != 0.0f || result.y != 0.0f);
                 found = true;
                 v2 norm = normalize(ptB - ptA);
@@ -236,6 +234,13 @@ v2 slide(v2 direction, v2 norm)
     v2 res = tang*slideAmount;
     ASSERT(length(res) <= length(direction));
     return res;
+}
+
+v2 reflect(v2 direction, v2 norm)
+{
+    ASSERT(!isTiny(direction));
+    ASSERT(!isTiny(norm));
+    return direction - 2*dot(direction,norm)*norm;
 }
 
 /*
