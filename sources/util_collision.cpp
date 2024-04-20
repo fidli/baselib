@@ -166,10 +166,10 @@ v2 collidePop(v2 posA, ConvexHull* A, v2 posB, ConvexHull* B, v2 direction, v2* 
     ConvexHull cluster = minkowskiDiff(posB, B, posA, A);
     ConvexHull hull = makeHull(&cluster);
     ASSERT(is0Inside(&hull));
-    v2 center = posA - posB;
+    v2 center = posB - posA;
     for(u32 i = 0; i < hull.count; i++)
     {
-        hull.points[i] += normalize(hull.points[i])*0.01f;
+        hull.points[i] += normalize(hull.points[i]-center)*0.1f;
     }
     //find exit
     v2 result = V2(0, 0);
