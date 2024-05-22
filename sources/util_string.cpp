@@ -415,7 +415,7 @@ static u8 scanUnumber64(const char * source, u64 * target, nint maxDigits = 20){
     return i;
 }
 
-static u8 printDigits16(char * target, i64 number){
+static u8 printDigits16(char * target, i64 number, nint targetSize){
     u8 firstNon0Byte = 8;
     i64 mask = CAST(i64, 0xFF00000000000000);
     while(firstNon0Byte > 1 && ((number & mask) == 0))
@@ -428,7 +428,7 @@ static u8 printDigits16(char * target, i64 number){
     for(i32 b = firstNon0Byte-1; b >= 0; b--)
     {
         byte data = CAST(byte, (number & mask) >> (b*8));
-        for(i32 n = 1; n >= 0; n--)
+        for(i32 n = 1; n >= 0 && targetSize > 0; n--)
         {
             u8 nibble = (data >> (n*4)) & 0xF;
             if (nibble < 10)
@@ -438,6 +438,7 @@ static u8 printDigits16(char * target, i64 number){
             else{
                 target[i++] = CAST(char, nibble) + 55;
             }
+            targetSize--;
 
         }
     }
@@ -445,7 +446,7 @@ static u8 printDigits16(char * target, i64 number){
     return i;
 }
 
-static u8 printDigits(char * target, i64 number){
+static u8 printDigits(char * target, i64 number, nint targetSize){
     char digitsStack[20];
     i8 stackSize = 0;
     i64 temp = ABS(number);
@@ -457,11 +458,13 @@ static u8 printDigits(char * target, i64 number){
     stackSize--;
     
     u8 i = 0;
-    if(number < 0){
+    if(number < 0 && targetSize){
         target[i++] = '-';
+        targetSize--;
     }
-    for(;stackSize >= 0; stackSize--){
+    for(;stackSize >= 0 && targetSize > 0; stackSize--){
         target[i++] = digitsStack[stackSize];
+        targetSize--;
     }
     return i;
 }
@@ -834,21 +837,29 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
                         prependLen--;
                     }
                     if(info.padding0){
-                        targetIndex += printPrepend(target + targetIndex, '0', prependLen);
+                        targetIndex += printPrepend(target + targetIndex, '0', MIN(maxprint-targetIndex, prependLen));
                     }else{
-                        targetIndex += printPrepend(target + targetIndex, ' ', prependLen);
+                        targetIndex += printPrepend(target + targetIndex, ' ', MIN(maxprint-targetIndex, prependLen));
                     }
                 }
+
                 if(info.forceSign && !negative){
-                    target[targetIndex++] = '+';
+                    if((maxprint-targetIndex) > 0)
+                    {
+                        target[targetIndex++] = '+';
+                    }
                 }else if(negative){
-                    target[targetIndex++] = '-';
+                    if((maxprint-targetIndex) > 0)
+                    {
+                        target[targetIndex++] = '-';
+                    }
                 }
+                ASSERT(maxprint >= targetIndex);
                 if(info.type == FormatType_x){
-                    targetIndex += printDigits16(target + targetIndex, absValue);
+                    targetIndex += printDigits16(target + targetIndex, absValue, maxprint-targetIndex);
                 }
                 else{
-                    targetIndex += printDigits(target + targetIndex, absValue);
+                    targetIndex += printDigits(target + targetIndex, absValue, maxprint-targetIndex);
                 }
                 successfullyPrinted++;
             }break;
@@ -857,11 +868,9 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
                 return 0;
             }break;
             case FormatType_immediate:{
-                u32 i = 0;
-                for(;i < info.immediate.length; i++){
-                    target[targetIndex + i] = info.immediate.start[i];
-                }
-                targetIndex += i;
+                nint size = MIN(maxprint-targetIndex, info.immediate.length);
+                memcpy(target + targetIndex, info.immediate.start, size);
+                targetIndex += size;
                 //successfullyPrinted++;
             }break;
             case FormatType_f:{
@@ -884,31 +893,39 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
                         prependLen--;
                     }
                     if(info.padding0){
-                        targetIndex += printPrepend(target + targetIndex, '0', prependLen);
+                        targetIndex += printPrepend(target + targetIndex, '0', MIN(maxprint-targetIndex, prependLen));
                     }else{
-                        targetIndex += printPrepend(target + targetIndex, ' ', prependLen);
+                        targetIndex += printPrepend(target + targetIndex, ' ', MIN(maxprint-targetIndex, prependLen));
                     }
                 }
                 if(info.forceSign && !negative){
-                    target[targetIndex] = '+';
-                    targetIndex++;
+                    if((maxprint-targetIndex) > 0)
+                    {
+                        target[targetIndex] = '+';
+                        targetIndex++;
+                    }
                 }else if(negative){
-                    target[targetIndex] = '-';
+                    if((maxprint-targetIndex) > 0)
+                    {
+                        target[targetIndex] = '-';
+                        targetIndex++;
+                    }
+                }
+                targetIndex += printDigits(target + targetIndex, ABS(wholePart), maxprint-targetIndex);
+                
+                if((maxprint-targetIndex) > 0)
+                {
+                    target[targetIndex] = delim;
                     targetIndex++;
                 }
-                targetIndex += printDigits(target + targetIndex, ABS(wholePart));
-                
-                target[targetIndex] = delim;
-                
-                targetIndex++;
                 i64 decimalPart = ABS((i64)((source - wholePart) * powd64(10, precision)));
                 u8 decimalNumlength = numlen(decimalPart);
                 i32 decimalPrependLen = precision - decimalNumlength;
-                for(int i = 0; i < decimalPrependLen; i++){
+                for(int i = 0; i < decimalPrependLen && targetIndex < maxprint; i++){
                     target[targetIndex] = '0';
                     targetIndex++;
                 }
-                targetIndex += printDigits(target + targetIndex, decimalPart);
+                targetIndex += printDigits(target + targetIndex, decimalPart, maxprint-targetIndex);
                 successfullyPrinted++;
             }break;
             case FormatType_Invalid:
@@ -919,13 +936,13 @@ nint printFormatted(nint maxprint, char * target, const char * format, va_list a
         }
         nint printedCharacters = targetIndex - previousTargetIndex;  
         if((info.leftJustify && info.width != (u32)-1) && printedCharacters < info.width){
-            for(i32 i = 0; i < info.width - printedCharacters; i++){
+            for(i32 i = 0; i < info.width - printedCharacters && targetIndex < maxprint; i++){
                 target[targetIndex++] = ' ';
             }
         }
     }
     
-    target[targetIndex] = '\0';
+    target[MIN(targetIndex, maxprint-1)] = '\0';
     
     return targetIndex;
 }
